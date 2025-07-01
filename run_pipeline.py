@@ -75,7 +75,12 @@ def display_menu(celebrity_name):
     print("8. Remove bad testing images (keep 4-10 faces)")
     print("9. Detect faces in test images")
     print()
-    print("10. Exit")
+    print("VIDEO PROCESSING PIPELINE:")
+    print("10. Download video from URL")
+    print("11. Extract frames from video")
+    print("12. Extract faces from video frames")
+    print()
+    print("13. Exit")
     print()
 
 
@@ -193,11 +198,44 @@ def main():
                 run_command(command, "Detect faces in test images")
                 
             elif choice == '10':
+                # Download video from URL
+                video_url = input("\nEnter video URL (YouTube, Vimeo, TikTok, etc.): ").strip()
+                if not video_url:
+                    print("No URL provided.")
+                    continue
+                command = ['python3', 'download_video.py', video_url]
+                run_command(command, "Download video from URL")
+                
+            elif choice == '11':
+                # Extract frames from video
+                video_path = input("\nEnter path to video file (e.g., videos/youtube_ABC123/video.mp4): ").strip()
+                if not video_path or not Path(video_path).exists():
+                    print(f"Video file not found: {video_path}")
+                    continue
+                    
+                frame_count = input("Number of frames to extract (default 50): ").strip()
+                if not frame_count:
+                    frame_count = "50"
+                    
+                command = ['python3', 'extract_video_frames.py', video_path, frame_count]
+                run_command(command, "Extract frames from video")
+                
+            elif choice == '12':
+                # Extract faces from video frames
+                frames_dir = input("\nEnter path to frames directory (e.g., videos/youtube_ABC123/frames/): ").strip()
+                if not frames_dir or not Path(frames_dir).exists():
+                    print(f"Frames directory not found: {frames_dir}")
+                    continue
+                    
+                command = ['python3', 'extract_frame_faces.py', frames_dir]
+                run_command(command, "Extract faces from video frames")
+                
+            elif choice == '13':
                 print("\nExiting StarMapr Pipeline Runner. Goodbye!")
                 sys.exit(0)
                 
             else:
-                print(f"\nInvalid choice: {choice}. Please enter a number between 1 and 10.")
+                print(f"\nInvalid choice: {choice}. Please enter a number between 1 and 13.")
                 
         except KeyboardInterrupt:
             print("\n\nExiting StarMapr Pipeline Runner. Goodbye!")

@@ -44,16 +44,22 @@ def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
     # Create bad folder if it doesn't exist
     bad_folder = folder_path / "bad"
     
-    # Get all image files (excluding those already in bad folder)
+    # Get all files (excluding those already in bad folder and subdirectories)
     image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'}
-    image_files = [f for f in folder_path.iterdir() 
-                   if f.is_file() and f.suffix.lower() in image_extensions]
+    all_files = [f for f in folder_path.iterdir() 
+                 if f.is_file() and not f.name.startswith('.')]
     
-    if not image_files:
-        print(f"No image files found in {folder_path}")
+    # Separate supported and unsupported files
+    image_files = [f for f in all_files if f.suffix.lower() in image_extensions]
+    unsupported_files = [f for f in all_files if f.suffix.lower() not in image_extensions]
+    
+    if not all_files:
+        print(f"No files found in {folder_path}")
         return
     
-    print(f"Found {len(image_files)} images in {folder_path}")
+    print(f"Found {len(all_files)} files in {folder_path}")
+    print(f"  - {len(image_files)} supported image files")
+    print(f"  - {len(unsupported_files)} unsupported format files")
     if dry_run:
         print("DRY RUN MODE - No files will be moved")
     print()
@@ -61,6 +67,7 @@ def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
     images_to_move = []
     images_with_good_faces = []
     images_with_errors = []
+    unsupported_to_move = unsupported_files.copy()
     
     # Define face count requirements based on mode
     if mode == 'training':
@@ -100,46 +107,61 @@ def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
                     print(f"  → MOVE TO BAD: {face_count} faces detected (maximum {max_faces} allowed)")
                 images_to_move.append(img_file)
     
+    # Handle unsupported files
+    if unsupported_to_move:
+        print(f"\nUnsupported format files (will be moved to bad folder):")
+        for file in unsupported_to_move:
+            print(f"  → MOVE TO BAD: {file.name} (unsupported format: {file.suffix or 'no extension'})")
+    
     # Summary
     print(f"\nSummary:")
-    print(f"Total images analyzed: {len(image_files)}")
+    print(f"Total files found: {len(all_files)}")
+    print(f"Supported images analyzed: {len(image_files)}")
     print(f"Images with {face_description} (keeping): {len(images_with_good_faces)}")
-    print(f"Images to move to bad folder: {len(images_to_move)}")
+    print(f"Images to move to bad folder (wrong face count): {len(images_to_move)}")
+    print(f"Unsupported files to move to bad folder: {len(unsupported_to_move)}")
     print(f"Images with processing errors: {len(images_with_errors)}")
     
+    all_files_to_move = images_to_move + unsupported_to_move
+    
     if images_to_move:
-        print(f"\nImages to be moved to bad folder:")
+        print(f"\nImages to be moved to bad folder (wrong face count):")
         for img in images_to_move:
             print(f"  - {img.name}")
+    
+    if unsupported_to_move:
+        print(f"\nUnsupported files to be moved to bad folder:")
+        for file in unsupported_to_move:
+            print(f"  - {file.name}")
     
     if images_with_errors:
         print(f"\nImages with processing errors (not moved):")
         for img in images_with_errors:
             print(f"  - {img.name}")
     
-    # Move bad images if not in dry run mode
-    if images_to_move and not dry_run:
+    # Move bad images and unsupported files if not in dry run mode
+    if all_files_to_move and not dry_run:
         # Create bad folder
         bad_folder.mkdir(exist_ok=True)
-        print(f"\nMoving {len(images_to_move)} images to {bad_folder}...")
+        print(f"\nMoving {len(all_files_to_move)} files to {bad_folder}...")
         
         moved_count = 0
-        for img_file in images_to_move:
+        for file_to_move in all_files_to_move:
             try:
-                destination = bad_folder / img_file.name
-                shutil.move(str(img_file), str(destination))
-                print(f"  ✓ Moved: {img_file.name}")
+                destination = bad_folder / file_to_move.name
+                shutil.move(str(file_to_move), str(destination))
+                print(f"  ✓ Moved: {file_to_move.name}")
                 moved_count += 1
             except Exception as e:
-                print(f"  ✗ Failed to move {img_file.name}: {e}")
+                print(f"  ✗ Failed to move {file_to_move.name}: {e}")
         
-        print(f"\nSuccessfully moved {moved_count}/{len(images_to_move)} images to bad folder")
+        print(f"\nSuccessfully moved {moved_count}/{len(all_files_to_move)} files to bad folder")
     
-    elif images_to_move and dry_run:
-        print(f"\nDRY RUN: Would move {len(images_to_move)} images to bad folder")
+    elif all_files_to_move and dry_run:
+        print(f"\nDRY RUN: Would move {len(all_files_to_move)} files to bad folder")
     
-    if not images_to_move:
-        print(f"\nNo images need to be moved - all images meet the {face_description} requirement!")
+    if not all_files_to_move:
+        print(f"\nNo files need to be moved - all supported images meet the {face_description} requirement!")
 
 def main():
     parser = argparse.ArgumentParser(description='Move images that do not meet face count requirements to a bad subfolder')

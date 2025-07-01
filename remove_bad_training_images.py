@@ -27,12 +27,13 @@ def count_faces_in_image(image_path):
         print(f"Error processing {image_path.name}: {e}")
         return -1
 
-def remove_bad_training_images(celebrity_folder_path, dry_run=False):
+def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
     """
-    Move images from celebrity folder that don't have exactly 1 face detected to a 'bad' subfolder.
+    Move images from celebrity folder that don't meet face count requirements to a 'bad' subfolder.
     
     Args:
-        celebrity_folder_path (str): Path to celebrity folder containing training images
+        celebrity_folder_path (str): Path to celebrity folder containing training or testing images
+        mode (str): 'training' expects exactly 1 face, 'testing' expects 4-10 faces
         dry_run (bool): If True, only report what would be moved without actually moving files
     """
     folder_path = Path(celebrity_folder_path)
@@ -58,8 +59,16 @@ def remove_bad_training_images(celebrity_folder_path, dry_run=False):
     print()
     
     images_to_move = []
-    images_with_one_face = []
+    images_with_good_faces = []
     images_with_errors = []
+    
+    # Define face count requirements based on mode
+    if mode == 'training':
+        required_faces = 1
+        face_description = "exactly 1 face"
+    else:  # testing mode
+        min_faces, max_faces = 4, 10
+        face_description = f"{min_faces}-{max_faces} faces"
     
     for img_file in image_files:
         print(f"Analyzing: {img_file.name}")
@@ -68,20 +77,33 @@ def remove_bad_training_images(celebrity_folder_path, dry_run=False):
         if face_count == -1:
             print(f"  → ERROR: Could not process image")
             images_with_errors.append(img_file)
-        elif face_count == 0:
-            print(f"  → MOVE TO BAD: No faces detected")
-            images_to_move.append(img_file)
-        elif face_count == 1:
-            print(f"  → KEEP: Exactly 1 face detected")
-            images_with_one_face.append(img_file)
-        else:
-            print(f"  → MOVE TO BAD: {face_count} faces detected (expected exactly 1)")
-            images_to_move.append(img_file)
+        elif mode == 'training':
+            if face_count == required_faces:
+                print(f"  → KEEP: Exactly 1 face detected")
+                images_with_good_faces.append(img_file)
+            else:
+                if face_count == 0:
+                    print(f"  → MOVE TO BAD: No faces detected")
+                else:
+                    print(f"  → MOVE TO BAD: {face_count} faces detected (expected exactly 1)")
+                images_to_move.append(img_file)
+        else:  # testing mode
+            if min_faces <= face_count <= max_faces:
+                print(f"  → KEEP: {face_count} faces detected (within {min_faces}-{max_faces} range)")
+                images_with_good_faces.append(img_file)
+            else:
+                if face_count == 0:
+                    print(f"  → MOVE TO BAD: No faces detected")
+                elif face_count < min_faces:
+                    print(f"  → MOVE TO BAD: {face_count} faces detected (need at least {min_faces})")
+                else:
+                    print(f"  → MOVE TO BAD: {face_count} faces detected (maximum {max_faces} allowed)")
+                images_to_move.append(img_file)
     
     # Summary
     print(f"\nSummary:")
     print(f"Total images analyzed: {len(image_files)}")
-    print(f"Images with exactly 1 face (keeping): {len(images_with_one_face)}")
+    print(f"Images with {face_description} (keeping): {len(images_with_good_faces)}")
     print(f"Images to move to bad folder: {len(images_to_move)}")
     print(f"Images with processing errors: {len(images_with_errors)}")
     
@@ -117,18 +139,35 @@ def remove_bad_training_images(celebrity_folder_path, dry_run=False):
         print(f"\nDRY RUN: Would move {len(images_to_move)} images to bad folder")
     
     if not images_to_move:
-        print(f"\nNo images need to be moved - all images have exactly 1 face!")
+        print(f"\nNo images need to be moved - all images meet the {face_description} requirement!")
 
 def main():
-    parser = argparse.ArgumentParser(description='Move training images that do not have exactly 1 face detected to a bad subfolder')
-    parser.add_argument('celebrity_folder', help='Path to celebrity folder containing training images')
+    parser = argparse.ArgumentParser(description='Move images that do not meet face count requirements to a bad subfolder')
+    
+    # Mutually exclusive group for mode selection
+    mode_group = parser.add_mutually_exclusive_group(required=True)
+    mode_group.add_argument('--training', metavar='CELEBRITY_NAME',
+                           help='Remove bad images from training/CELEBRITY_NAME/ folder (expects exactly 1 face)')
+    mode_group.add_argument('--testing', metavar='CELEBRITY_NAME', 
+                           help='Remove bad images from testing/CELEBRITY_NAME/ folder (expects 4-10 faces)')
+    
     parser.add_argument('--dry-run', action='store_true', 
                        help='Show what would be moved without actually moving files')
     
     args = parser.parse_args()
     
+    # Determine celebrity folder path and mode based on arguments
+    if args.training:
+        celebrity_name = args.training.lower().replace(' ', '_')
+        celebrity_folder_path = f'training/{celebrity_name}/'
+        mode = 'training'
+    else:  # args.testing
+        celebrity_name = args.testing.lower().replace(' ', '_')
+        celebrity_folder_path = f'testing/{celebrity_name}/'
+        mode = 'testing'
+    
     try:
-        remove_bad_training_images(args.celebrity_folder, args.dry_run)
+        remove_bad_images(celebrity_folder_path, mode, args.dry_run)
         
     except Exception as e:
         print(f"Error: {e}")

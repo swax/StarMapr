@@ -8,29 +8,40 @@ StarMapr is a Python application for celebrity face recognition and detection. I
 
 ## Core Architecture
 
-The system consists of five main components:
+The system follows a **sequential pipeline architecture** with five main stages that process celebrity images from raw downloads to face detection:
 
-1. **download_celebrity_images.py** - Downloads training images from Google Image Search
+**Pipeline Flow**: Data Collection → Duplicate Removal → Data Cleaning → Embedding Generation → Face Detection
+
+The system consists of six main components:
+
+1. **run_pipeline.py** - Interactive pipeline runner for streamlined workflow execution
+   - Provides numbered menu of all pipeline steps
+   - Automatic path validation and error checking
+   - Guided celebrity name input and image count selection
+   - Seamless execution of training and testing workflows
+
+2. **download_celebrity_images.py** - Downloads training images from Google Image Search
    - Uses Google Custom Search API to fetch celebrity photos
    - Optimized search parameters for face portraits
    - Automatically creates celebrity folders in proper structure
+   - Names images using first 8 characters of GUIDs to prevent collisions on reruns, allowing safe duplicate removal and bad image handling
 
-2. **remove_dupe_training_images.py** - Removes near-duplicate images from celebrity folders
+3. **remove_dupe_training_images.py** - Removes near-duplicate images from celebrity folders
    - Uses perceptual hashing to identify visually similar images
    - Keeps the largest file from each duplicate group
    - Moves duplicates to a subfolder to reduce training redundancy
 
-3. **remove_bad_training_images.py** - Removes low-quality or corrupted images from celebrity folders
-   - Detects and removes images without detectable faces
-   - Removes images with extremely low resolution
-   - Cleans training data before embedding generation
+4. **remove_bad_training_images.py** - Removes images that don't meet face count requirements
+   - Training mode: Removes images without exactly 1 face
+   - Testing mode: Removes images with fewer than 4 or more than 10 faces
+   - Uses DeepFace for accurate face detection and validation
 
-4. **compute_average_embeddings.py** - Processes a folder of celebrity images to create average embeddings
+5. **compute_average_embeddings.py** - Processes a folder of celebrity images to create average embeddings
    - Generates embeddings using DeepFace with ArcFace model
    - Computes average embedding vector for all images of a celebrity
    - Saves embeddings as pickle files (.pkl)
 
-5. **detect_star.py** - Detects matching faces in test images using precomputed embeddings
+6. **detect_star.py** - Detects matching faces in test images using precomputed embeddings
    - Loads reference embeddings from pickle files
    - Processes test images to find matching faces
    - Extracts face crops and saves them with similarity scores
@@ -45,11 +56,30 @@ The system consists of five main components:
   - Organized by celebrity for validation
   - Contains `detected_headshots/` subfolder with extraction results
 
+## Dependencies Installation
+
+```bash
+pip install deepface numpy opencv-python scikit-learn google-images-search python-dotenv
+```
+
 ## Common Commands
+
+### Interactive Pipeline Runner (Recommended)
+```bash
+python run_pipeline.py
+```
+Launches an interactive menu that guides you through the complete pipeline process for a celebrity. The script automatically handles path management, validates prerequisites, and provides numbered options for each step.
+
+### Manual Commands
+All scripts now use `--training` and `--testing` flags to specify the dataset type and automatically handle folder paths.
 
 ### Download Celebrity Images
 ```bash
-python download_celebrity_images.py "Celebrity Name" 15
+# For training dataset (solo portraits)
+python download_celebrity_images.py "Celebrity Name" 15 --training
+
+# For testing dataset (group photos)
+python download_celebrity_images.py "Celebrity Name" 10 --testing
 ```
 Requires Google API credentials in .env file:
 - GOOGLE_API_KEY=your_api_key_here
@@ -57,12 +87,20 @@ Requires Google API credentials in .env file:
 
 ### Remove Duplicate Images
 ```bash
-python remove_dupe_training_images.py training/[celebrity_name]/
+# Training dataset
+python remove_dupe_training_images.py --training "Celebrity Name"
+
+# Testing dataset
+python remove_dupe_training_images.py --testing "Celebrity Name"
 ```
 
 ### Remove Bad Images
 ```bash
-python remove_bad_training_images.py training/[celebrity_name]/
+# Training dataset (keeps images with exactly 1 face)
+python remove_bad_training_images.py --training "Celebrity Name"
+
+# Testing dataset (keeps images with 4-10 faces)
+python remove_bad_training_images.py --testing "Celebrity Name"
 ```
 
 ### Generate Average Embeddings
@@ -94,27 +132,49 @@ The project requires:
 
 ## Pipeline Workflow
 
-The complete pipeline follows this sequence:
+The complete pipeline follows this sequence. You can use the interactive pipeline runner (`python run_pipeline.py`) for guided execution, or run commands manually:
 
-1. **Download**: Use `download_celebrity_images.py` to collect celebrity images from Google Image Search
-2. **Remove Duplicates**: Run `remove_dupe_training_images.py` to eliminate near-duplicate images using perceptual hashing
-3. **Remove Bad Images**: Run `remove_bad_training_images.py` to clean training data by removing corrupted or unusable images
-4. **Compute**: Execute `compute_average_embeddings.py` to generate reference embeddings from cleaned training images
-5. **Detect**: Use `detect_star.py` to find matching faces in test images using precomputed embeddings
+### Training Pipeline (Solo Portraits)
+1. **Download Training Data**: `python download_celebrity_images.py "Celebrity Name" 15 --training`
+2. **Remove Duplicates**: `python remove_dupe_training_images.py --training "Celebrity Name"`
+3. **Remove Bad Images**: `python remove_bad_training_images.py --training "Celebrity Name"` (keeps exactly 1 face)
+4. **Generate Embeddings**: `python compute_average_embeddings.py training/celebrity_name/`
 
-### Detailed Steps
+### Testing Pipeline (Group Photos)
+1. **Download Test Data**: `python download_celebrity_images.py "Celebrity Name" 10 --testing`
+2. **Remove Duplicates**: `python remove_dupe_training_images.py --testing "Celebrity Name"`
+3. **Remove Bad Images**: `python remove_bad_training_images.py --testing "Celebrity Name"` (keeps 4-10 faces)
+4. **Run Detection**: `python detect_star.py testing/celebrity_name/ training/celebrity_name/celebrity_name_average_embedding.pkl`
 
-1. **Data Collection**: Use `download_celebrity_images.py` or manually collect celebrity images in `training/[name]/` folder
-2. **Duplicate Removal**: Run `remove_dupe_training_images.py` to remove near-duplicate images using perceptual hashing
-3. **Data Cleaning**: Run `remove_bad_training_images.py` to remove corrupted images and those without detectable faces
-4. **Embedding Generation**: Run `compute_average_embeddings.py` to generate reference embeddings from cleaned training images
-5. **Testing Setup**: Place test images in `testing/` folder (organized by celebrity for validation)
-6. **Face Detection**: Run `detect_star.py` to find matching faces using precomputed embeddings
-7. **Results Review**: Check extracted face crops in the `detected_headshots/` output folder
+### Complete Example Workflow
+```bash
+# 1. Training phase
+python download_celebrity_images.py "Bill Murray" 20 --training
+python remove_dupe_training_images.py --training "Bill Murray"
+python remove_bad_training_images.py --training "Bill Murray"
+python compute_average_embeddings.py training/bill_murray/
+
+# 2. Testing phase
+python download_celebrity_images.py "Bill Murray" 15 --testing
+python remove_dupe_training_images.py --testing "Bill Murray"
+python remove_bad_training_images.py --testing "Bill Murray"
+python detect_star.py testing/bill_murray/ training/bill_murray/bill_murray_average_embedding.pkl
+```
 
 ## Key Parameters
 
-- Default similarity threshold: 0.6 (adjustable via --threshold)
-- Supported image formats: .jpg, .jpeg, .png, .bmp, .tiff, .webp
-- Face detection model: ArcFace via DeepFace
-- Similarity metric: Cosine similarity
+- **Face Detection Model**: ArcFace via DeepFace
+- **Similarity Metric**: Cosine similarity
+- **Default Detection Threshold**: 0.6 (adjustable via --threshold)
+- **Supported Image Formats**: .jpg, .jpeg, .png, .bmp, .tiff, .webp
+- **Training Face Count**: Exactly 1 face required
+- **Testing Face Count**: 4-10 faces required
+- **Duplicate Detection Threshold**: 5 Hamming distance (adjustable via --threshold)
+
+## Architecture Notes
+
+- **GUID-based Naming**: Image files use first 8 characters of GUIDs to prevent filename collisions
+- **Automatic Folder Management**: Scripts create `bad/` and `duplicates/` subfolders automatically
+- **Dry-run Support**: Most scripts support `--dry-run` flag for safe testing
+- **Error Handling**: Comprehensive exception handling with detailed user feedback
+- **Modular Design**: Each script handles a single responsibility in the pipeline

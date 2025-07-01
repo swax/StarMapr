@@ -116,12 +116,12 @@ def find_duplicate_groups(image_files, similarity_threshold=5):
     
     return duplicate_groups
 
-def remove_duplicate_training_images(celebrity_folder_path, similarity_threshold=5, dry_run=False):
+def remove_duplicate_images(celebrity_folder_path, similarity_threshold=5, dry_run=False):
     """
     Remove near-duplicate images from celebrity folder, keeping the first one in each group.
     
     Args:
-        celebrity_folder_path (str): Path to celebrity folder containing training images
+        celebrity_folder_path (str): Path to celebrity folder containing training or testing images
         similarity_threshold (int): Maximum Hamming distance for considering images duplicates
         dry_run (bool): If True, only report what would be moved without actually moving files
     """
@@ -209,8 +209,15 @@ def remove_duplicate_training_images(celebrity_folder_path, similarity_threshold
         print(f"\nDRY RUN: Would move {len(images_to_move)} duplicate images")
 
 def main():
-    parser = argparse.ArgumentParser(description='Remove near-duplicate training images from celebrity folder')
-    parser.add_argument('celebrity_folder', help='Path to celebrity folder containing training images')
+    parser = argparse.ArgumentParser(description='Remove near-duplicate images from celebrity folder')
+    
+    # Mutually exclusive group for mode selection
+    mode_group = parser.add_mutually_exclusive_group(required=True)
+    mode_group.add_argument('--training', metavar='CELEBRITY_NAME',
+                           help='Remove duplicates from training/CELEBRITY_NAME/ folder')
+    mode_group.add_argument('--testing', metavar='CELEBRITY_NAME', 
+                           help='Remove duplicates from testing/CELEBRITY_NAME/ folder')
+    
     parser.add_argument('--threshold', type=int, default=5,
                        help='Similarity threshold (0-64, lower = more strict, default: 5)')
     parser.add_argument('--dry-run', action='store_true', 
@@ -222,8 +229,16 @@ def main():
         print("Error: Threshold must be between 0 and 64")
         sys.exit(1)
     
+    # Determine celebrity folder path based on mode
+    if args.training:
+        celebrity_name = args.training.lower().replace(' ', '_')
+        celebrity_folder_path = f'training/{celebrity_name}/'
+    else:  # args.testing
+        celebrity_name = args.testing.lower().replace(' ', '_')
+        celebrity_folder_path = f'testing/{celebrity_name}/'
+    
     try:
-        remove_duplicate_training_images(args.celebrity_folder, args.threshold, args.dry_run)
+        remove_duplicate_images(celebrity_folder_path, args.threshold, args.dry_run)
         
     except Exception as e:
         print(f"Error: {e}")

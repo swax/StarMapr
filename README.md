@@ -40,28 +40,43 @@ GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
 
 ## Quick Start
 
-### 1. Download Celebrity Training Images
+### Interactive Pipeline Runner (Recommended)
+Run the complete pipeline interactively with guided menu options:
 ```bash
-python download_celebrity_images.py "Bill Murray" 15
+python run_pipeline.py
 ```
+This script provides a numbered menu to execute each pipeline step in order, with automatic path management and validation.
 
-### 2. Clean Training Data
+### Manual Pipeline Execution
+
+#### Training Pipeline
 ```bash
-# Remove duplicate images
-python remove_dupe_training_images.py training/bill_murray/
+# 1. Download training images (solo portraits)
+python download_celebrity_images.py "Bill Murray" 20 --training
 
-# Remove corrupted/unusable images
-python remove_bad_training_images.py training/bill_murray/
-```
+# 2. Remove duplicate images
+python remove_dupe_training_images.py --training "Bill Murray"
 
-### 3. Generate Reference Embeddings
-```bash
+# 3. Remove bad images (keep exactly 1 face)
+python remove_bad_training_images.py --training "Bill Murray"
+
+# 4. Generate reference embeddings
 python compute_average_embeddings.py training/bill_murray/
 ```
 
-### 4. Detect Faces in Test Images
+#### Testing Pipeline
 ```bash
-python detect_star.py testing/sketch_frames/ training/bill_murray/bill_murray_average_embedding.pkl
+# 5. Download testing images (group photos)
+python download_celebrity_images.py "Bill Murray" 15 --testing
+
+# 6. Remove duplicate images
+python remove_dupe_training_images.py --testing "Bill Murray"
+
+# 7. Remove bad images (keep 4-10 faces)
+python remove_bad_training_images.py --testing "Bill Murray"
+
+# 8. Detect faces in test images
+python detect_star.py testing/bill_murray/ training/bill_murray/bill_murray_average_embedding.pkl
 ```
 
 ## Project Structure
@@ -72,6 +87,7 @@ StarMapr/
 │   └── [celebrity_name]/        # Individual celebrity folders
 ├── testing/                     # Test images to process
 │   └── detected_headshots/      # Extracted face crops
+├── run_pipeline.py              # Interactive pipeline runner
 ├── download_celebrity_images.py # Google Image Search downloader
 ├── remove_dupe_training_images.py # Duplicate removal tool
 ├── remove_bad_training_images.py # Image quality cleaner
@@ -80,6 +96,12 @@ StarMapr/
 ```
 
 ## Core Components
+
+### Pipeline Runner (`run_pipeline.py`)
+- Interactive menu-driven pipeline execution
+- Automatic path management and validation
+- Step-by-step guidance through training and testing workflows
+- Built-in error checking and user-friendly prompts
 
 ### Image Collection (`download_celebrity_images.py`)
 - Downloads celebrity photos from Google Image Search

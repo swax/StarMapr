@@ -18,6 +18,8 @@ StarMapr enables automated identification and extraction of celebrity faces from
 - **Face Embedding Generation**: Create reference embeddings using state-of-the-art ArcFace model
 - **Face Detection & Matching**: Identify matching faces in test images with confidence scores
 - **Headshot Extraction**: Automatically crop and save detected faces
+- **Video Processing**: Download videos and extract frames for face analysis
+- **Frame-based Face Detection**: Process video frames to detect and track faces across time
 
 ## Installation
 
@@ -29,7 +31,7 @@ cd StarMapr
 
 2. Install dependencies:
 ```bash
-pip install deepface numpy opencv-python scikit-learn google-images-search python-dotenv
+pip install deepface numpy opencv-python scikit-learn google-images-search python-dotenv yt-dlp
 ```
 
 3. Set up Google API credentials (for image downloading):
@@ -83,6 +85,18 @@ python3 remove_bad_training_images.py --testing "Bill Murray"
 python3 eval_star_detection.py testing/bill_murray/ training/bill_murray/bill_murray_average_embedding.pkl
 ```
 
+#### Video Processing Pipeline
+```bash
+# 1. Download video from supported platforms
+python3 download_video.py "https://www.youtube.com/watch?v=VIDEO_ID"
+
+# 2. Extract representative frames using binary search pattern
+python3 extract_video_frames.py videos/youtube_VIDEO_ID/video_file.mp4 50
+
+# 3. Extract face data from all frames
+python3 extract_frame_faces.py videos/youtube_VIDEO_ID/frames/
+```
+
 ## Project Structure
 
 ```
@@ -91,8 +105,13 @@ StarMapr/
 │   └── [celebrity_name]/        # Individual celebrity folders
 ├── testing/                     # Test images to process
 │   └── detected_headshots/      # Extracted face crops
+├── videos/                      # Downloaded videos and extracted frames
+│   └── [site]_[video_id]/       # Individual video folders with frames/
 ├── run_pipeline.py              # Interactive pipeline runner
 ├── download_celebrity_images.py # Google Image Search downloader
+├── download_video.py            # Video downloader for multiple platforms
+├── extract_video_frames.py      # Video frame extraction using binary search
+├── extract_frame_faces.py       # Face detection in video frames
 ├── remove_dupe_training_images.py # Duplicate removal tool
 ├── remove_bad_training_images.py # Image quality cleaner
 ├── remove_face_outliers.py      # Face consistency validator
@@ -130,6 +149,12 @@ StarMapr/
 - Extracts and saves face crops with similarity scores
 - Configurable similarity thresholds
 
+### Video Processing (`download_video.py`, `extract_video_frames.py`, `extract_frame_faces.py`)
+- Downloads videos from YouTube, Vimeo, TikTok, and other platforms using yt-dlp
+- Extracts representative frames using binary search pattern for optimal coverage
+- Detects faces in extracted frames with bounding boxes and embeddings
+- Saves face metadata for each frame to enable temporal analysis
+
 ## Configuration
 
 - **Default similarity threshold**: 0.6 (adjustable with `--threshold`)
@@ -141,11 +166,12 @@ StarMapr/
 
 StarMapr was designed to streamline actor identification for the Sketch Comedy Database:
 
-1. **Extract frames** from comedy sketches
-2. **Process frames** through StarMapr to identify known actors
-3. **Extract headshots** automatically for database profiles
-4. **Build cast lists** with confidence scores
-5. **Populate SCDB** with identified actors and clean headshot images
+1. **Download videos** of comedy sketches from various platforms
+2. **Extract representative frames** using optimized sampling techniques
+3. **Process frames** through StarMapr to identify known actors
+4. **Extract headshots** automatically for database profiles
+5. **Build cast lists** with confidence scores and temporal data
+6. **Populate SCDB** with identified actors and clean headshot images
 
 Visit [SketchTV.lol](https://www.sketchtv.lol/) to see the results in action!
 

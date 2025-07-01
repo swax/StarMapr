@@ -12,7 +12,7 @@ The system follows a **sequential pipeline architecture** with five main stages 
 
 **Pipeline Flow**: Data Collection → Duplicate Removal → Data Cleaning → Face Consistency Validation → Embedding Generation → Face Detection
 
-The system consists of seven main components:
+The system consists of ten main components:
 
 1. **run_pipeline.py** - Interactive pipeline runner for streamlined workflow execution
    - Provides numbered menu of all pipeline steps
@@ -53,6 +53,26 @@ The system consists of seven main components:
    - Extracts face crops and saves them with similarity scores
    - Uses cosine similarity for face matching
 
+8. **download_video.py** - Downloads videos from various platforms for processing
+   - Downloads videos from YouTube, Vimeo, TikTok, and other supported sites using yt-dlp
+   - Saves videos to `videos/[site]_[video_id]/` folder structure
+   - Includes metadata extraction (title, description, thumbnail)
+   - Supports format selection and quality control (default: best up to 1080p)
+
+9. **extract_video_frames.py** - Extracts frames from videos using binary search pattern
+   - Uses binary search pattern to extract representative frames from videos
+   - Creates frames in a `frames/` subfolder next to the video file
+   - Allows specifying the number of frames to extract
+   - Names frames with zero-padded frame numbers (e.g., `00000123.jpg`)
+   - Skips existing frames to allow resuming interrupted extractions
+
+10. **extract_frame_faces.py** - Detects faces in extracted video frames
+    - Processes all frames in a directory to detect faces using DeepFace ArcFace
+    - Saves face detection data with bounding boxes and embeddings to pickle files
+    - Creates `.pkl` files alongside each frame image with face metadata
+    - Supports multiple faces per frame with individual face IDs
+    - Enables face tracking and analysis across video sequences
+
 ## Data Structure
 
 - `training/` - Training data organized by celebrity name
@@ -61,11 +81,15 @@ The system consists of seven main components:
 - `testing/` - Test images to process for face detection
   - Organized by celebrity for validation
   - Contains `detected_headshots/` subfolder with extraction results
+- `videos/` - Downloaded videos organized by source and video ID
+  - Each video folder contains the video file, metadata, and extracted frames
+  - Example: `videos/youtube_ABC123/` contains video file and `frames/` subfolder
+  - Frame data includes both image files and corresponding face detection pickle files
 
 ## Dependencies Installation
 
 ```bash
-pip install deepface numpy opencv-python scikit-learn google-images-search python-dotenv
+pip install deepface numpy opencv-python scikit-learn google-images-search python-dotenv yt-dlp
 ```
 
 ## Common Commands
@@ -136,6 +160,36 @@ python3 eval_star_detection.py testing/[test_folder]/ training/[celebrity_name]/
 python3 eval_star_detection.py testing/[test_folder]/ training/[celebrity_name]/[celebrity_name]_average_embedding.pkl --threshold 0.7
 ```
 
+### Video Processing Pipeline
+
+#### Download Videos
+```bash
+# Download from any supported platform (YouTube, Vimeo, TikTok, etc.)
+python3 download_video.py "https://www.youtube.com/watch?v=VIDEO_ID"
+python3 download_video.py "https://vimeo.com/123456789"
+
+# List all supported video platforms
+python3 download_video.py --list-extractors
+```
+
+#### Extract Frames from Video
+```bash
+# Extract 50 frames using binary search pattern
+python3 extract_video_frames.py videos/youtube_ABC123/video_file.mp4 50
+
+# Dry run to see what frames would be extracted
+python3 extract_video_frames.py videos/youtube_ABC123/video_file.mp4 50 --dry-run
+```
+
+#### Extract Faces from Video Frames
+```bash
+# Process all frames in the frames directory
+python3 extract_frame_faces.py videos/youtube_ABC123/frames/
+
+# Dry run to see what would be processed
+python3 extract_frame_faces.py videos/youtube_ABC123/frames/ --dry-run
+```
+
 ## Dependencies
 
 The project requires:
@@ -146,6 +200,7 @@ The project requires:
 - scikit-learn
 - google-images-search (for image downloading)
 - python-dotenv (for environment variables)
+- yt-dlp (for video downloading)
 - pickle (built-in)
 
 ## Pipeline Workflow
@@ -179,6 +234,23 @@ python3 download_celebrity_images.py "Bill Murray" 15 --testing
 python3 remove_dupe_training_images.py --testing "Bill Murray"
 python3 remove_bad_training_images.py --testing "Bill Murray"
 python3 eval_star_detection.py testing/bill_murray/ training/bill_murray/bill_murray_average_embedding.pkl
+```
+
+### Video Processing Pipeline
+1. **Download Video**: `python3 download_video.py "https://youtube.com/watch?v=VIDEO_ID"`
+2. **Extract Frames**: `python3 extract_video_frames.py videos/youtube_VIDEO_ID/video_file.mp4 50`
+3. **Extract Faces**: `python3 extract_frame_faces.py videos/youtube_VIDEO_ID/frames/`
+
+### Complete Video Example Workflow
+```bash
+# 1. Download video
+python3 download_video.py "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+
+# 2. Extract 50 representative frames using binary search
+python3 extract_video_frames.py videos/youtube_dQw4w9WgXcQ/Rick_Astley_-_Never_Gonna_Give_You_Up.mp4 50
+
+# 3. Extract face data from all frames
+python3 extract_frame_faces.py videos/youtube_dQw4w9WgXcQ/frames/
 ```
 
 ## Key Parameters

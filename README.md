@@ -44,7 +44,7 @@ GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
 ### Interactive Pipeline Runner (Recommended)
 Run the complete pipeline interactively with guided menu options:
 ```bash
-python run_pipeline.py
+python3 run_pipeline.py
 ```
 This script provides a numbered menu to execute each pipeline step in order, with automatic path management and validation.
 
@@ -53,34 +53,34 @@ This script provides a numbered menu to execute each pipeline step in order, wit
 #### Training Pipeline
 ```bash
 # 1. Download training images (solo portraits)
-python download_celebrity_images.py "Bill Murray" 20 --training
+python3 download_celebrity_images.py "Bill Murray" 20 --training
 
 # 2. Remove duplicate images
-python remove_dupe_training_images.py --training "Bill Murray"
+python3 remove_dupe_training_images.py --training "Bill Murray"
 
 # 3. Remove bad images (keep exactly 1 face)
-python remove_bad_training_images.py --training "Bill Murray"
+python3 remove_bad_training_images.py --training "Bill Murray"
 
 # 4. Remove face outliers (detect inconsistent faces)
-python remove_face_outliers.py --training "Bill Murray"
+python3 remove_face_outliers.py --training "Bill Murray"
 
 # 5. Generate reference embeddings
-python compute_average_embeddings.py training/bill_murray/
+python3 compute_average_embeddings.py training/bill_murray/
 ```
 
 #### Testing Pipeline
 ```bash
 # 6. Download testing images (group photos)
-python download_celebrity_images.py "Bill Murray" 15 --testing
+python3 download_celebrity_images.py "Bill Murray" 15 --testing
 
 # 7. Remove duplicate images
-python remove_dupe_training_images.py --testing "Bill Murray"
+python3 remove_dupe_training_images.py --testing "Bill Murray"
 
 # 8. Remove bad images (keep 4-10 faces)
-python remove_bad_training_images.py --testing "Bill Murray"
+python3 remove_bad_training_images.py --testing "Bill Murray"
 
 # 9. Detect faces in test images
-python detect_star.py testing/bill_murray/ training/bill_murray/bill_murray_average_embedding.pkl
+python3 eval_star_detection.py testing/bill_murray/ training/bill_murray/bill_murray_average_embedding.pkl
 ```
 
 ## Project Structure
@@ -97,7 +97,7 @@ StarMapr/
 ├── remove_bad_training_images.py # Image quality cleaner
 ├── remove_face_outliers.py      # Face consistency validator
 ├── compute_average_embeddings.py # Embedding generator
-└── detect_star.py              # Face detection and matching
+└── eval_star_detection.py      # Face detection and matching
 ```
 
 ## Core Components
@@ -124,7 +124,7 @@ StarMapr/
 - Computes average embeddings from multiple images
 - Saves reference embeddings as pickle files
 
-### Face Detection (`detect_star.py`)
+### Face Detection (`eval_star_detection.py`)
 - Loads precomputed reference embeddings
 - Processes test images for matching faces
 - Extracts and saves face crops with similarity scores

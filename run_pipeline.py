@@ -194,7 +194,7 @@ def main():
                     print("Please run step 4 first to generate average embeddings.")
                     continue
                 
-                command = ['python3', 'eval_star_detection.py', testing_path, embedding_path]
+                command = ['python3', 'eval_star_detection.py', celebrity_name]
                 run_command(command, "Detect faces in test images")
                 
             elif choice == '10':

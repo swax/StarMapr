@@ -82,7 +82,7 @@ python3 remove_dupe_training_images.py --testing "Bill Murray"
 python3 remove_bad_training_images.py --testing "Bill Murray"
 
 # 9. Detect faces in test images
-python3 eval_star_detection.py testing/bill_murray/ training/bill_murray/bill_murray_average_embedding.pkl
+python3 eval_star_detection.py "Bill Murray"
 ```
 
 #### Video Processing Pipeline

@@ -152,12 +152,12 @@ python3 compute_average_embeddings.py training/[celebrity_name]/
 
 ### Detect Faces in Images
 ```bash
-python3 eval_star_detection.py testing/[test_folder]/ training/[celebrity_name]/[celebrity_name]_average_embedding.pkl
+python3 eval_star_detection.py "Celebrity Name"
 ```
 
 ### Custom Threshold Detection
 ```bash
-python3 eval_star_detection.py testing/[test_folder]/ training/[celebrity_name]/[celebrity_name]_average_embedding.pkl --threshold 0.7
+python3 eval_star_detection.py "Celebrity Name" --threshold 0.7
 ```
 
 ### Video Processing Pipeline
@@ -218,40 +218,14 @@ The complete pipeline follows this sequence. You can use the interactive pipelin
 1. **Download Test Data**: `python3 download_celebrity_images.py "Celebrity Name" 10 --testing`
 2. **Remove Duplicates**: `python3 remove_dupe_training_images.py --testing "Celebrity Name"`
 3. **Remove Bad Images**: `python3 remove_bad_training_images.py --testing "Celebrity Name"` (keeps 4-10 faces)
-4. **Run Detection**: `python3 eval_star_detection.py testing/celebrity_name/ training/celebrity_name/celebrity_name_average_embedding.pkl`
+4. **Run Detection**: `python3 eval_star_detection.py "Celebrity Name"`
 
-### Complete Example Workflow
-```bash
-# 1. Training phase
-python3 download_celebrity_images.py "Bill Murray" 20 --training
-python3 remove_dupe_training_images.py --training "Bill Murray"
-python3 remove_bad_training_images.py --training "Bill Murray"
-python3 remove_face_outliers.py --training "Bill Murray"
-python3 compute_average_embeddings.py training/bill_murray/
-
-# 2. Testing phase
-python3 download_celebrity_images.py "Bill Murray" 15 --testing
-python3 remove_dupe_training_images.py --testing "Bill Murray"
-python3 remove_bad_training_images.py --testing "Bill Murray"
-python3 eval_star_detection.py testing/bill_murray/ training/bill_murray/bill_murray_average_embedding.pkl
-```
 
 ### Video Processing Pipeline
 1. **Download Video**: `python3 download_video.py "https://youtube.com/watch?v=VIDEO_ID"`
 2. **Extract Frames**: `python3 extract_video_frames.py videos/youtube_VIDEO_ID/video_file.mp4 50`
 3. **Extract Faces**: `python3 extract_frame_faces.py videos/youtube_VIDEO_ID/frames/`
 
-### Complete Video Example Workflow
-```bash
-# 1. Download video
-python3 download_video.py "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-
-# 2. Extract 50 representative frames using binary search
-python3 extract_video_frames.py videos/youtube_dQw4w9WgXcQ/Rick_Astley_-_Never_Gonna_Give_You_Up.mp4 50
-
-# 3. Extract face data from all frames
-python3 extract_frame_faces.py videos/youtube_dQw4w9WgXcQ/frames/
-```
 
 ## Key Parameters
 

@@ -135,8 +135,7 @@ def process_images(images_folder, embedding_path, threshold=0.6, output_folder="
 
 def main():
     parser = argparse.ArgumentParser(description='Detect star faces in images using precomputed embeddings')
-    parser.add_argument('images_folder', help='Path to folder containing test images')
-    parser.add_argument('embedding_file', help='Path to precomputed embedding pickle file')
+    parser.add_argument('celebrity_name', help='Celebrity name (e.g., "Bill Murray")')
     parser.add_argument('--threshold', '-t', type=float, default=0.6,
                        help='Similarity threshold for face matching (default: 0.6)')
     parser.add_argument('--output', '-o', default='detected_headshots',
@@ -145,7 +144,23 @@ def main():
     args = parser.parse_args()
     
     try:
-        process_images(args.images_folder, args.embedding_file, args.threshold, args.output)
+        # Convert celebrity name to folder format (lowercase, spaces to underscores)
+        celeb_folder = args.celebrity_name.lower().replace(' ', '_')
+        
+        # Construct paths automatically
+        images_folder = f"testing/{celeb_folder}/"
+        embedding_file = f"training/{celeb_folder}/{celeb_folder}_average_embedding.pkl"
+        
+        # Verify paths exist
+        if not os.path.exists(images_folder):
+            raise FileNotFoundError(f"Testing folder not found: {images_folder}")
+        if not os.path.exists(embedding_file):
+            raise FileNotFoundError(f"Embedding file not found: {embedding_file}")
+        
+        print(f"Using testing folder: {images_folder}")
+        print(f"Using embedding file: {embedding_file}")
+        
+        process_images(images_folder, embedding_file, args.threshold, args.output)
         
     except Exception as e:
         print(f"Error: {e}")

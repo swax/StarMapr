@@ -8,6 +8,10 @@ from deepface import DeepFace
 from pathlib import Path
 import cv2
 from sklearn.metrics.pairwise import cosine_similarity
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 def load_embedding(embedding_path):
     """Load the precomputed average embedding from pickle file."""
@@ -136,8 +140,10 @@ def process_images(images_folder, embedding_path, threshold=0.6, output_folder="
 def main():
     parser = argparse.ArgumentParser(description='Detect star faces in images using precomputed embeddings')
     parser.add_argument('celebrity_name', help='Celebrity name (e.g., "Bill Murray")')
-    parser.add_argument('--threshold', '-t', type=float, default=0.6,
-                       help='Similarity threshold for face matching (default: 0.6)')
+    # Get default threshold from environment variable
+    default_threshold = float(os.getenv('TESTING_DETECTION_THRESHOLD', 0.6))
+    parser.add_argument('--threshold', '-t', type=float, default=default_threshold,
+                       help=f'Similarity threshold for face matching (default: {default_threshold})')
     parser.add_argument('--output', '-o', default='detected_headshots',
                        help='Output folder name (default: detected_headshots)')
     

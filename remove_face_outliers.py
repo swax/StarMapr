@@ -8,6 +8,10 @@ import shutil
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from collections import defaultdict
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 def get_face_embedding(image_path):
     """
@@ -170,8 +174,10 @@ def main():
     mode_group.add_argument('--testing', metavar='CELEBRITY_NAME', 
                            help='Remove face outliers from testing/CELEBRITY_NAME/ folder')
     
-    parser.add_argument('--threshold', type=float, default=0.1,
-                       help='Similarity threshold for outlier detection (default: 0.1)')
+    # Get default threshold from environment variable
+    default_threshold = float(os.getenv('TRAINING_OUTLIER_THRESHOLD', 0.1))
+    parser.add_argument('--threshold', type=float, default=default_threshold,
+                       help=f'Similarity threshold for outlier detection (default: {default_threshold})')
     parser.add_argument('--dry-run', action='store_true', 
                        help='Show what would be moved without actually moving files')
     

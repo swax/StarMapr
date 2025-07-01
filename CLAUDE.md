@@ -115,15 +115,19 @@ All scripts now use `--training` and `--testing` flags to specify the dataset ty
 
 ### Download Celebrity Images
 ```bash
-# For training dataset (solo portraits)
-python3 download_celebrity_images.py "Celebrity Name" 15 --training
+# Uses default count from TRAINING_IMAGE_COUNT/TESTING_IMAGE_COUNT in .env
+python3 download_celebrity_images.py "Celebrity Name" --training
+python3 download_celebrity_images.py "Celebrity Name" --testing
 
-# For testing dataset (group photos)
+# Or specify custom count
+python3 download_celebrity_images.py "Celebrity Name" 15 --training
 python3 download_celebrity_images.py "Celebrity Name" 10 --testing
 ```
-Requires Google API credentials in .env file:
+Requires configuration in .env file:
 - GOOGLE_API_KEY=your_api_key_here
 - GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
+- TRAINING_IMAGE_COUNT=20
+- TESTING_IMAGE_COUNT=30
 
 ### Remove Duplicate Images
 ```bash
@@ -151,7 +155,7 @@ python3 remove_face_outliers.py --training "Celebrity Name"
 # Testing dataset
 python3 remove_face_outliers.py --testing "Celebrity Name"
 
-# Custom similarity threshold (default: 0.1)
+# Custom similarity threshold (default from TRAINING_OUTLIER_THRESHOLD)
 python3 remove_face_outliers.py --training "Celebrity Name" --threshold 0.2
 ```
 
@@ -167,6 +171,7 @@ python3 eval_star_detection.py "Celebrity Name"
 
 ### Custom Threshold Detection
 ```bash
+# Custom threshold (default from TESTING_DETECTION_THRESHOLD)
 python3 eval_star_detection.py "Celebrity Name" --threshold 0.7
 ```
 
@@ -184,7 +189,10 @@ python3 download_video.py --list-extractors
 
 #### Extract Frames from Video
 ```bash
-# Extract 50 frames using binary search pattern (script finds video file automatically)
+# Extract frames using default count from OPERATIONS_EXTRACT_FRAME_COUNT
+python3 extract_video_frames.py videos/youtube_ABC123/
+
+# Or specify custom frame count
 python3 extract_video_frames.py videos/youtube_ABC123/ 50
 
 # Dry run to see what frames would be extracted
@@ -205,7 +213,7 @@ python3 extract_frame_faces.py videos/youtube_ABC123/ --dry-run
 # Extract top 5 headshots for a celebrity from video frames
 python3 extract_video_headshots.py "Bill Murray" videos/youtube_ABC123/
 
-# Custom similarity threshold
+# Custom similarity threshold (default from OPERATIONS_HEADSHOT_MATCH_THRESHOLD)
 python3 extract_video_headshots.py "Bill Murray" videos/youtube_ABC123/ --threshold 0.7
 
 # Dry run to see what would be extracted
@@ -230,14 +238,14 @@ The project requires:
 The complete pipeline follows this sequence. You can use the interactive pipeline runner (`python3 run_pipeline.py`) for guided execution, or run commands manually:
 
 ### Training Pipeline (Solo Portraits)
-1. **Download Training Data**: `python3 download_celebrity_images.py "Celebrity Name" 15 --training`
+1. **Download Training Data**: `python3 download_celebrity_images.py "Celebrity Name" --training`
 2. **Remove Duplicates**: `python3 remove_dupe_training_images.py --training "Celebrity Name"`
 3. **Remove Bad Images**: `python3 remove_bad_training_images.py --training "Celebrity Name"` (keeps exactly 1 face)
 4. **Remove Face Outliers**: `python3 remove_face_outliers.py --training "Celebrity Name"` (removes inconsistent faces)
 5. **Generate Embeddings**: `python3 compute_average_embeddings.py "Celebrity Name"`
 
 ### Testing Pipeline (Group Photos)
-1. **Download Test Data**: `python3 download_celebrity_images.py "Celebrity Name" 10 --testing`
+1. **Download Test Data**: `python3 download_celebrity_images.py "Celebrity Name" --testing`
 2. **Remove Duplicates**: `python3 remove_dupe_training_images.py --testing "Celebrity Name"`
 3. **Remove Bad Images**: `python3 remove_bad_training_images.py --testing "Celebrity Name"` (keeps 4-10 faces)
 4. **Run Detection**: `python3 eval_star_detection.py "Celebrity Name"`
@@ -245,21 +253,31 @@ The complete pipeline follows this sequence. You can use the interactive pipelin
 
 ### Video Processing Pipeline
 1. **Download Video**: `python3 download_video.py "https://youtube.com/watch?v=VIDEO_ID"`
-2. **Extract Frames**: `python3 extract_video_frames.py videos/youtube_VIDEO_ID/ 50`
+2. **Extract Frames**: `python3 extract_video_frames.py videos/youtube_VIDEO_ID/` (uses default frame count)
 3. **Extract Faces**: `python3 extract_frame_faces.py videos/youtube_VIDEO_ID/`
 4. **Extract Celebrity Headshots**: `python3 extract_video_headshots.py "Celebrity Name" videos/youtube_VIDEO_ID/`
 
 
 ## Key Parameters
 
+All default values configurable via environment variables in .env file:
+
 - **Face Detection Model**: ArcFace via DeepFace
 - **Similarity Metric**: Cosine similarity
-- **Default Detection Threshold**: 0.6 (adjustable via --threshold)
 - **Supported Image Formats**: .jpg, .jpeg, .png, .bmp, .tiff, .webp
 - **Training Face Count**: Exactly 1 face required
 - **Testing Face Count**: 4-10 faces required
-- **Duplicate Detection Threshold**: 5 Hamming distance (adjustable via --threshold)
-- **Face Outlier Detection Threshold**: 0.1 cosine similarity (adjustable via --threshold)
+
+### Environment Variables:
+- **TRAINING_DUPLICATE_THRESHOLD**: 5 (Hamming distance, 0-64, adjustable via --threshold)
+- **TRAINING_OUTLIER_THRESHOLD**: 0.1 (cosine similarity, 0.0-1.0, adjustable via --threshold)  
+- **TESTING_DETECTION_THRESHOLD**: 0.6 (cosine similarity, 0.0-1.0, adjustable via --threshold)
+- **OPERATIONS_EXTRACT_FRAME_COUNT**: 50 (number of frames to extract from videos)
+- **OPERATIONS_HEADSHOT_MATCH_THRESHOLD**: 0.6 (cosine similarity, 0.0-1.0, adjustable via --threshold)
+- **TRAINING_IMAGE_COUNT**: 20 (default training images to download)
+- **TESTING_IMAGE_COUNT**: 30 (default testing images to download)
+
+### Other Parameters:
 - **Video Headshot Extraction**: Top 5 most similar faces with 10% padding around face region
 
 ## Architecture Notes

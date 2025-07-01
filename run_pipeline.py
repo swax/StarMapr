@@ -66,15 +66,16 @@ def display_menu(celebrity_name):
     print("1. Download training images (solo portraits)")
     print("2. Remove duplicate training images")
     print("3. Remove bad training images (keep exactly 1 face)")
-    print("4. Compute average embeddings")
+    print("4. Remove outlier faces (detect inconsistent faces)")
+    print("5. Compute average embeddings")
     print()
     print("TESTING PIPELINE:")
-    print("5. Download testing images (group photos)")
-    print("6. Remove duplicate testing images")
-    print("7. Remove bad testing images (keep 4-10 faces)")
-    print("8. Detect faces in test images")
+    print("6. Download testing images (group photos)")
+    print("7. Remove duplicate testing images")
+    print("8. Remove bad testing images (keep 4-10 faces)")
+    print("9. Detect faces in test images")
     print()
-    print("9. Exit")
+    print("10. Exit")
     print()
 
 
@@ -122,7 +123,7 @@ def main():
         display_menu(celebrity_name)
         
         try:
-            choice = input("Enter your choice (1-9): ").strip()
+            choice = input("Enter your choice (1-10): ").strip()
             
             if choice == '1':
                 # Download training images
@@ -142,6 +143,11 @@ def main():
                 run_command(command, "Remove bad training images")
                 
             elif choice == '4':
+                # Remove outlier faces
+                command = ['python3', 'remove_face_outliers.py', '--training', celebrity_name]
+                run_command(command, "Remove outlier faces")
+                
+            elif choice == '5':
                 # Compute average embeddings
                 training_path = f'training/{celebrity_folder}/'
                 if not Path(training_path).exists():
@@ -151,24 +157,24 @@ def main():
                 command = ['python3', 'compute_average_embeddings.py', training_path]
                 run_command(command, "Compute average embeddings")
                 
-            elif choice == '5':
+            elif choice == '6':
                 # Download testing images
                 if testing_count is None:
                     testing_count = get_image_count('testing')
                 command = ['python3', 'download_celebrity_images.py', celebrity_name, str(testing_count), '--testing']
                 run_command(command, "Download testing images")
                 
-            elif choice == '6':
+            elif choice == '7':
                 # Remove duplicate testing images
                 command = ['python3', 'remove_dupe_training_images.py', '--testing', celebrity_name]
                 run_command(command, "Remove duplicate testing images")
                 
-            elif choice == '7':
+            elif choice == '8':
                 # Remove bad testing images
                 command = ['python3', 'remove_bad_training_images.py', '--testing', celebrity_name]
                 run_command(command, "Remove bad testing images")
                 
-            elif choice == '8':
+            elif choice == '9':
                 # Detect faces
                 testing_path = f'testing/{celebrity_folder}/'
                 embedding_path = f'training/{celebrity_folder}/{celebrity_folder}_average_embedding.pkl'
@@ -186,12 +192,12 @@ def main():
                 command = ['python3', 'detect_star.py', testing_path, embedding_path]
                 run_command(command, "Detect faces in test images")
                 
-            elif choice == '9':
+            elif choice == '10':
                 print("\nExiting StarMapr Pipeline Runner. Goodbye!")
                 sys.exit(0)
                 
             else:
-                print(f"\nInvalid choice: {choice}. Please enter a number between 1 and 9.")
+                print(f"\nInvalid choice: {choice}. Please enter a number between 1 and 10.")
                 
         except KeyboardInterrupt:
             print("\n\nExiting StarMapr Pipeline Runner. Goodbye!")

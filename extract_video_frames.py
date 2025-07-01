@@ -5,6 +5,7 @@ import os
 import argparse
 from pathlib import Path
 from dotenv import load_dotenv
+from utilities import print_error, print_summary
 
 # Load environment variables
 load_dotenv()
@@ -114,7 +115,7 @@ def main():
         video_file = find_video_file(args.folder_path)
         print(f"Found video file: {video_file}")
     except Exception as e:
-        print(f"Error: {str(e)}")
+        print_error(str(e))
         return 1
     
     # Create frames directory in same folder
@@ -126,7 +127,7 @@ def main():
         total_frames = get_video_frame_count(str(video_file))
         print(f"Video has {total_frames} total frames")
     except Exception as e:
-        print(f"Error reading video: {str(e)}")
+        print_error(f"Error reading video: {str(e)}")
         return 1
     
     # Generate frame indices using binary search pattern
@@ -164,11 +165,18 @@ def main():
             extracted_count += 1
                 
         except Exception as e:
-            print(f"Error extracting frame {frame_idx}: {str(e)}")
+            print_error(f"Error extracting frame {frame_idx}: {str(e)}")
     
     print(f"\nSummary:")
     print(f"  Frames extracted: {extracted_count}")
     print(f"  Frames skipped: {skipped_count}")
+    
+    if extracted_count > 0:
+        print_summary(f"Frame extraction completed! Extracted {extracted_count} frames to {frames_dir}")
+    elif skipped_count > 0:
+        print_summary(f"All {skipped_count} frames already existed - no extraction needed.")
+    else:
+        print_error("No frames were extracted.")
 
 if __name__ == "__main__":
     exit(main())

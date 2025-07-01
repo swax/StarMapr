@@ -9,6 +9,7 @@ import cv2
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
+from utilities import print_error, print_summary
 
 # Load environment variables
 load_dotenv()
@@ -39,7 +40,7 @@ def load_frame_face_data(pkl_path):
             frame_data = pickle.load(f)
         return frame_data
     except Exception as e:
-        print(f"Error loading face data from {pkl_path}: {e}")
+        print_error(f"Error loading face data from {pkl_path}: {e}")
         return None
 
 def calculate_face_similarities(frames_dir, reference_embedding, threshold=0.6):
@@ -87,7 +88,7 @@ def calculate_face_similarities(frames_dir, reference_embedding, threshold=0.6):
                     matches.append((similarity, frame_file, face, pkl_path))
                     
             except Exception as e:
-                print(f"Error processing face in {pkl_path}: {e}")
+                print_error(f"Error processing face in {pkl_path}: {e}")
                 continue
     
     print(f"Scanned {total_faces_scanned} faces across {len(pkl_files)} frames")
@@ -102,13 +103,13 @@ def extract_face_crop(frames_dir, frame_file, face_data, output_path):
         frame_path = Path(frames_dir) / frame_file
         
         if not frame_path.exists():
-            print(f"Warning: Frame file not found: {frame_path}")
+            print_error(f"Frame file not found: {frame_path}")
             return False
         
         # Read the frame image
         img = cv2.imread(str(frame_path))
         if img is None:
-            print(f"Error: Could not read image: {frame_path}")
+            print_error(f"Could not read image: {frame_path}")
             return False
         
         # Extract face region using bounding box
@@ -129,7 +130,7 @@ def extract_face_crop(frames_dir, frame_file, face_data, output_path):
         return True
         
     except Exception as e:
-        print(f"Error extracting face crop: {e}")
+        print_error(f"Error extracting face crop: {e}")
         return False
 
 def extract_top_headshots(celebrity_name, video_folder_path, threshold=0.6, dry_run=False):
@@ -162,7 +163,7 @@ def extract_top_headshots(celebrity_name, video_folder_path, threshold=0.6, dry_
     matches = calculate_face_similarities(frames_dir, reference_embedding, threshold)
     
     if not matches:
-        print(f"No faces found matching '{celebrity_name}' above threshold {threshold}")
+        print_error(f"No faces found matching '{celebrity_name}' above threshold {threshold}")
         return
     
     # Sort by similarity score (highest first) and take top 5
@@ -191,10 +192,12 @@ def extract_top_headshots(celebrity_name, video_folder_path, threshold=0.6, dry_
         if extract_face_crop(frames_dir, frame_file, face_data, output_path):
             print(f"     → Saved to: {output_path}")
         else:
-            print(f"     → Failed to extract face crop")
+            print_error("Failed to extract face crop")
     
     if not dry_run:
-        print(f"\nHeadshots saved to: {headshots_dir}")
+        print_summary(f"Successfully extracted {len(top_matches)} headshots for {celebrity_name} to {headshots_dir}")
+    else:
+        print_summary(f"DRY RUN: Would extract {len(top_matches)} headshots for {celebrity_name}")
 
 def main():
     parser = argparse.ArgumentParser(description='Extract top 5 most similar celebrity headshots from video frames')
@@ -224,10 +227,9 @@ def main():
             args.dry_run
         )
         
-        print("\nProcess completed successfully!")
         
     except Exception as e:
-        print(f"Error: {e}")
+        print_error(str(e))
         sys.exit(1)
 
 if __name__ == "__main__":

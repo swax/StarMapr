@@ -12,6 +12,7 @@ import sys
 import uuid
 from google_images_search import GoogleImagesSearch
 from dotenv import load_dotenv
+from utilities import print_error, print_summary
 
 # Load environment variables from .env file
 load_dotenv()
@@ -37,7 +38,7 @@ def download_celebrity_images(celebrity_name, num_images, mode='training', api_k
     
     
     if not api_key or not search_engine_id:
-        print("Error: Missing API credentials. Please set your keys in the .env file:")
+        print_error("Missing API credentials. Please set your keys in the .env file:")
         print("GOOGLE_API_KEY=your_api_key_here")
         print("GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here")
         return False
@@ -46,7 +47,7 @@ def download_celebrity_images(celebrity_name, num_images, mode='training', api_k
     try:
         gis = GoogleImagesSearch(api_key, search_engine_id)
     except Exception as e:
-        print(f"Error initializing Google Images Search: {e}")
+        print_error(f"Error initializing Google Images Search: {e}")
         return False
     
     # Create celebrity directory based on mode
@@ -101,16 +102,14 @@ def download_celebrity_images(celebrity_name, num_images, mode='training', api_k
                 renamed_count += 1
                 print(f"  Renamed: {filename} → {new_filename}")
             except OSError as e:
-                print(f"  Warning: Could not rename {filename}: {e}")
+                print_error(f"Warning: Could not rename {filename}: {e}")
         
-        print(f"Successfully downloaded {len(downloaded_files)} images for '{celebrity_name}'")
-        print(f"Renamed {renamed_count} files with GUID-based names")
-        print(f"Images saved to: {download_path}")
+        print_summary(f"Successfully downloaded {len(downloaded_files)} images for '{celebrity_name}' - Renamed {renamed_count} files with GUID-based names - Images saved to: {download_path}")
         
         return True
         
     except Exception as e:
-        print(f"Error downloading images: {e}")
+        print_error(f"Error downloading images: {e}")
         return False
 
 
@@ -151,7 +150,7 @@ def main():
     
     # Validate input
     if num_images <= 0:
-        print("Error: Number of images must be positive")
+        print_error("Number of images must be positive")
         sys.exit(1)
     
     if num_images > 100:

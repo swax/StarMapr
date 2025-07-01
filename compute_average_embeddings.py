@@ -6,6 +6,7 @@ import numpy as np
 import pickle
 from deepface import DeepFace
 from pathlib import Path
+from utilities import print_error, print_summary
 
 def compute_average_embeddings(folder_path):
     """
@@ -43,7 +44,7 @@ def compute_average_embeddings(folder_path):
             embeddings.append(embedding[0]['embedding'])
             successful_embeddings += 1
         except Exception as e:
-            print(f"Error processing {img_file.name}: {e}")
+            print_error(f"Error processing {img_file.name}: {e}")
             continue
     
     if not embeddings:
@@ -90,10 +91,10 @@ def main():
         save_embedding(avg_embedding, args.output)
         
         print(f"Average embedding shape: {avg_embedding.shape}")
-        print("Process completed successfully!")
+        print_summary(f"Successfully computed average embedding for {celebrity_folder} from {successful_embeddings} images.")
         
     except Exception as e:
-        print(f"Error: {e}")
+        print_error(str(e))
         sys.exit(1)
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ from pathlib import Path
 import cv2
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
+from utilities import print_error, print_summary
 
 # Load environment variables
 load_dotenv()
@@ -52,7 +53,7 @@ def detect_and_compare_faces(image_path, reference_embedding, threshold=0.6):
         return matches
         
     except Exception as e:
-        print(f"Error processing {image_path.name}: {e}")
+        print_error(f"Error processing {image_path.name}: {e}")
         return []
 
 def extract_face_crop(image_path, face_region, output_path):
@@ -72,7 +73,7 @@ def extract_face_crop(image_path, face_region, output_path):
         return True
         
     except Exception as e:
-        print(f"Error extracting face crop: {e}")
+        print_error(f"Error extracting face crop: {e}")
         return False
 
 def process_images(images_folder, embedding_path, threshold=0.6, output_folder="detected_headshots"):
@@ -135,7 +136,9 @@ def process_images(images_folder, embedding_path, threshold=0.6, output_folder="
     print(f"Output folder: {output_path}")
     
     if total_detections == 0:
-        print("No faces matching the reference were detected across all images.")
+        print_error("No faces matching the reference were detected across all images.")
+    else:
+        print_summary(f"Face detection completed! Found {total_detections} matching faces across {processed_images} images.")
 
 def main():
     parser = argparse.ArgumentParser(description='Detect star faces in images using precomputed embeddings')
@@ -169,7 +172,7 @@ def main():
         process_images(images_folder, embedding_file, args.threshold, args.output)
         
     except Exception as e:
-        print(f"Error: {e}")
+        print_error(str(e))
         sys.exit(1)
 
 if __name__ == "__main__":

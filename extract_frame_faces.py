@@ -5,6 +5,7 @@ import argparse
 import pickle
 from pathlib import Path
 from deepface import DeepFace
+from utilities import print_error, print_summary
 
 def detect_faces_in_frame(frame_path):
     """Detect all faces in a frame and return face data with bounding boxes"""
@@ -32,7 +33,7 @@ def detect_faces_in_frame(frame_path):
         return faces_data
         
     except Exception as e:
-        print(f"Error detecting faces in {frame_path}: {str(e)}")
+        print_error(f"Error detecting faces in {frame_path}: {str(e)}")
         return []
 
 def save_face_data(frame_path, faces_data):
@@ -50,7 +51,7 @@ def save_face_data(frame_path, faces_data):
             pickle.dump(frame_data, f)
         return True
     except Exception as e:
-        print(f"Error saving face data to {pkl_path}: {str(e)}")
+        print_error(f"Error saving face data to {pkl_path}: {str(e)}")
         return False
 
 def main():
@@ -66,13 +67,13 @@ def main():
     
     # Validate video folder
     if not video_folder.exists():
-        print(f"Error: Video folder not found: {video_folder}")
+        print_error(f"Video folder not found: {video_folder}")
         return 1
     
     # Validate frames directory
     if not frames_dir.exists():
-        print(f"Error: Frames directory not found: {frames_dir}")
-        print(f"Make sure you've extracted frames first using extract_video_frames.py")
+        print_error(f"Frames directory not found: {frames_dir}")
+        print_error("Make sure you've extracted frames first using extract_video_frames.py")
         return 1
     
     # Get all image files
@@ -81,7 +82,7 @@ def main():
                    if f.is_file() and f.suffix.lower() in image_extensions]
     
     if not image_files:
-        print(f"No image files found in {frames_dir}")
+        print_error(f"No image files found in {frames_dir}")
         return 1
     
     # Sort by filename to process in order
@@ -128,12 +129,19 @@ def main():
                 print(f"  → Failed to save face data")
                 
         except Exception as e:
-            print(f"Error processing {img_file.name}: {str(e)}")
+            print_error(f"Error processing {img_file.name}: {str(e)}")
     
     print(f"\nSummary:")
     print(f"  Frames processed: {processed_count}")
     print(f"  Frames skipped: {skipped_count}")
     print(f"  Total faces detected: {total_faces}")
+    
+    if processed_count > 0:
+        print_summary(f"Face detection completed! Processed {processed_count} frames and detected {total_faces} faces.")
+    elif skipped_count > 0:
+        print_summary(f"All {skipped_count} frames already processed - no face detection needed.")
+    else:
+        print_error("No frames were processed.")
 
 if __name__ == "__main__":
     exit(main())

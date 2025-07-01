@@ -47,7 +47,7 @@ The system consists of seven main components:
    - Computes average embedding vector for all images of a celebrity
    - Saves embeddings as pickle files (.pkl)
 
-7. **detect_star.py** - Detects matching faces in test images using precomputed embeddings
+7. **eval_star_detection.py** - Detects matching faces in test images using precomputed embeddings
    - Loads reference embeddings from pickle files
    - Processes test images to find matching faces
    - Extracts face crops and saves them with similarity scores
@@ -72,7 +72,7 @@ pip install deepface numpy opencv-python scikit-learn google-images-search pytho
 
 ### Interactive Pipeline Runner (Recommended)
 ```bash
-python run_pipeline.py
+python3 run_pipeline.py
 ```
 Launches an interactive menu that guides you through the complete pipeline process for a celebrity. The script automatically handles path management, validates prerequisites, and provides numbered options for each step.
 
@@ -82,10 +82,10 @@ All scripts now use `--training` and `--testing` flags to specify the dataset ty
 ### Download Celebrity Images
 ```bash
 # For training dataset (solo portraits)
-python download_celebrity_images.py "Celebrity Name" 15 --training
+python3 download_celebrity_images.py "Celebrity Name" 15 --training
 
 # For testing dataset (group photos)
-python download_celebrity_images.py "Celebrity Name" 10 --testing
+python3 download_celebrity_images.py "Celebrity Name" 10 --testing
 ```
 Requires Google API credentials in .env file:
 - GOOGLE_API_KEY=your_api_key_here
@@ -94,46 +94,46 @@ Requires Google API credentials in .env file:
 ### Remove Duplicate Images
 ```bash
 # Training dataset
-python remove_dupe_training_images.py --training "Celebrity Name"
+python3 remove_dupe_training_images.py --training "Celebrity Name"
 
 # Testing dataset
-python remove_dupe_training_images.py --testing "Celebrity Name"
+python3 remove_dupe_training_images.py --testing "Celebrity Name"
 ```
 
 ### Remove Bad Images
 ```bash
 # Training dataset (keeps images with exactly 1 face)
-python remove_bad_training_images.py --training "Celebrity Name"
+python3 remove_bad_training_images.py --training "Celebrity Name"
 
 # Testing dataset (keeps images with 4-10 faces)
-python remove_bad_training_images.py --testing "Celebrity Name"
+python3 remove_bad_training_images.py --testing "Celebrity Name"
 ```
 
 ### Remove Face Outliers
 ```bash
 # Training dataset (removes faces inconsistent with majority)
-python remove_face_outliers.py --training "Celebrity Name"
+python3 remove_face_outliers.py --training "Celebrity Name"
 
 # Testing dataset
-python remove_face_outliers.py --testing "Celebrity Name"
+python3 remove_face_outliers.py --testing "Celebrity Name"
 
 # Custom similarity threshold (default: 0.1)
-python remove_face_outliers.py --training "Celebrity Name" --threshold 0.2
+python3 remove_face_outliers.py --training "Celebrity Name" --threshold 0.2
 ```
 
 ### Generate Average Embeddings
 ```bash
-python compute_average_embeddings.py training/[celebrity_name]/
+python3 compute_average_embeddings.py training/[celebrity_name]/
 ```
 
 ### Detect Faces in Images
 ```bash
-python detect_star.py testing/[test_folder]/ training/[celebrity_name]/[celebrity_name]_average_embedding.pkl
+python3 eval_star_detection.py testing/[test_folder]/ training/[celebrity_name]/[celebrity_name]_average_embedding.pkl
 ```
 
 ### Custom Threshold Detection
 ```bash
-python detect_star.py testing/[test_folder]/ training/[celebrity_name]/[celebrity_name]_average_embedding.pkl --threshold 0.7
+python3 eval_star_detection.py testing/[test_folder]/ training/[celebrity_name]/[celebrity_name]_average_embedding.pkl --threshold 0.7
 ```
 
 ## Dependencies
@@ -150,35 +150,35 @@ The project requires:
 
 ## Pipeline Workflow
 
-The complete pipeline follows this sequence. You can use the interactive pipeline runner (`python run_pipeline.py`) for guided execution, or run commands manually:
+The complete pipeline follows this sequence. You can use the interactive pipeline runner (`python3 run_pipeline.py`) for guided execution, or run commands manually:
 
 ### Training Pipeline (Solo Portraits)
-1. **Download Training Data**: `python download_celebrity_images.py "Celebrity Name" 15 --training`
-2. **Remove Duplicates**: `python remove_dupe_training_images.py --training "Celebrity Name"`
-3. **Remove Bad Images**: `python remove_bad_training_images.py --training "Celebrity Name"` (keeps exactly 1 face)
-4. **Remove Face Outliers**: `python remove_face_outliers.py --training "Celebrity Name"` (removes inconsistent faces)
-5. **Generate Embeddings**: `python compute_average_embeddings.py training/celebrity_name/`
+1. **Download Training Data**: `python3 download_celebrity_images.py "Celebrity Name" 15 --training`
+2. **Remove Duplicates**: `python3 remove_dupe_training_images.py --training "Celebrity Name"`
+3. **Remove Bad Images**: `python3 remove_bad_training_images.py --training "Celebrity Name"` (keeps exactly 1 face)
+4. **Remove Face Outliers**: `python3 remove_face_outliers.py --training "Celebrity Name"` (removes inconsistent faces)
+5. **Generate Embeddings**: `python3 compute_average_embeddings.py training/celebrity_name/`
 
 ### Testing Pipeline (Group Photos)
-1. **Download Test Data**: `python download_celebrity_images.py "Celebrity Name" 10 --testing`
-2. **Remove Duplicates**: `python remove_dupe_training_images.py --testing "Celebrity Name"`
-3. **Remove Bad Images**: `python remove_bad_training_images.py --testing "Celebrity Name"` (keeps 4-10 faces)
-4. **Run Detection**: `python detect_star.py testing/celebrity_name/ training/celebrity_name/celebrity_name_average_embedding.pkl`
+1. **Download Test Data**: `python3 download_celebrity_images.py "Celebrity Name" 10 --testing`
+2. **Remove Duplicates**: `python3 remove_dupe_training_images.py --testing "Celebrity Name"`
+3. **Remove Bad Images**: `python3 remove_bad_training_images.py --testing "Celebrity Name"` (keeps 4-10 faces)
+4. **Run Detection**: `python3 eval_star_detection.py testing/celebrity_name/ training/celebrity_name/celebrity_name_average_embedding.pkl`
 
 ### Complete Example Workflow
 ```bash
 # 1. Training phase
-python download_celebrity_images.py "Bill Murray" 20 --training
-python remove_dupe_training_images.py --training "Bill Murray"
-python remove_bad_training_images.py --training "Bill Murray"
-python remove_face_outliers.py --training "Bill Murray"
-python compute_average_embeddings.py training/bill_murray/
+python3 download_celebrity_images.py "Bill Murray" 20 --training
+python3 remove_dupe_training_images.py --training "Bill Murray"
+python3 remove_bad_training_images.py --training "Bill Murray"
+python3 remove_face_outliers.py --training "Bill Murray"
+python3 compute_average_embeddings.py training/bill_murray/
 
 # 2. Testing phase
-python download_celebrity_images.py "Bill Murray" 15 --testing
-python remove_dupe_training_images.py --testing "Bill Murray"
-python remove_bad_training_images.py --testing "Bill Murray"
-python detect_star.py testing/bill_murray/ training/bill_murray/bill_murray_average_embedding.pkl
+python3 download_celebrity_images.py "Bill Murray" 15 --testing
+python3 remove_dupe_training_images.py --testing "Bill Murray"
+python3 remove_bad_training_images.py --testing "Bill Murray"
+python3 eval_star_detection.py testing/bill_murray/ training/bill_murray/bill_murray_average_embedding.pkl
 ```
 
 ## Key Parameters

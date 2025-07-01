@@ -159,18 +159,7 @@ def main():
         search_engine_id=args.search_engine_id
     )
     
-    if success:
-        celebrity_folder = args.celebrity_name.lower().replace(' ', '_')
-        print("\nNext steps:")
-        if mode == 'training':
-            print(f"1. Review downloaded images in training/{celebrity_folder}/")
-            print("2. Remove any irrelevant or low-quality images")
-            print(f"3. Run: python compute_average_embeddings.py training/{celebrity_folder}/")
-        else:  # testing mode
-            print(f"1. Review downloaded images in testing/{celebrity_folder}/")
-            print("2. Use these group photos to test face detection accuracy")
-            print(f"3. Run: python detect_star.py testing/{celebrity_folder}/ training/{celebrity_folder}/{celebrity_folder}_average_embedding.pkl")
-    else:
+    if not success:
         sys.exit(1)
 
 

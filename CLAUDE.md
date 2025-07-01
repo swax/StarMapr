@@ -147,7 +147,7 @@ python3 remove_face_outliers.py --training "Celebrity Name" --threshold 0.2
 
 ### Generate Average Embeddings
 ```bash
-python3 compute_average_embeddings.py training/[celebrity_name]/
+python3 compute_average_embeddings.py "Celebrity Name"
 ```
 
 ### Detect Faces in Images
@@ -212,7 +212,7 @@ The complete pipeline follows this sequence. You can use the interactive pipelin
 2. **Remove Duplicates**: `python3 remove_dupe_training_images.py --training "Celebrity Name"`
 3. **Remove Bad Images**: `python3 remove_bad_training_images.py --training "Celebrity Name"` (keeps exactly 1 face)
 4. **Remove Face Outliers**: `python3 remove_face_outliers.py --training "Celebrity Name"` (removes inconsistent faces)
-5. **Generate Embeddings**: `python3 compute_average_embeddings.py training/celebrity_name/`
+5. **Generate Embeddings**: `python3 compute_average_embeddings.py "Celebrity Name"`
 
 ### Testing Pipeline (Group Photos)
 1. **Download Test Data**: `python3 download_celebrity_images.py "Celebrity Name" 10 --testing`

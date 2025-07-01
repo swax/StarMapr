@@ -65,21 +65,26 @@ def save_embedding(embedding, output_path):
 
 def main():
     parser = argparse.ArgumentParser(description='Compute average embeddings for celebrity images using ArcFace')
-    parser.add_argument('folder_path', help='Path to folder containing celebrity images')
+    parser.add_argument('celebrity_name', help='Celebrity name (will use training/celebrity_name/ folder)')
     parser.add_argument('--output', '-o', help='Output file path for the average embedding', 
                        default=None)
     
     args = parser.parse_args()
     
     try:
+        # Convert celebrity name to folder path
+        celebrity_folder = args.celebrity_name.lower().replace(' ', '_')
+        folder_path = Path(f"training/{celebrity_folder}")
+        
+        if not folder_path.exists():
+            raise FileNotFoundError(f"Training folder not found: {folder_path}")
+        
         # Compute average embedding
-        avg_embedding = compute_average_embeddings(args.folder_path)
+        avg_embedding = compute_average_embeddings(folder_path)
         
         # Generate output filename if not provided
         if args.output is None:
-            folder_path = Path(args.folder_path)
-            folder_name = folder_path.name
-            args.output = folder_path / f"{folder_name}_average_embedding.pkl"
+            args.output = folder_path / f"{celebrity_folder}_average_embedding.pkl"
         
         # Save the embedding
         save_embedding(avg_embedding, args.output)

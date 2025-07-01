@@ -88,13 +88,16 @@ python3 eval_star_detection.py "Bill Murray"
 #### Video Processing Pipeline
 ```bash
 # 1. Download video from supported platforms
-python3 download_video.py "https://www.youtube.com/watch?v=VIDEO_ID"
+python3 download_video.py "https://www.youtube.com/watch?v=-_X904_TZnc"
 
-# 2. Extract representative frames using binary search pattern
-python3 extract_video_frames.py videos/youtube_VIDEO_ID/video_file.mp4 50
+# 2. Extract representative frames using binary search pattern (script finds video automatically)
+python3 extract_video_frames.py videos/youtube_VIDEO_ID/ 50
 
-# 3. Extract face data from all frames
-python3 extract_frame_faces.py videos/youtube_VIDEO_ID/frames/
+# 3. Extract face data from all frames (script uses frames/ subfolder automatically)
+python3 extract_frame_faces.py videos/youtube_VIDEO_ID/
+
+# 4. Extract celebrity headshots from video frames
+python3 extract_video_headshots.py "Bill Murray" videos/youtube_VIDEO_ID/
 ```
 
 ## Project Structure
@@ -112,6 +115,7 @@ StarMapr/
 ├── download_video.py            # Video downloader for multiple platforms
 ├── extract_video_frames.py      # Video frame extraction using binary search
 ├── extract_frame_faces.py       # Face detection in video frames
+├── extract_video_headshots.py   # Celebrity headshot extraction from video frames
 ├── remove_dupe_training_images.py # Duplicate removal tool
 ├── remove_bad_training_images.py # Image quality cleaner
 ├── remove_face_outliers.py      # Face consistency validator
@@ -149,11 +153,12 @@ StarMapr/
 - Extracts and saves face crops with similarity scores
 - Configurable similarity thresholds
 
-### Video Processing (`download_video.py`, `extract_video_frames.py`, `extract_frame_faces.py`)
+### Video Processing (`download_video.py`, `extract_video_frames.py`, `extract_frame_faces.py`, `extract_video_headshots.py`)
 - Downloads videos from YouTube, Vimeo, TikTok, and other platforms using yt-dlp
 - Extracts representative frames using binary search pattern for optimal coverage
 - Detects faces in extracted frames with bounding boxes and embeddings
 - Saves face metadata for each frame to enable temporal analysis
+- Extracts celebrity headshots from video frames using similarity matching
 
 ## Configuration
 

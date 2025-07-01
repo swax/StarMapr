@@ -7,6 +7,10 @@ import shutil
 import cv2
 import numpy as np
 from collections import defaultdict
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 def compute_perceptual_hash(image_path, hash_size=8):
     """
@@ -218,8 +222,10 @@ def main():
     mode_group.add_argument('--testing', metavar='CELEBRITY_NAME', 
                            help='Remove duplicates from testing/CELEBRITY_NAME/ folder')
     
-    parser.add_argument('--threshold', type=int, default=5,
-                       help='Similarity threshold (0-64, lower = more strict, default: 5)')
+    # Get default threshold from environment variable
+    default_threshold = int(os.getenv('TRAINING_DUPLICATE_THRESHOLD', 5))
+    parser.add_argument('--threshold', type=int, default=default_threshold,
+                       help=f'Similarity threshold (0-64, lower = more strict, default: {default_threshold})')
     parser.add_argument('--dry-run', action='store_true', 
                        help='Show what would be moved without actually moving files')
     

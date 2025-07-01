@@ -4,6 +4,10 @@ import cv2
 import os
 import argparse
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 def get_video_frame_count(video_path):
     """Get total number of frames in video"""
@@ -96,7 +100,11 @@ def find_video_file(folder_path):
 def main():
     parser = argparse.ArgumentParser(description='Extract frames from video using binary search pattern')
     parser.add_argument('folder_path', help='Path to folder containing video file')
-    parser.add_argument('num_frames', type=int, help='Number of frames to extract')
+    
+    # Get default frame count from environment variable
+    default_frame_count = int(os.getenv('OPERATIONS_EXTRACT_FRAME_COUNT', 50))
+    parser.add_argument('num_frames', type=int, nargs='?', default=default_frame_count,
+                       help=f'Number of frames to extract (default: {default_frame_count})')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be done without actually doing it')
     
     args = parser.parse_args()

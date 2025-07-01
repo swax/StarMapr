@@ -8,6 +8,10 @@ import pickle
 import cv2
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 def load_celebrity_embedding(celebrity_name):
     """Load the precomputed average embedding for a celebrity."""
@@ -196,8 +200,10 @@ def main():
     parser = argparse.ArgumentParser(description='Extract top 5 most similar celebrity headshots from video frames')
     parser.add_argument('celebrity_name', help='Celebrity name (e.g., "Bill Murray")')
     parser.add_argument('video_folder_path', help='Path to video folder containing frames/ subdirectory')
-    parser.add_argument('--threshold', '-t', type=float, default=0.6,
-                       help='Similarity threshold for face matching (default: 0.6)')
+    # Get default threshold from environment variable
+    default_threshold = float(os.getenv('OPERATIONS_HEADSHOT_MATCH_THRESHOLD', 0.6))
+    parser.add_argument('--threshold', '-t', type=float, default=default_threshold,
+                       help=f'Similarity threshold for face matching (default: {default_threshold})')
     parser.add_argument('--dry-run', action='store_true',
                        help='Show what would be extracted without actually doing it')
     

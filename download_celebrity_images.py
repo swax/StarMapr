@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def download_celebrity_images(celebrity_name, num_images=10, mode='training', api_key=None, search_engine_id=None):
+def download_celebrity_images(celebrity_name, num_images, mode='training', api_key=None, search_engine_id=None):
     """
     Download celebrity images from Google Image Search
     
@@ -34,6 +34,7 @@ def download_celebrity_images(celebrity_name, num_images=10, mode='training', ap
         api_key = os.getenv('GOOGLE_API_KEY')
     if not search_engine_id:
         search_engine_id = os.getenv('GOOGLE_SEARCH_ENGINE_ID')
+    
     
     if not api_key or not search_engine_id:
         print("Error: Missing API credentials. Please set your keys in the .env file:")
@@ -121,8 +122,8 @@ def main():
     parser.add_argument('celebrity_name', 
                        help='Name of the celebrity (e.g., "Bill Murray")')
     
-    parser.add_argument('num_images', type=int, 
-                       help='Number of images to download')
+    parser.add_argument('num_images', type=int, nargs='?',
+                       help='Number of images to download (default: from TRAINING_IMAGE_COUNT/TESTING_IMAGE_COUNT env vars)')
     
     # Mutually exclusive group for mode selection
     mode_group = parser.add_mutually_exclusive_group(required=True)
@@ -139,12 +140,21 @@ def main():
     
     args = parser.parse_args()
     
+    # Get default image count if not provided
+    num_images = args.num_images
+    if num_images is None:
+        mode = 'training' if args.training else 'testing'
+        if mode == 'training':
+            num_images = int(os.getenv('TRAINING_IMAGE_COUNT', 20))
+        else:
+            num_images = int(os.getenv('TESTING_IMAGE_COUNT', 30))
+    
     # Validate input
-    if args.num_images <= 0:
+    if num_images <= 0:
         print("Error: Number of images must be positive")
         sys.exit(1)
     
-    if args.num_images > 100:
+    if num_images > 100:
         print("Warning: Large number of images requested. Google API has daily limits.")
     
     # Determine mode from arguments
@@ -153,7 +163,7 @@ def main():
     # Download images
     success = download_celebrity_images(
         celebrity_name=args.celebrity_name,
-        num_images=args.num_images,
+        num_images=num_images,
         mode=mode,
         api_key=args.api_key,
         search_engine_id=args.search_engine_id

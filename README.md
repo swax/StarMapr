@@ -34,11 +34,25 @@ cd StarMapr
 pip install deepface numpy opencv-python scikit-learn google-images-search python-dotenv yt-dlp
 ```
 
-3. Set up Google API credentials (for image downloading):
+3. Set up configuration:
 Create a `.env` file with:
 ```
+# Google API credentials (required for image downloading)
 GOOGLE_API_KEY=your_api_key_here
 GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
+
+# Training pipeline thresholds
+TRAINING_IMAGE_COUNT=20
+TRAINING_DUPLICATE_THRESHOLD=5
+TRAINING_OUTLIER_THRESHOLD=0.1
+
+# Testing pipeline thresholds
+TESTING_IMAGE_COUNT=30
+TESTING_DETECTION_THRESHOLD=0.6
+
+# Video processing defaults
+OPERATIONS_EXTRACT_FRAME_COUNT=50
+OPERATIONS_HEADSHOT_MATCH_THRESHOLD=0.6
 ```
 
 ## Quick Start
@@ -162,7 +176,18 @@ StarMapr/
 
 ## Configuration
 
-- **Default similarity threshold**: 0.6 (adjustable with `--threshold`)
+All default values are configurable through environment variables in the `.env` file:
+
+- **Training duplicate threshold**: 5 Hamming distance (`TRAINING_DUPLICATE_THRESHOLD`)
+- **Training outlier threshold**: 0.1 cosine similarity (`TRAINING_OUTLIER_THRESHOLD`)
+- **Testing detection threshold**: 0.6 cosine similarity (`TESTING_DETECTION_THRESHOLD`)
+- **Frame extraction count**: 50 frames (`OPERATIONS_EXTRACT_FRAME_COUNT`)
+- **Headshot match threshold**: 0.6 cosine similarity (`OPERATIONS_HEADSHOT_MATCH_THRESHOLD`)
+- **Image download counts**: 20 training, 30 testing (`TRAINING_IMAGE_COUNT`, `TESTING_IMAGE_COUNT`)
+
+All thresholds are adjustable with command-line `--threshold` flags.
+
+**Technical specs**:
 - **Supported formats**: .jpg, .jpeg, .png, .bmp, .tiff, .webp
 - **Face detection model**: ArcFace via DeepFace
 - **Similarity metric**: Cosine similarity

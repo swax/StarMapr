@@ -10,6 +10,13 @@ import os
 import sys
 import subprocess
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Pipeline configuration
+TOTAL_PIPELINE_STEPS = 14
 
 
 def get_celebrity_name():
@@ -34,14 +41,18 @@ def get_image_count(mode):
         mode (str): 'training' or 'testing'
         
     Returns:
-        int: Number of images to download
+        int or None: Number of images to download, or None to use .env default
     """
-    default_count = 15 if mode == 'training' else 30
+    if mode == 'training':
+        env_default = int(os.getenv('TRAINING_IMAGE_COUNT', 20))
+    else:
+        env_default = int(os.getenv('TESTING_IMAGE_COUNT', 30))
+    
     while True:
         try:
-            count_input = input(f"Number of images to download for {mode} (default {default_count}): ").strip()
+            count_input = input(f"Number of images to download for {mode} (press Enter for default {env_default}): ").strip()
             if not count_input:
-                return default_count
+                return None  # Use .env default
             count = int(count_input)
             if count > 0:
                 return count
@@ -81,7 +92,7 @@ def display_menu(celebrity_name):
     print("12. Extract faces from video frames")
     print("13. Extract celebrity headshots from video")
     print()
-    print("14. Exit")
+    print(f"{TOTAL_PIPELINE_STEPS}. Exit")
     print()
 
 
@@ -133,23 +144,26 @@ def main():
         display_menu(celebrity_name)
         
         try:
-            if last_step and last_step < 14:
+            if last_step and last_step < TOTAL_PIPELINE_STEPS:
                 next_step = last_step + 1
-                prompt = f"Enter your choice (1-14, or press Enter for step {next_step}): "
+                prompt = f"Enter your choice (1-{TOTAL_PIPELINE_STEPS}, or press Enter for step {next_step}): "
             else:
-                prompt = "Enter your choice (1-14): "
+                prompt = f"Enter your choice (1-{TOTAL_PIPELINE_STEPS}): "
             
             choice = input(prompt).strip()
             
             # If no choice entered and we have a next step, use it
-            if not choice and last_step and last_step < 14:
+            if not choice and last_step and last_step < TOTAL_PIPELINE_STEPS:
                 choice = str(last_step + 1)
             
             if choice == '1':
                 # Download training images
                 if training_count is None:
                     training_count = get_image_count('training')
-                command = ['python3', 'download_celebrity_images.py', celebrity_name, str(training_count), '--training']
+                if training_count is None:
+                    command = ['python3', 'download_celebrity_images.py', celebrity_name, '--training']
+                else:
+                    command = ['python3', 'download_celebrity_images.py', celebrity_name, str(training_count), '--training']
                 if run_command(command, "Download training images"):
                     last_step = 1
                 
@@ -181,7 +195,10 @@ def main():
                 # Download testing images
                 if testing_count is None:
                     testing_count = get_image_count('testing')
-                command = ['python3', 'download_celebrity_images.py', celebrity_name, str(testing_count), '--testing']
+                if testing_count is None:
+                    command = ['python3', 'download_celebrity_images.py', celebrity_name, '--testing']
+                else:
+                    command = ['python3', 'download_celebrity_images.py', celebrity_name, str(testing_count), '--testing']
                 if run_command(command, "Download testing images"):
                     last_step = 6
                 
@@ -228,11 +245,14 @@ def main():
                 if video_folder:
                     video_folder_path = video_folder
                     
-                frame_count = input("Number of frames to extract (default 50): ").strip()
+                # Get default frame count from environment variable
+                default_frame_count = os.getenv('OPERATIONS_EXTRACT_FRAME_COUNT', '50')
+                frame_count = input(f"Number of frames to extract (default {default_frame_count}): ").strip()
                 if not frame_count:
-                    frame_count = "50"
-                    
-                command = ['python3', 'extract_video_frames.py', video_folder, frame_count]
+                    # Use environment default by not passing frame count (let script handle it)
+                    command = ['python3', 'extract_video_frames.py', video_folder]
+                else:
+                    command = ['python3', 'extract_video_frames.py', video_folder, frame_count]
                 if run_command(command, "Extract frames from video"):
                     last_step = 11
                 
@@ -266,12 +286,12 @@ def main():
                 if run_command(command, f"Extract {celebrity_name} headshots from video"):
                     last_step = 13
                 
-            elif choice == '14':
+            elif choice == str(TOTAL_PIPELINE_STEPS):
                 print("\nExiting StarMapr Pipeline Runner. Goodbye!")
                 sys.exit(0)
                 
             else:
-                print(f"\nInvalid choice: {choice}. Please enter a number between 1 and 14.")
+                print(f"\nInvalid choice: {choice}. Please enter a number between 1 and {TOTAL_PIPELINE_STEPS}.")
                 
         except KeyboardInterrupt:
             print("\n\nExiting StarMapr Pipeline Runner. Goodbye!")

@@ -9,6 +9,7 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from collections import defaultdict
 from dotenv import load_dotenv
+from utilities import print_error, print_summary
 
 # Load environment variables
 load_dotenv()
@@ -31,7 +32,7 @@ def get_face_embedding(image_path):
             return np.array(embeddings[0]['embedding'])
         return None
     except Exception as e:
-        print(f"Error processing {image_path.name}: {e}")
+        print_error(f"Error processing {image_path.name}: {e}")
         return None
 
 def find_face_outliers(celebrity_folder_path, similarity_threshold=0.1, dry_run=False):
@@ -147,7 +148,7 @@ def find_face_outliers(celebrity_folder_path, similarity_threshold=0.1, dry_run=
                     print(f"  ✓ Moved: {img.name}")
                     moved_count += 1
                 except Exception as e:
-                    print(f"  ✗ Failed to move {img.name}: {e}")
+                    print_error(f"Failed to move {img.name}: {e}")
             
             print(f"\nSuccessfully moved {moved_count}/{len(outliers)} outlier images")
         else:
@@ -163,6 +164,15 @@ def find_face_outliers(celebrity_folder_path, similarity_threshold=0.1, dry_run=
         print(f"Min similarity: {np.min(similarities):.3f}")
         print(f"Max similarity: {np.max(similarities):.3f}")
         print(f"Std deviation: {np.std(similarities):.3f}")
+    
+    # Add success summary
+    if not dry_run:
+        if outliers:
+            print_summary(f"Face outlier analysis completed. Moved {len(outliers)} outlier images to outliers/ folder.")
+        else:
+            print_summary("Face outlier analysis completed. All faces appear to be consistent!")
+    else:
+        print_summary(f"DRY RUN: Face outlier analysis completed. Would move {len(outliers)} outlier images.")
 
 def main():
     parser = argparse.ArgumentParser(description='Remove face outliers from celebrity training images')
@@ -185,7 +195,7 @@ def main():
     
     # Validate threshold
     if not 0.0 <= args.threshold <= 1.0:
-        print("Error: Threshold must be between 0.0 and 1.0")
+        print_error("Threshold must be between 0.0 and 1.0")
         sys.exit(1)
     
     # Determine celebrity folder path based on arguments
@@ -200,7 +210,7 @@ def main():
         find_face_outliers(celebrity_folder_path, args.threshold, args.dry_run)
         
     except Exception as e:
-        print(f"Error: {e}")
+        print_error(str(e))
         sys.exit(1)
 
 if __name__ == "__main__":

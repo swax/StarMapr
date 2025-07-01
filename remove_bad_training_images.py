@@ -8,6 +8,7 @@ import shutil
 import cv2
 import numpy as np
 from collections import defaultdict
+from utilities import print_error, print_summary
 
 def count_faces_in_image(image_path):
     """
@@ -24,7 +25,7 @@ def count_faces_in_image(image_path):
         face_analysis = DeepFace.represent(str(image_path), model_name='ArcFace', enforce_detection=False)
         return len(face_analysis) if face_analysis else 0
     except Exception as e:
-        print(f"Error processing {image_path.name}: {e}")
+        print_error(f"Error processing {image_path.name}: {e}")
         return -1
 
 def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
@@ -39,7 +40,8 @@ def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
     folder_path = Path(celebrity_folder_path)
     
     if not folder_path.exists():
-        raise FileNotFoundError(f"Folder not found: {folder_path}")
+        print_error(f"Folder not found: {folder_path}")
+        return
     
     # Create bad folder if it doesn't exist
     bad_folder = folder_path / "bad"
@@ -54,7 +56,7 @@ def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
     unsupported_files = [f for f in all_files if f.suffix.lower() not in image_extensions]
     
     if not all_files:
-        print(f"No files found in {folder_path}")
+        print_error(f"No files found in {folder_path}")
         return
     
     print(f"Found {len(all_files)} files in {folder_path}")
@@ -153,15 +155,15 @@ def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
                 print(f"  ✓ Moved: {file_to_move.name}")
                 moved_count += 1
             except Exception as e:
-                print(f"  ✗ Failed to move {file_to_move.name}: {e}")
+                print_error(f"Failed to move {file_to_move.name}: {e}")
         
-        print(f"\nSuccessfully moved {moved_count}/{len(all_files_to_move)} files to bad folder")
+        print_summary(f"Successfully moved {moved_count}/{len(all_files_to_move)} files to bad folder")
     
     elif all_files_to_move and dry_run:
         print(f"\nDRY RUN: Would move {len(all_files_to_move)} files to bad folder")
     
     if not all_files_to_move:
-        print(f"\nNo files need to be moved - all supported images meet the {face_description} requirement!")
+        print_summary(f"No files need to be moved - all supported images meet the {face_description} requirement!")
 
 def main():
     parser = argparse.ArgumentParser(description='Move images that do not meet face count requirements to a bad subfolder')
@@ -192,7 +194,7 @@ def main():
         remove_bad_images(celebrity_folder_path, mode, args.dry_run)
         
     except Exception as e:
-        print(f"Error: {e}")
+        print_error(f"Error: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

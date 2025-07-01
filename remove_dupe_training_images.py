@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 from collections import defaultdict
 from dotenv import load_dotenv
+from utilities import print_error, print_summary
 
 # Load environment variables
 load_dotenv()
@@ -46,7 +47,7 @@ def compute_perceptual_hash(image_path, hash_size=8):
         return hash_bytes.tobytes().hex()
         
     except Exception as e:
-        print(f"Error computing hash for {image_path.name}: {e}")
+        print_error(f"Error computing hash for {image_path.name}: {e}")
         return None
 
 def hamming_distance(hash1, hash2):
@@ -132,7 +133,8 @@ def remove_duplicate_images(celebrity_folder_path, similarity_threshold=5, dry_r
     folder_path = Path(celebrity_folder_path)
     
     if not folder_path.exists():
-        raise FileNotFoundError(f"Folder not found: {folder_path}")
+        print_error(f"Folder not found: {folder_path}")
+        return
     
     # Create duplicates folder if it doesn't exist
     duplicates_folder = folder_path / "duplicates"
@@ -143,7 +145,7 @@ def remove_duplicate_images(celebrity_folder_path, similarity_threshold=5, dry_r
                    if f.is_file() and f.suffix.lower() in image_extensions]
     
     if not image_files:
-        print(f"No image files found in {folder_path}")
+        print_error(f"No image files found in {folder_path}")
         return
     
     print(f"Found {len(image_files)} images in {folder_path}")
@@ -205,9 +207,9 @@ def remove_duplicate_images(celebrity_folder_path, similarity_threshold=5, dry_r
                 print(f"  ✓ Moved: {img_file.name}")
                 moved_count += 1
             except Exception as e:
-                print(f"  ✗ Failed to move {img_file.name}: {e}")
+                print_error(f"Failed to move {img_file.name}: {e}")
         
-        print(f"\nSuccessfully moved {moved_count}/{len(images_to_move)} duplicate images")
+        print_summary(f"Successfully moved {moved_count}/{len(images_to_move)} duplicate images to duplicates folder")
     
     elif images_to_move and dry_run:
         print(f"\nDRY RUN: Would move {len(images_to_move)} duplicate images")
@@ -232,7 +234,7 @@ def main():
     args = parser.parse_args()
     
     if args.threshold < 0 or args.threshold > 64:
-        print("Error: Threshold must be between 0 and 64")
+        print_error("Threshold must be between 0 and 64")
         sys.exit(1)
     
     # Determine celebrity folder path based on mode
@@ -247,7 +249,7 @@ def main():
         remove_duplicate_images(celebrity_folder_path, args.threshold, args.dry_run)
         
     except Exception as e:
-        print(f"Error: {e}")
+        print_error(f"Error: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ import subprocess
 import json
 from pathlib import Path
 from urllib.parse import urlparse
+from utilities import print_error, print_summary
 
 
 def extract_site_and_id(url):
@@ -115,8 +116,8 @@ def download_video(video_url, site, video_id, title):
         print(f"Successfully downloaded video to {video_dir}/")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"Error downloading video: {e}")
-        print(f"Error output: {e.stderr}")
+        print_error(f"Error downloading video: {e}")
+        print_error(f"Error output: {e.stderr}")
         return False
 
 
@@ -132,8 +133,8 @@ def main():
     
     # Check if yt-dlp is installed
     if not check_ytdlp():
-        print("Error: yt-dlp is not installed.")
-        print("Install it with: pip install yt-dlp")
+        print_error("yt-dlp is not installed.")
+        print_error("Install it with: pip install yt-dlp")
         sys.exit(1)
     
     # List extractors if requested
@@ -144,7 +145,7 @@ def main():
             print("Supported sites/extractors:")
             print(result.stdout)
         except subprocess.CalledProcessError as e:
-            print(f"Error listing extractors: {e}")
+            print_error(f"Error listing extractors: {e}")
         return
     
     try:
@@ -158,16 +159,16 @@ def main():
         success = download_video(args.url, site, video_id, title)
         
         if success:
-            print(f"Video downloaded successfully to videos/{site}_{video_id}/")
+            print_summary(f"Video downloaded successfully to videos/{site}_{video_id}/")
         else:
-            print("Failed to download video")
+            print_error("Failed to download video")
             sys.exit(1)
             
     except Exception as e:
-        print(f"Error: {e}")
+        print_error(str(e))
         sys.exit(1)
     except KeyboardInterrupt:
-        print("\nDownload cancelled by user")
+        print_error("\nDownload cancelled by user")
         sys.exit(1)
 
 

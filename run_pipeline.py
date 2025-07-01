@@ -128,7 +128,7 @@ def main():
         display_menu(celebrity_name)
         
         try:
-            choice = input("Enter your choice (1-10): ").strip()
+            choice = input("Enter your choice (1-13): ").strip()
             
             if choice == '1':
                 # Download training images
@@ -154,12 +154,11 @@ def main():
                 
             elif choice == '5':
                 # Compute average embeddings
-                training_path = f'training/{celebrity_folder}/'
-                if not Path(training_path).exists():
-                    print(f"\n✗ Training folder not found: {training_path}")
+                if not Path(f'training/{celebrity_folder}/').exists():
+                    print(f"\n✗ Training folder not found: training/{celebrity_folder}/")
                     print("Please run steps 1-3 first to create and clean training data.")
                     continue
-                command = ['python3', 'compute_average_embeddings.py', training_path]
+                command = ['python3', 'compute_average_embeddings.py', celebrity_name]
                 run_command(command, "Compute average embeddings")
                 
             elif choice == '6':
@@ -181,16 +180,13 @@ def main():
                 
             elif choice == '9':
                 # Detect faces
-                testing_path = f'testing/{celebrity_folder}/'
-                embedding_path = f'training/{celebrity_folder}/{celebrity_folder}_average_embedding.pkl'
-                
-                if not Path(testing_path).exists():
-                    print(f"\n✗ Testing folder not found: {testing_path}")
+                if not Path(f'testing/{celebrity_folder}/').exists():
+                    print(f"\n✗ Testing folder not found: testing/{celebrity_folder}/")
                     print("Please run steps 5-7 first to create and clean testing data.")
                     continue
                     
-                if not Path(embedding_path).exists():
-                    print(f"\n✗ Embedding file not found: {embedding_path}")
+                if not Path(f'training/{celebrity_folder}/{celebrity_folder}_average_embedding.pkl').exists():
+                    print(f"\n✗ Embedding file not found: training/{celebrity_folder}/{celebrity_folder}_average_embedding.pkl")
                     print("Please run step 4 first to generate average embeddings.")
                     continue
                 

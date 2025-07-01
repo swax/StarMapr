@@ -67,7 +67,7 @@ python3 remove_bad_training_images.py --training "Bill Murray"
 python3 remove_face_outliers.py --training "Bill Murray"
 
 # 5. Generate reference embeddings
-python3 compute_average_embeddings.py training/bill_murray/
+python3 compute_average_embeddings.py "Bill Murray"
 ```
 
 #### Testing Pipeline

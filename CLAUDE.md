@@ -10,9 +10,9 @@ StarMapr is a Python application for celebrity face recognition and detection. I
 
 The system follows a **sequential pipeline architecture** with five main stages that process celebrity images from raw downloads to face detection:
 
-**Pipeline Flow**: Data Collection → Duplicate Removal → Data Cleaning → Embedding Generation → Face Detection
+**Pipeline Flow**: Data Collection → Duplicate Removal → Data Cleaning → Face Consistency Validation → Embedding Generation → Face Detection
 
-The system consists of six main components:
+The system consists of seven main components:
 
 1. **run_pipeline.py** - Interactive pipeline runner for streamlined workflow execution
    - Provides numbered menu of all pipeline steps
@@ -36,12 +36,18 @@ The system consists of six main components:
    - Testing mode: Removes images with fewer than 4 or more than 10 faces
    - Uses DeepFace for accurate face detection and validation
 
-5. **compute_average_embeddings.py** - Processes a folder of celebrity images to create average embeddings
+5. **remove_face_outliers.py** - Removes face outliers from celebrity training images
+   - Compares all faces using DeepFace ArcFace embeddings and cosine similarity
+   - Identifies faces that are significantly different from the majority group
+   - Moves outlier faces to an `outliers/` subfolder
+   - Helps ensure training data consistency by removing incorrect celebrity faces
+
+6. **compute_average_embeddings.py** - Processes a folder of celebrity images to create average embeddings
    - Generates embeddings using DeepFace with ArcFace model
    - Computes average embedding vector for all images of a celebrity
    - Saves embeddings as pickle files (.pkl)
 
-6. **detect_star.py** - Detects matching faces in test images using precomputed embeddings
+7. **detect_star.py** - Detects matching faces in test images using precomputed embeddings
    - Loads reference embeddings from pickle files
    - Processes test images to find matching faces
    - Extracts face crops and saves them with similarity scores
@@ -103,6 +109,18 @@ python remove_bad_training_images.py --training "Celebrity Name"
 python remove_bad_training_images.py --testing "Celebrity Name"
 ```
 
+### Remove Face Outliers
+```bash
+# Training dataset (removes faces inconsistent with majority)
+python remove_face_outliers.py --training "Celebrity Name"
+
+# Testing dataset
+python remove_face_outliers.py --testing "Celebrity Name"
+
+# Custom similarity threshold (default: 0.1)
+python remove_face_outliers.py --training "Celebrity Name" --threshold 0.2
+```
+
 ### Generate Average Embeddings
 ```bash
 python compute_average_embeddings.py training/[celebrity_name]/
@@ -138,7 +156,8 @@ The complete pipeline follows this sequence. You can use the interactive pipelin
 1. **Download Training Data**: `python download_celebrity_images.py "Celebrity Name" 15 --training`
 2. **Remove Duplicates**: `python remove_dupe_training_images.py --training "Celebrity Name"`
 3. **Remove Bad Images**: `python remove_bad_training_images.py --training "Celebrity Name"` (keeps exactly 1 face)
-4. **Generate Embeddings**: `python compute_average_embeddings.py training/celebrity_name/`
+4. **Remove Face Outliers**: `python remove_face_outliers.py --training "Celebrity Name"` (removes inconsistent faces)
+5. **Generate Embeddings**: `python compute_average_embeddings.py training/celebrity_name/`
 
 ### Testing Pipeline (Group Photos)
 1. **Download Test Data**: `python download_celebrity_images.py "Celebrity Name" 10 --testing`
@@ -152,6 +171,7 @@ The complete pipeline follows this sequence. You can use the interactive pipelin
 python download_celebrity_images.py "Bill Murray" 20 --training
 python remove_dupe_training_images.py --training "Bill Murray"
 python remove_bad_training_images.py --training "Bill Murray"
+python remove_face_outliers.py --training "Bill Murray"
 python compute_average_embeddings.py training/bill_murray/
 
 # 2. Testing phase
@@ -170,11 +190,12 @@ python detect_star.py testing/bill_murray/ training/bill_murray/bill_murray_aver
 - **Training Face Count**: Exactly 1 face required
 - **Testing Face Count**: 4-10 faces required
 - **Duplicate Detection Threshold**: 5 Hamming distance (adjustable via --threshold)
+- **Face Outlier Detection Threshold**: 0.1 cosine similarity (adjustable via --threshold)
 
 ## Architecture Notes
 
 - **GUID-based Naming**: Image files use first 8 characters of GUIDs to prevent filename collisions
-- **Automatic Folder Management**: Scripts create `bad/` and `duplicates/` subfolders automatically
+- **Automatic Folder Management**: Scripts create `bad/`, `duplicates/`, and `outliers/` subfolders automatically
 - **Dry-run Support**: Most scripts support `--dry-run` flag for safe testing
 - **Error Handling**: Comprehensive exception handling with detailed user feedback
 - **Modular Design**: Each script handles a single responsibility in the pipeline

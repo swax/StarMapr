@@ -14,6 +14,7 @@ StarMapr enables automated identification and extraction of celebrity faces from
 
 - **Celebrity Image Collection**: Download training images from Google Image Search
 - **Data Cleaning**: Remove duplicates and low-quality images automatically
+- **Face Consistency Validation**: Remove outlier faces that don't match the target celebrity
 - **Face Embedding Generation**: Create reference embeddings using state-of-the-art ArcFace model
 - **Face Detection & Matching**: Identify matching faces in test images with confidence scores
 - **Headshot Extraction**: Automatically crop and save detected faces
@@ -60,22 +61,25 @@ python remove_dupe_training_images.py --training "Bill Murray"
 # 3. Remove bad images (keep exactly 1 face)
 python remove_bad_training_images.py --training "Bill Murray"
 
-# 4. Generate reference embeddings
+# 4. Remove face outliers (detect inconsistent faces)
+python remove_face_outliers.py --training "Bill Murray"
+
+# 5. Generate reference embeddings
 python compute_average_embeddings.py training/bill_murray/
 ```
 
 #### Testing Pipeline
 ```bash
-# 5. Download testing images (group photos)
+# 6. Download testing images (group photos)
 python download_celebrity_images.py "Bill Murray" 15 --testing
 
-# 6. Remove duplicate images
+# 7. Remove duplicate images
 python remove_dupe_training_images.py --testing "Bill Murray"
 
-# 7. Remove bad images (keep 4-10 faces)
+# 8. Remove bad images (keep 4-10 faces)
 python remove_bad_training_images.py --testing "Bill Murray"
 
-# 8. Detect faces in test images
+# 9. Detect faces in test images
 python detect_star.py testing/bill_murray/ training/bill_murray/bill_murray_average_embedding.pkl
 ```
 
@@ -91,6 +95,7 @@ StarMapr/
 ├── download_celebrity_images.py # Google Image Search downloader
 ├── remove_dupe_training_images.py # Duplicate removal tool
 ├── remove_bad_training_images.py # Image quality cleaner
+├── remove_face_outliers.py      # Face consistency validator
 ├── compute_average_embeddings.py # Embedding generator
 └── detect_star.py              # Face detection and matching
 ```
@@ -108,9 +113,10 @@ StarMapr/
 - Optimized search parameters for face portraits
 - Automatic folder organization
 
-### Data Cleaning (`remove_dupe_training_images.py`, `remove_bad_training_images.py`)
+### Data Cleaning (`remove_dupe_training_images.py`, `remove_bad_training_images.py`, `remove_face_outliers.py`)
 - Perceptual hashing for duplicate detection
 - Face detection validation
+- Face consistency validation using embedding similarity
 - Resolution and quality filtering
 
 ### Embedding Generation (`compute_average_embeddings.py`)

@@ -69,26 +69,53 @@ def extract_frame(video_path, frame_number, output_path):
     cv2.imwrite(output_path, frame)
     return True
 
+def find_video_file(folder_path):
+    """Find video file in the given folder"""
+    video_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm', '.m4v', '.3gp'}
+    
+    folder = Path(folder_path)
+    if not folder.exists():
+        raise ValueError(f"Folder not found: {folder_path}")
+    
+    if not folder.is_dir():
+        raise ValueError(f"Path is not a directory: {folder_path}")
+    
+    video_files = []
+    for file in folder.iterdir():
+        if file.is_file() and file.suffix.lower() in video_extensions:
+            video_files.append(file)
+    
+    if not video_files:
+        raise ValueError(f"No video files found in folder: {folder_path}")
+    
+    if len(video_files) > 1:
+        print(f"Multiple video files found, using: {video_files[0].name}")
+    
+    return video_files[0]
+
 def main():
     parser = argparse.ArgumentParser(description='Extract frames from video using binary search pattern')
-    parser.add_argument('video_path', help='Path to video file')
+    parser.add_argument('folder_path', help='Path to folder containing video file')
     parser.add_argument('num_frames', type=int, help='Number of frames to extract')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be done without actually doing it')
     
     args = parser.parse_args()
     
-    # Validate video file
-    if not os.path.exists(args.video_path):
-        print(f"Error: Video file not found: {args.video_path}")
+    # Find video file in folder
+    try:
+        video_file = find_video_file(args.folder_path)
+        print(f"Found video file: {video_file}")
+    except Exception as e:
+        print(f"Error: {str(e)}")
         return 1
     
-    # Create frames directory in same location as video
-    video_path = Path(args.video_path)
-    frames_dir = video_path.parent / "frames"
+    # Create frames directory in same folder
+    folder_path = Path(args.folder_path)
+    frames_dir = folder_path / "frames"
     
     # Get video info
     try:
-        total_frames = get_video_frame_count(args.video_path)
+        total_frames = get_video_frame_count(str(video_file))
         print(f"Video has {total_frames} total frames")
     except Exception as e:
         print(f"Error reading video: {str(e)}")
@@ -124,7 +151,7 @@ def main():
         
         try:
             # Extract frame
-            extract_frame(args.video_path, frame_idx, str(frame_path))
+            extract_frame(str(video_file), frame_idx, str(frame_path))
             print(f"Extracted frame {frame_idx} -> {frame_path}")
             extracted_count += 1
                 

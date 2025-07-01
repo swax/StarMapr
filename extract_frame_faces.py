@@ -55,15 +55,24 @@ def save_face_data(frame_path, faces_data):
 
 def main():
     parser = argparse.ArgumentParser(description='Detect faces in extracted frames and save bounding box data')
-    parser.add_argument('frames_dir', help='Path to directory containing frame images')
+    parser.add_argument('video_folder', help='Path to video folder (frames subfolder will be used)')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be done without actually doing it')
     
     args = parser.parse_args()
     
+    # Construct frames directory path
+    video_folder = Path(args.video_folder)
+    frames_dir = video_folder / "frames"
+    
+    # Validate video folder
+    if not video_folder.exists():
+        print(f"Error: Video folder not found: {video_folder}")
+        return 1
+    
     # Validate frames directory
-    frames_dir = Path(args.frames_dir)
     if not frames_dir.exists():
         print(f"Error: Frames directory not found: {frames_dir}")
+        print(f"Make sure you've extracted frames first using extract_video_frames.py")
         return 1
     
     # Get all image files

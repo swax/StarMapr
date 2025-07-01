@@ -79,8 +79,9 @@ def display_menu(celebrity_name):
     print("10. Download video from URL")
     print("11. Extract frames from video")
     print("12. Extract faces from video frames")
+    print("13. Extract celebrity headshots from video")
     print()
-    print("13. Exit")
+    print("14. Exit")
     print()
 
 
@@ -123,75 +124,84 @@ def main():
     # Track image counts for download steps
     training_count = None
     testing_count = None
+    # Track video folder path for video processing steps
+    video_folder_path = None
+    # Track last step number for sequential execution
+    last_step = None
     
     while True:
         display_menu(celebrity_name)
         
         try:
-            choice = input("Enter your choice (1-13): ").strip()
+            if last_step and last_step < 14:
+                next_step = last_step + 1
+                prompt = f"Enter your choice (1-14, or press Enter for step {next_step}): "
+            else:
+                prompt = "Enter your choice (1-14): "
+            
+            choice = input(prompt).strip()
+            
+            # If no choice entered and we have a next step, use it
+            if not choice and last_step and last_step < 14:
+                choice = str(last_step + 1)
             
             if choice == '1':
                 # Download training images
                 if training_count is None:
                     training_count = get_image_count('training')
                 command = ['python3', 'download_celebrity_images.py', celebrity_name, str(training_count), '--training']
-                run_command(command, "Download training images")
+                if run_command(command, "Download training images"):
+                    last_step = 1
                 
             elif choice == '2':
                 # Remove duplicate training images
                 command = ['python3', 'remove_dupe_training_images.py', '--training', celebrity_name]
-                run_command(command, "Remove duplicate training images")
+                if run_command(command, "Remove duplicate training images"):
+                    last_step = 2
                 
             elif choice == '3':
                 # Remove bad training images
                 command = ['python3', 'remove_bad_training_images.py', '--training', celebrity_name]
-                run_command(command, "Remove bad training images")
+                if run_command(command, "Remove bad training images"):
+                    last_step = 3
                 
             elif choice == '4':
                 # Remove outlier faces
                 command = ['python3', 'remove_face_outliers.py', '--training', celebrity_name]
-                run_command(command, "Remove outlier faces")
+                if run_command(command, "Remove outlier faces"):
+                    last_step = 4
                 
             elif choice == '5':
                 # Compute average embeddings
-                if not Path(f'training/{celebrity_folder}/').exists():
-                    print(f"\n✗ Training folder not found: training/{celebrity_folder}/")
-                    print("Please run steps 1-3 first to create and clean training data.")
-                    continue
                 command = ['python3', 'compute_average_embeddings.py', celebrity_name]
-                run_command(command, "Compute average embeddings")
+                if run_command(command, "Compute average embeddings"):
+                    last_step = 5
                 
             elif choice == '6':
                 # Download testing images
                 if testing_count is None:
                     testing_count = get_image_count('testing')
                 command = ['python3', 'download_celebrity_images.py', celebrity_name, str(testing_count), '--testing']
-                run_command(command, "Download testing images")
+                if run_command(command, "Download testing images"):
+                    last_step = 6
                 
             elif choice == '7':
                 # Remove duplicate testing images
                 command = ['python3', 'remove_dupe_training_images.py', '--testing', celebrity_name]
-                run_command(command, "Remove duplicate testing images")
+                if run_command(command, "Remove duplicate testing images"):
+                    last_step = 7
                 
             elif choice == '8':
                 # Remove bad testing images
                 command = ['python3', 'remove_bad_training_images.py', '--testing', celebrity_name]
-                run_command(command, "Remove bad testing images")
+                if run_command(command, "Remove bad testing images"):
+                    last_step = 8
                 
             elif choice == '9':
                 # Detect faces
-                if not Path(f'testing/{celebrity_folder}/').exists():
-                    print(f"\n✗ Testing folder not found: testing/{celebrity_folder}/")
-                    print("Please run steps 5-7 first to create and clean testing data.")
-                    continue
-                    
-                if not Path(f'training/{celebrity_folder}/{celebrity_folder}_average_embedding.pkl').exists():
-                    print(f"\n✗ Embedding file not found: training/{celebrity_folder}/{celebrity_folder}_average_embedding.pkl")
-                    print("Please run step 4 first to generate average embeddings.")
-                    continue
-                
                 command = ['python3', 'eval_star_detection.py', celebrity_name]
-                run_command(command, "Detect faces in test images")
+                if run_command(command, "Detect faces in test images"):
+                    last_step = 9
                 
             elif choice == '10':
                 # Download video from URL
@@ -200,38 +210,68 @@ def main():
                     print("No URL provided.")
                     continue
                 command = ['python3', 'download_video.py', video_url]
-                run_command(command, "Download video from URL")
+                if run_command(command, "Download video from URL"):
+                    last_step = 10
                 
             elif choice == '11':
                 # Extract frames from video
-                video_path = input("\nEnter path to video file (e.g., videos/youtube_ABC123/video.mp4): ").strip()
-                if not video_path or not Path(video_path).exists():
-                    print(f"Video file not found: {video_path}")
-                    continue
+                if video_folder_path:
+                    default_prompt = f"\nEnter path to video folder (default: {video_folder_path}): "
+                else:
+                    default_prompt = "\nEnter path to video folder (e.g., videos/youtube_ABC123/): "
+                
+                video_folder = input(default_prompt).strip()
+                if not video_folder and video_folder_path:
+                    video_folder = video_folder_path
+                
+                # Remember this video folder path for subsequent steps
+                if video_folder:
+                    video_folder_path = video_folder
                     
                 frame_count = input("Number of frames to extract (default 50): ").strip()
                 if not frame_count:
                     frame_count = "50"
                     
-                command = ['python3', 'extract_video_frames.py', video_path, frame_count]
-                run_command(command, "Extract frames from video")
+                command = ['python3', 'extract_video_frames.py', video_folder, frame_count]
+                if run_command(command, "Extract frames from video"):
+                    last_step = 11
                 
             elif choice == '12':
                 # Extract faces from video frames
-                frames_dir = input("\nEnter path to frames directory (e.g., videos/youtube_ABC123/frames/): ").strip()
-                if not frames_dir or not Path(frames_dir).exists():
-                    print(f"Frames directory not found: {frames_dir}")
-                    continue
-                    
-                command = ['python3', 'extract_frame_faces.py', frames_dir]
-                run_command(command, "Extract faces from video frames")
+                if video_folder_path:
+                    default_prompt = f"\nEnter path to video folder (default: {video_folder_path}): "
+                else:
+                    default_prompt = "\nEnter path to video folder (e.g., videos/youtube_ABC123/): "
+                
+                video_folder = input(default_prompt).strip()
+                if not video_folder and video_folder_path:
+                    video_folder = video_folder_path
+                
+                command = ['python3', 'extract_frame_faces.py', video_folder]
+                if run_command(command, "Extract faces from video frames"):
+                    last_step = 12
                 
             elif choice == '13':
+                # Extract celebrity headshots from video
+                if video_folder_path:
+                    default_prompt = f"\nEnter path to video folder (default: {video_folder_path}): "
+                else:
+                    default_prompt = f"\nEnter path to video folder (e.g., videos/youtube_ABC123/): "
+                
+                video_folder = input(default_prompt).strip()
+                if not video_folder and video_folder_path:
+                    video_folder = video_folder_path
+                
+                command = ['python3', 'extract_video_headshots.py', celebrity_name, video_folder]
+                if run_command(command, f"Extract {celebrity_name} headshots from video"):
+                    last_step = 13
+                
+            elif choice == '14':
                 print("\nExiting StarMapr Pipeline Runner. Goodbye!")
                 sys.exit(0)
                 
             else:
-                print(f"\nInvalid choice: {choice}. Please enter a number between 1 and 13.")
+                print(f"\nInvalid choice: {choice}. Please enter a number between 1 and 14.")
                 
         except KeyboardInterrupt:
             print("\n\nExiting StarMapr Pipeline Runner. Goodbye!")

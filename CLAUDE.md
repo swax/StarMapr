@@ -12,7 +12,7 @@ The system follows a **sequential pipeline architecture** with five main stages 
 
 **Pipeline Flow**: Data Collection → Duplicate Removal → Data Cleaning → Face Consistency Validation → Embedding Generation → Face Detection
 
-The system consists of ten main components:
+The system consists of eleven main components:
 
 1. **run_pipeline.py** - Interactive pipeline runner for streamlined workflow execution
    - Provides numbered menu of all pipeline steps
@@ -60,18 +60,27 @@ The system consists of ten main components:
    - Supports format selection and quality control (default: best up to 1080p)
 
 9. **extract_video_frames.py** - Extracts frames from videos using binary search pattern
+   - Takes video folder path and automatically finds video file within folder
    - Uses binary search pattern to extract representative frames from videos
-   - Creates frames in a `frames/` subfolder next to the video file
+   - Creates frames in a `frames/` subfolder within the video folder
    - Allows specifying the number of frames to extract
    - Names frames with zero-padded frame numbers (e.g., `00000123.jpg`)
    - Skips existing frames to allow resuming interrupted extractions
 
 10. **extract_frame_faces.py** - Detects faces in extracted video frames
-    - Processes all frames in a directory to detect faces using DeepFace ArcFace
+    - Takes video folder path and automatically processes frames in `frames/` subfolder
+    - Processes all frames to detect faces using DeepFace ArcFace
     - Saves face detection data with bounding boxes and embeddings to pickle files
     - Creates `.pkl` files alongside each frame image with face metadata
     - Supports multiple faces per frame with individual face IDs
     - Enables face tracking and analysis across video sequences
+
+11. **extract_video_headshots.py** - Extracts celebrity headshots from video frames
+    - Takes celebrity name and video folder path as parameters
+    - Loads celebrity reference embeddings and scans frame face data
+    - Calculates cosine similarity between detected faces and reference celebrity
+    - Selects top 5 most similar faces and extracts cropped headshots
+    - Saves headshots with similarity scores and frame information
 
 ## Data Structure
 
@@ -85,6 +94,7 @@ The system consists of ten main components:
   - Each video folder contains the video file, metadata, and extracted frames
   - Example: `videos/youtube_ABC123/` contains video file and `frames/` subfolder
   - Frame data includes both image files and corresponding face detection pickle files
+  - Extracted headshots are saved in `headshots/` subfolder with similarity scores
 
 ## Dependencies Installation
 
@@ -174,20 +184,32 @@ python3 download_video.py --list-extractors
 
 #### Extract Frames from Video
 ```bash
-# Extract 50 frames using binary search pattern
-python3 extract_video_frames.py videos/youtube_ABC123/video_file.mp4 50
+# Extract 50 frames using binary search pattern (script finds video file automatically)
+python3 extract_video_frames.py videos/youtube_ABC123/ 50
 
 # Dry run to see what frames would be extracted
-python3 extract_video_frames.py videos/youtube_ABC123/video_file.mp4 50 --dry-run
+python3 extract_video_frames.py videos/youtube_ABC123/ 50 --dry-run
 ```
 
 #### Extract Faces from Video Frames
 ```bash
-# Process all frames in the frames directory
-python3 extract_frame_faces.py videos/youtube_ABC123/frames/
+# Process all frames (script automatically uses frames/ subfolder)
+python3 extract_frame_faces.py videos/youtube_ABC123/
 
 # Dry run to see what would be processed
-python3 extract_frame_faces.py videos/youtube_ABC123/frames/ --dry-run
+python3 extract_frame_faces.py videos/youtube_ABC123/ --dry-run
+```
+
+#### Extract Celebrity Headshots from Video
+```bash
+# Extract top 5 headshots for a celebrity from video frames
+python3 extract_video_headshots.py "Bill Murray" videos/youtube_ABC123/
+
+# Custom similarity threshold
+python3 extract_video_headshots.py "Bill Murray" videos/youtube_ABC123/ --threshold 0.7
+
+# Dry run to see what would be extracted
+python3 extract_video_headshots.py "Bill Murray" videos/youtube_ABC123/ --dry-run
 ```
 
 ## Dependencies
@@ -223,8 +245,9 @@ The complete pipeline follows this sequence. You can use the interactive pipelin
 
 ### Video Processing Pipeline
 1. **Download Video**: `python3 download_video.py "https://youtube.com/watch?v=VIDEO_ID"`
-2. **Extract Frames**: `python3 extract_video_frames.py videos/youtube_VIDEO_ID/video_file.mp4 50`
-3. **Extract Faces**: `python3 extract_frame_faces.py videos/youtube_VIDEO_ID/frames/`
+2. **Extract Frames**: `python3 extract_video_frames.py videos/youtube_VIDEO_ID/ 50`
+3. **Extract Faces**: `python3 extract_frame_faces.py videos/youtube_VIDEO_ID/`
+4. **Extract Celebrity Headshots**: `python3 extract_video_headshots.py "Celebrity Name" videos/youtube_VIDEO_ID/`
 
 
 ## Key Parameters
@@ -237,6 +260,7 @@ The complete pipeline follows this sequence. You can use the interactive pipelin
 - **Testing Face Count**: 4-10 faces required
 - **Duplicate Detection Threshold**: 5 Hamming distance (adjustable via --threshold)
 - **Face Outlier Detection Threshold**: 0.1 cosine similarity (adjustable via --threshold)
+- **Video Headshot Extraction**: Top 5 most similar faces with 10% padding around face region
 
 ## Architecture Notes
 

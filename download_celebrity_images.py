@@ -57,7 +57,7 @@ def download_celebrity_images(celebrity_name, num_images=10, mode='training', ap
     if mode == 'training':
         # Optimized for solo celebrity portraits
         search_params = {
-            'q': f'{celebrity_name} face portrait',
+            'q': f'{celebrity_name} face',
             'num': num_images,
             'fileType': 'jpg|jpeg|png',
             'safe': 'medium',
@@ -67,12 +67,12 @@ def download_celebrity_images(celebrity_name, num_images=10, mode='training', ap
     else:  # testing mode
         # Optimized for group photos containing the celebrity
         search_params = {
-            'q': f'{celebrity_name} group photo event',
+            'q': f'{celebrity_name} group',
             'num': num_images,
             'fileType': 'jpg|jpeg|png',
             'safe': 'medium',
             'imgType': 'photo',
-            'imgSize': 'medium'
+            'imgSize': 'large'
         }
     
     try:

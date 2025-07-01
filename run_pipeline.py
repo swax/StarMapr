@@ -36,7 +36,7 @@ def get_image_count(mode):
     Returns:
         int: Number of images to download
     """
-    default_count = 20 if mode == 'training' else 15
+    default_count = 15 if mode == 'training' else 30
     while True:
         try:
             count_input = input(f"Number of images to download for {mode} (default {default_count}): ").strip()

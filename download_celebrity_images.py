@@ -18,15 +18,18 @@ from utils import get_celebrity_folder_path, get_env_int, ensure_folder_exists, 
 load_dotenv()
 
 
-def download_celebrity_images(celebrity_name, num_images, mode='training', show=None, api_key=None, search_engine_id=None):
+def download_celebrity_images(celebrity_name, mode='training', show=None, page=1, api_key=None, search_engine_id=None):
     """
     Download celebrity images from Google Image Search
     
+    Downloads 10 general images and 10 show-specific images (20 total per page).
+    Increasing page number pulls the next 20 images for more training data.
+    
     Args:
         celebrity_name (str): Name of the celebrity to search for
-        num_images (int): Number of images to download
         mode (str): 'training' for solo portraits or 'testing' for group photos
-        show (str): Optional show name to include in search. If provided, splits downloads between normal and show-specific queries
+        show (str): Show name to include in search for targeted results
+        page (int): Page number for pagination (default: 1)
         api_key (str): Google Custom Search API key
         search_engine_id (str): Google Custom Search Engine ID
     """
@@ -55,12 +58,13 @@ def download_celebrity_images(celebrity_name, num_images, mode='training', show=
     download_path = get_celebrity_folder_path(celebrity_name, mode)
     ensure_folder_exists(download_path)
     
-    def create_search_params(query, num_imgs):
+    def create_search_params(query, num_imgs, start_index):
         """Create search parameters based on mode"""
         if mode == 'training':
             return {
                 'q': query,
                 'num': num_imgs,
+                'start': start_index,
                 'fileType': 'jpg|jpeg|png',
                 'safe': 'medium',
                 'imgType': 'face',
@@ -70,6 +74,7 @@ def download_celebrity_images(celebrity_name, num_images, mode='training', show=
             return {
                 'q': query,
                 'num': num_imgs,
+                'start': start_index,
                 'fileType': 'jpg|jpeg|png',
                 'safe': 'medium',
                 'imgType': 'photo',
@@ -77,37 +82,38 @@ def download_celebrity_images(celebrity_name, num_images, mode='training', show=
             }
     
     query_suffix = 'face' if mode == 'training' else 'group'
-
-    # Determine search queries and image counts
-    if show:
-        # Split downloads between normal and show-specific queries
-        normal_images = num_images // 2
-        show_images = num_images - normal_images
-        
-        searches = []
-        searches.append((f'{celebrity_name} {query_suffix}', normal_images, 'normal'))
-        searches.append((f'{celebrity_name} {show} {query_suffix}', show_images, f'show-specific ({show})'))
-        
-        print(f"Downloading {normal_images} normal and {show_images} show-specific images for '{celebrity_name}'...")
-    else:
-        # Single search without show parameter
-        searches = [(f'{celebrity_name} {query_suffix}', num_images, 'normal')]
-        print(f"Searching for {num_images} images of '{celebrity_name}'...")
+    
+    # Always download 10 general + 10 show-specific images (20 total)
+    images_per_search = 10
+    
+    # Calculate start index for pagination (each page = 20 images total)
+    start_index = (page - 1) * images_per_search + 1
+    
+    # Create search queries
+    searches = []
+    searches.append((f'{celebrity_name} {query_suffix}', images_per_search, start_index, 'general'))
+    searches.append((f'{celebrity_name} {show} {query_suffix}', images_per_search, start_index, f'show-specific ({show})'))
+    
+    print(f"Downloading page {page} images for '{celebrity_name}' (10 general + 10 {show}-specific = 20 total)...")
+    
+    # Get initial file count to track new downloads
+    initial_files = set(os.listdir(download_path))
     
     try:
         # Perform searches and downloads
-        for query, num_imgs, search_type in searches:
-            if len(searches) > 1:
-                print(f"  Downloading {num_imgs} {search_type} images...")
-            search_params = create_search_params(query, num_imgs)
+        for query, num_imgs, start_idx, search_type in searches:
+            print(f"  Downloading {num_imgs} {search_type} images...")
+            search_params = create_search_params(query, num_imgs, start_idx)
             gis.search(search_params=search_params, path_to_dir=download_path)
         
-        # Get downloaded files and rename them with GUID prefixes
-        downloaded_files = [f for f in os.listdir(download_path)]
+        # Get all files after download and identify newly downloaded ones
+        all_files = set(os.listdir(download_path))
+        newly_downloaded_files = list(all_files - initial_files)
+        print(f"Actually downloaded {len(newly_downloaded_files)} new files")
         
-        # Rename files using first 8 characters of GUID
+        # Rename only newly downloaded files using first 8 characters of GUID
         renamed_count = 0
-        for filename in sorted(downloaded_files):
+        for filename in sorted(newly_downloaded_files):
             old_path = os.path.join(download_path, filename)
             # Get file extension
             ext = os.path.splitext(filename)[1].lower()
@@ -125,7 +131,7 @@ def download_celebrity_images(celebrity_name, num_images, mode='training', show=
         
         print(f"Renamed {renamed_count} files with GUID-based names")
 
-        print_summary(f"Successfully downloaded {len(downloaded_files)} images for '{celebrity_name}' - Images saved to: {download_path}")
+        print_summary(f"Successfully downloaded {len(newly_downloaded_files)} new images for '{celebrity_name}' - Images saved to: {download_path}")
         
         return True
         
@@ -142,8 +148,6 @@ def main():
     parser.add_argument('celebrity_name', 
                        help='Name of the celebrity (e.g., "Bill Murray")')
     
-    parser.add_argument('num_images', type=int, nargs='?',
-                       help='Number of images to download (default: from TRAINING_IMAGE_COUNT/TESTING_IMAGE_COUNT env vars)')
     
     # Mutually exclusive group for mode selection
     mode_group = parser.add_mutually_exclusive_group(required=True)
@@ -158,27 +162,21 @@ def main():
     parser.add_argument('--search-engine-id', 
                        help='Google Custom Search Engine ID (or set GOOGLE_SEARCH_ENGINE_ID env var)')
     
-    parser.add_argument('--show', 
-                       help='Optional show name to include in search. Downloads half normal images, half show-specific')
+    parser.add_argument('--show', required=True,
+                       help='Show name to include in search. Downloads 10 general + 10 show-specific images (20 total)')
+    
+    parser.add_argument('--page', type=int, default=1,
+                       help='Page number for pagination (default: 1). Each page downloads 20 images.')
     
     args = parser.parse_args()
     
-    # Get default image count if not provided
-    num_images = args.num_images
-    if num_images is None:
-        mode = 'training' if args.training else 'testing'
-        if mode == 'training':
-            num_images = get_env_int('TRAINING_IMAGE_COUNT', 20)
-        else:
-            num_images = get_env_int('TESTING_IMAGE_COUNT', 30)
-    
     # Validate input
-    if num_images <= 0:
-        print_error("Number of images must be positive")
+    if args.page <= 0:
+        print_error("Page number must be positive")
         sys.exit(1)
     
-    if num_images > 100:
-        print("Warning: Large number of images requested. Google API has daily limits.")
+    if args.page > 10:
+        print("Warning: High page number requested. Google API has daily limits.")
     
     # Determine mode from arguments
     mode = 'training' if args.training else 'testing'
@@ -186,9 +184,9 @@ def main():
     # Download images
     success = download_celebrity_images(
         celebrity_name=args.celebrity_name,
-        num_images=num_images,
         mode=mode,
         show=args.show,
+        page=args.page,
         api_key=args.api_key,
         search_engine_id=args.search_engine_id
     )

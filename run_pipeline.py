@@ -11,7 +11,7 @@ import sys
 import subprocess
 from pathlib import Path
 from dotenv import load_dotenv
-from utils import get_celebrity_folder_name, get_env_int
+from utils import get_celebrity_folder_name
 
 # Load environment variables
 load_dotenv()
@@ -45,32 +45,24 @@ def get_show_name():
     return show if show else None
 
 
-def get_image_count(mode):
+def get_page_number():
     """
-    Get number of images to download for the given mode.
+    Get page number for image download.
     
-    Args:
-        mode (str): 'training' or 'testing'
-        
     Returns:
-        int or None: Number of images to download, or None to use .env default
+        int: Page number (defaults to 1 if no input)
     """
-    if mode == 'training':
-        env_default = get_env_int('TRAINING_IMAGE_COUNT', 20)
-    else:
-        env_default = get_env_int('TESTING_IMAGE_COUNT', 30)
-    
     while True:
         try:
-            count_input = input(f"Number of images to download for {mode} (press Enter for default {env_default}): ").strip()
-            if not count_input:
-                return None  # Use .env default
-            count = int(count_input)
-            if count > 0:
-                return count
-            print("Please enter a positive number.")
+            page_input = input("Page number to download (press Enter for page 1): ").strip()
+            if not page_input:
+                return 1  # Default to page 1
+            page = int(page_input)
+            if page > 0:
+                return page
+            print("Please enter a positive page number.")
         except ValueError:
-            print("Please enter a valid number.")
+            print("Please enter a valid page number.")
 
 
 def display_menu(celebrity_name):
@@ -98,7 +90,7 @@ def display_menu(celebrity_name):
     print("8. Remove bad testing images (keep 4-10 faces)")
     print("9. Detect faces in test images")
     print()
-    print("VIDEO PROCESSING PIPELINE:")
+    print("OPERATIONS PIPELINE:")
     print("10. Download video from URL")
     print("11. Extract frames from video")
     print("12. Extract faces from video frames")
@@ -152,9 +144,7 @@ def main():
     show_name = get_show_name()
     celebrity_folder = get_celebrity_folder_name(celebrity_name)
     
-    # Track image counts for download steps
-    training_count = None
-    testing_count = None
+    # Track page numbers for download steps
     # Track video folder path for video processing steps
     video_folder_path = None
     # Track last step number for sequential execution
@@ -178,15 +168,10 @@ def main():
             
             if choice == '1':
                 # Download training images
-                if training_count is None:
-                    training_count = get_image_count('training')
-                if training_count is None:
-                    command = ['python3', 'download_celebrity_images.py', celebrity_name, '--training']
-                else:
-                    command = ['python3', 'download_celebrity_images.py', celebrity_name, str(training_count), '--training']
-                # Add show parameter if provided
-                if show_name:
-                    command.extend(['--show', show_name])
+                training_page = get_page_number()
+                command = ['python3', 'download_celebrity_images.py', celebrity_name, '--training', '--show', show_name]
+                if training_page != 1:
+                    command.extend(['--page', str(training_page)])
                 if run_command(command, "Download training images"):
                     last_step = 1
                 
@@ -216,15 +201,10 @@ def main():
                 
             elif choice == '6':
                 # Download testing images
-                if testing_count is None:
-                    testing_count = get_image_count('testing')
-                if testing_count is None:
-                    command = ['python3', 'download_celebrity_images.py', celebrity_name, '--testing']
-                else:
-                    command = ['python3', 'download_celebrity_images.py', celebrity_name, str(testing_count), '--testing']
-                # Add show parameter if provided
-                if show_name:
-                    command.extend(['--show', show_name])
+                testing_page = get_page_number()
+                command = ['python3', 'download_celebrity_images.py', celebrity_name, '--testing', '--show', show_name]
+                if testing_page != 1:
+                    command.extend(['--page', str(testing_page)])
                 if run_command(command, "Download testing images"):
                     last_step = 6
                 

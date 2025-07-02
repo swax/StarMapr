@@ -145,8 +145,6 @@ def get_default_thresholds():
         'training_outlier': get_env_float('TRAINING_OUTLIER_THRESHOLD', 0.1),
         'testing_detection': get_env_float('TESTING_DETECTION_THRESHOLD', 0.6),
         'headshot_match': get_env_float('OPERATIONS_HEADSHOT_MATCH_THRESHOLD', 0.6),
-        'training_image_count': get_env_int('TRAINING_IMAGE_COUNT', 20),
-        'testing_image_count': get_env_int('TESTING_IMAGE_COUNT', 30),
         'extract_frame_count': get_env_int('OPERATIONS_EXTRACT_FRAME_COUNT', 50)
     }
 

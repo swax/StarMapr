@@ -21,7 +21,7 @@ import subprocess
 import json
 from pathlib import Path
 from urllib.parse import urlparse
-from utilities import print_error, print_summary
+from utils import print_error, print_summary
 
 
 def extract_site_and_id(url):

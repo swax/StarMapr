@@ -8,7 +8,8 @@ import shutil
 import cv2
 import numpy as np
 from collections import defaultdict
-from utilities import print_error, print_summary
+from utils import add_training_testing_args, get_mode_and_path_from_args, print_dry_run_header, print_dry_run_summary, get_supported_image_extensions, print_error, print_summary
+from utils_deepface import get_face_embeddings
 
 def count_faces_in_image(image_path):
     """
@@ -20,13 +21,8 @@ def count_faces_in_image(image_path):
     Returns:
         int: Number of faces detected, -1 if error occurred
     """
-    try:
-        # Use DeepFace to detect faces (enforce_detection=False to avoid exceptions)
-        face_analysis = DeepFace.represent(str(image_path), model_name='ArcFace', enforce_detection=False)
-        return len(face_analysis) if face_analysis else 0
-    except Exception as e:
-        print_error(f"Error processing {image_path.name}: {e}")
-        return -1
+    face_analysis = get_face_embeddings(image_path, enforce_detection=False)
+    return len(face_analysis) if face_analysis else -1
 
 def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
     """
@@ -47,7 +43,7 @@ def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
     bad_folder = folder_path / "bad"
     
     # Get all files (excluding those already in bad folder and subdirectories)
-    image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'}
+    image_extensions = get_supported_image_extensions()
     all_files = [f for f in folder_path.iterdir() 
                  if f.is_file() and not f.name.startswith('.')]
     
@@ -63,7 +59,7 @@ def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
     print(f"  - {len(image_files)} supported image files")
     print(f"  - {len(unsupported_files)} unsupported format files")
     if dry_run:
-        print("DRY RUN MODE - No files will be moved")
+        print_dry_run_header("No files will be moved")
     print()
     
     images_to_move = []
@@ -76,7 +72,7 @@ def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
         required_faces = 1
         face_description = "exactly 1 face"
     else:  # testing mode
-        min_faces, max_faces = 4, 10
+        min_faces, max_faces = 3, 10
         face_description = f"{min_faces}-{max_faces} faces"
     
     for img_file in image_files:
@@ -160,7 +156,7 @@ def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
         print_summary(f"Successfully moved {moved_count}/{len(all_files_to_move)} files to bad folder")
     
     elif all_files_to_move and dry_run:
-        print(f"\nDRY RUN: Would move {len(all_files_to_move)} files to bad folder")
+        print_dry_run_summary(len(all_files_to_move), "move files to bad folder")
     
     if not all_files_to_move:
         print_summary(f"No files need to be moved - all supported images meet the {face_description} requirement!")
@@ -168,12 +164,8 @@ def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
 def main():
     parser = argparse.ArgumentParser(description='Move images that do not meet face count requirements to a bad subfolder')
     
-    # Mutually exclusive group for mode selection
-    mode_group = parser.add_mutually_exclusive_group(required=True)
-    mode_group.add_argument('--training', metavar='CELEBRITY_NAME',
-                           help='Remove bad images from training/CELEBRITY_NAME/ folder (expects exactly 1 face)')
-    mode_group.add_argument('--testing', metavar='CELEBRITY_NAME', 
-                           help='Remove bad images from testing/CELEBRITY_NAME/ folder (expects 4-10 faces)')
+    # Add standard training/testing arguments
+    add_training_testing_args(parser)
     
     parser.add_argument('--dry-run', action='store_true', 
                        help='Show what would be moved without actually moving files')
@@ -181,14 +173,7 @@ def main():
     args = parser.parse_args()
     
     # Determine celebrity folder path and mode based on arguments
-    if args.training:
-        celebrity_name = args.training.lower().replace(' ', '_')
-        celebrity_folder_path = f'training/{celebrity_name}/'
-        mode = 'training'
-    else:  # args.testing
-        celebrity_name = args.testing.lower().replace(' ', '_')
-        celebrity_folder_path = f'testing/{celebrity_name}/'
-        mode = 'testing'
+    mode, celebrity_name, celebrity_folder_path = get_mode_and_path_from_args(args)
     
     try:
         remove_bad_images(celebrity_folder_path, mode, args.dry_run)

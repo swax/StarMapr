@@ -12,7 +12,7 @@ import sys
 import uuid
 from google_images_search import GoogleImagesSearch
 from dotenv import load_dotenv
-from utilities import print_error, print_summary
+from utils import get_celebrity_folder_path, get_env_int, ensure_folder_exists, print_error, print_summary
 
 # Load environment variables from .env file
 load_dotenv()
@@ -51,9 +51,8 @@ def download_celebrity_images(celebrity_name, num_images, mode='training', api_k
         return False
     
     # Create celebrity directory based on mode
-    celebrity_folder = celebrity_name.lower().replace(' ', '_')
-    download_path = f'./{mode}/{celebrity_folder}/'
-    os.makedirs(download_path, exist_ok=True)
+    download_path = get_celebrity_folder_path(celebrity_name, mode)
+    ensure_folder_exists(download_path)
     
     # Search parameters based on mode
     if mode == 'training':
@@ -83,8 +82,7 @@ def download_celebrity_images(celebrity_name, num_images, mode='training', api_k
         gis.search(search_params=search_params, path_to_dir=download_path)
         
         # Get downloaded files and rename them with GUID prefixes
-        downloaded_files = [f for f in os.listdir(download_path) 
-                          if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+        downloaded_files = [f for f in os.listdir(download_path)]
         
         # Rename files using first 8 characters of GUID
         renamed_count = 0
@@ -144,9 +142,9 @@ def main():
     if num_images is None:
         mode = 'training' if args.training else 'testing'
         if mode == 'training':
-            num_images = int(os.getenv('TRAINING_IMAGE_COUNT', 20))
+            num_images = get_env_int('TRAINING_IMAGE_COUNT', 20)
         else:
-            num_images = int(os.getenv('TESTING_IMAGE_COUNT', 30))
+            num_images = get_env_int('TESTING_IMAGE_COUNT', 30)
     
     # Validate input
     if num_images <= 0:

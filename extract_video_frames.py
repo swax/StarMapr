@@ -5,7 +5,7 @@ import os
 import argparse
 from pathlib import Path
 from dotenv import load_dotenv
-from utilities import print_error, print_summary
+from utils import get_env_int, print_dry_run_header, print_error, print_summary
 
 # Load environment variables
 load_dotenv()
@@ -103,7 +103,7 @@ def main():
     parser.add_argument('folder_path', help='Path to folder containing video file')
     
     # Get default frame count from environment variable
-    default_frame_count = int(os.getenv('OPERATIONS_EXTRACT_FRAME_COUNT', 50))
+    default_frame_count = get_env_int('OPERATIONS_EXTRACT_FRAME_COUNT', 50)
     parser.add_argument('num_frames', type=int, nargs='?', default=default_frame_count,
                        help=f'Number of frames to extract (default: {default_frame_count})')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be done without actually doing it')
@@ -137,7 +137,7 @@ def main():
     print(f"Frames will be saved to: {frames_dir}")
     
     if args.dry_run:
-        print("Dry run - no files will be created")
+        print_dry_run_header("no files will be created")
         return 0
     
     # Create frames directory

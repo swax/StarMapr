@@ -4,7 +4,6 @@ import sys
 import argparse
 import numpy as np
 import pickle
-from deepface import DeepFace
 from pathlib import Path
 import cv2
 from sklearn.metrics.pairwise import cosine_similarity
@@ -44,7 +43,7 @@ def detect_and_compare_faces(image_path, reference_embedding, threshold=0.6):
         similarity = calculate_face_similarity(face_embedding, reference_embedding)
         
         if similarity >= threshold:
-            face_region = face_data['facial_area']
+            face_region = face_data['bounding_box']
             matches.append((face_region, similarity, i))
     
     return matches

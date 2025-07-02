@@ -4,7 +4,6 @@ import sys
 import argparse
 import numpy as np
 import pickle
-from deepface import DeepFace
 from pathlib import Path
 from utils import get_celebrity_folder_path, get_celebrity_folder_name, get_image_files, save_pickle, print_error, print_summary
 from utils_deepface import get_face_embeddings

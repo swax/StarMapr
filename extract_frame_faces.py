@@ -1,48 +1,10 @@
 #!/usr/bin/env python3
 
-import os
 import argparse
-import pickle
 from pathlib import Path
-from deepface import DeepFace
-from utils import save_pickle, get_image_files, print_dry_run_header, print_error, print_summary
+from utils import get_image_files, print_dry_run_header, print_error, print_summary
 from utils_deepface import get_face_embeddings
 
-def detect_faces_in_frame(frame_path):
-    """Detect all faces in a frame and return face data with bounding boxes"""
-    # Use DeepFace to detect faces and get facial areas
-    face_analysis = get_face_embeddings(frame_path, enforce_detection=False)
-    
-    if not face_analysis:
-        return []
-    
-    faces_data = []
-    for i, face_data in enumerate(face_analysis):
-        face_region = face_data['facial_area']
-        faces_data.append({
-            'face_id': i + 1,
-            'bounding_box': {
-                'x': face_region['x'],
-                'y': face_region['y'],
-                'w': face_region['w'],
-                'h': face_region['h']
-            },
-            'embedding': face_data['embedding']
-        })
-    
-    return faces_data
-
-def save_face_data(frame_path, faces_data):
-    """Save face detection data to pickle file alongside frame"""
-    pkl_path = frame_path.with_suffix('.pkl')
-    
-    frame_data = {
-        'frame_file': frame_path.name,
-        'total_faces': len(faces_data),
-        'faces': faces_data
-    }
-    
-    return save_pickle(frame_data, pkl_path)
 
 def main():
     parser = argparse.ArgumentParser(description='Detect faces in extracted frames and save bounding box data')
@@ -95,7 +57,7 @@ def main():
     for img_file in image_files:
         pkl_path = img_file.with_suffix('.pkl')
         
-        # Skip if face data already exists
+        # Check if face data already exists (caching is now handled in the utility function)
         if pkl_path.exists():
             print(f"Skipping {img_file.name} - face data already exists")
             skipped_count += 1
@@ -104,17 +66,13 @@ def main():
         print(f"Processing {img_file.name}...")
         
         try:
-            # Detect faces
-            faces_data = detect_faces_in_frame(img_file)
+            # Detect faces (automatically handles caching)
+            faces_data = get_face_embeddings(img_file, enforce_detection=False)
             
-            # Save face data
-            if save_face_data(img_file, faces_data):
-                face_count = len(faces_data)
-                total_faces += face_count
-                processed_count += 1
-                print(f"  → Detected {face_count} faces -> {pkl_path.name}")
-            else:
-                print(f"  → Failed to save face data")
+            face_count = len(faces_data)
+            total_faces += face_count
+            processed_count += 1
+            print(f"  → Detected {face_count} faces -> {pkl_path.name}")
                 
         except Exception as e:
             print_error(f"Error processing {img_file.name}: {str(e)}")

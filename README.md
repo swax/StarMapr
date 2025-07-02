@@ -99,7 +99,7 @@ python3 remove_bad_training_images.py --testing "Bill Murray"
 python3 eval_star_detection.py "Bill Murray"
 ```
 
-#### Video Processing Pipeline
+#### Operations Pipeline
 ```bash
 # 1. Download video from supported platforms
 python3 download_video.py "https://www.youtube.com/watch?v=-_X904_TZnc"
@@ -134,7 +134,9 @@ StarMapr/
 ├── remove_bad_training_images.py # Image quality cleaner
 ├── remove_face_outliers.py      # Face consistency validator
 ├── compute_average_embeddings.py # Embedding generator
-└── eval_star_detection.py      # Face detection and matching
+├── eval_star_detection.py      # Face detection and matching
+├── utils.py                     # Common utility functions and helpers
+└── utils_deepface.py           # DeepFace-specific utilities with caching
 ```
 
 ## Core Components

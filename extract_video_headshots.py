@@ -9,39 +9,33 @@ import cv2
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
-from utilities import print_error, print_summary
+from utils import get_celebrity_folder_name, load_pickle, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity
 
 # Load environment variables
 load_dotenv()
 
 def load_celebrity_embedding(celebrity_name):
     """Load the precomputed average embedding for a celebrity."""
-    try:
-        # Convert celebrity name to folder format
-        celeb_folder = celebrity_name.lower().replace(' ', '_')
-        embedding_path = Path(f"training/{celeb_folder}/{celeb_folder}_average_embedding.pkl")
-        
-        if not embedding_path.exists():
-            raise FileNotFoundError(f"Celebrity embedding file not found: {embedding_path}")
-        
-        with open(embedding_path, 'rb') as f:
-            embedding = pickle.load(f)
-        
-        print(f"Loaded celebrity embedding for '{celebrity_name}' with shape: {embedding.shape}")
-        return embedding
-        
-    except Exception as e:
-        raise ValueError(f"Error loading celebrity embedding: {e}")
+    # Convert celebrity name to folder format
+    celeb_folder = get_celebrity_folder_name(celebrity_name)
+    embedding_path = Path(f"training/{celeb_folder}/{celeb_folder}_average_embedding.pkl")
+    
+    if not embedding_path.exists():
+        raise FileNotFoundError(f"Celebrity embedding file not found: {embedding_path}")
+    
+    embedding = load_pickle(embedding_path)
+    if embedding is None:
+        raise ValueError(f"Error loading celebrity embedding from: {embedding_path}")
+    
+    print(f"Loaded celebrity embedding for '{celebrity_name}' with shape: {embedding.shape}")
+    return embedding
 
 def load_frame_face_data(pkl_path):
     """Load face data from a frame pickle file."""
-    try:
-        with open(pkl_path, 'rb') as f:
-            frame_data = pickle.load(f)
-        return frame_data
-    except Exception as e:
-        print_error(f"Error loading face data from {pkl_path}: {e}")
-        return None
+    frame_data = load_pickle(pkl_path)
+    if frame_data is None:
+        print_error(f"Error loading face data from {pkl_path}")
+    return frame_data
 
 def calculate_face_similarities(frames_dir, reference_embedding, threshold=0.6):
     """
@@ -77,12 +71,9 @@ def calculate_face_similarities(frames_dir, reference_embedding, threshold=0.6):
         
         for face in faces:
             try:
-                # Get face embedding
-                face_embedding = np.array(face['embedding']).reshape(1, -1)
-                reference_embedding_reshaped = reference_embedding.reshape(1, -1)
-                
-                # Calculate cosine similarity
-                similarity = cosine_similarity(face_embedding, reference_embedding_reshaped)[0][0]
+                # Get face embedding and calculate similarity
+                face_embedding = face['embedding']
+                similarity = calculate_face_similarity(face_embedding, reference_embedding)
                 
                 if similarity >= threshold:
                     matches.append((similarity, frame_file, face, pkl_path))
@@ -204,7 +195,7 @@ def main():
     parser.add_argument('celebrity_name', help='Celebrity name (e.g., "Bill Murray")')
     parser.add_argument('video_folder_path', help='Path to video folder containing frames/ subdirectory')
     # Get default threshold from environment variable
-    default_threshold = float(os.getenv('OPERATIONS_HEADSHOT_MATCH_THRESHOLD', 0.6))
+    default_threshold = get_env_float('OPERATIONS_HEADSHOT_MATCH_THRESHOLD', 0.6)
     parser.add_argument('--threshold', '-t', type=float, default=default_threshold,
                        help=f'Similarity threshold for face matching (default: {default_threshold})')
     parser.add_argument('--dry-run', action='store_true',
@@ -218,7 +209,8 @@ def main():
         print(f"Similarity threshold: {args.threshold}")
         
         if args.dry_run:
-            print("DRY RUN - No files will be created\n")
+            print_dry_run_header("No files will be created")
+            print()
         
         extract_top_headshots(
             args.celebrity_name,

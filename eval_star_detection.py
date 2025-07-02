@@ -9,20 +9,19 @@ from pathlib import Path
 import cv2
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
-from utilities import print_error, print_summary
+from utils import get_celebrity_folder_path, get_celebrity_folder_name, get_image_files, load_pickle, get_env_float, print_error, print_summary, calculate_face_similarity
+from utils_deepface import get_face_embeddings
 
 # Load environment variables
 load_dotenv()
 
 def load_embedding(embedding_path):
     """Load the precomputed average embedding from pickle file."""
-    try:
-        with open(embedding_path, 'rb') as f:
-            embedding = pickle.load(f)
-        print(f"Loaded embedding with shape: {embedding.shape}")
-        return embedding
-    except Exception as e:
-        raise ValueError(f"Error loading embedding file: {e}")
+    embedding = load_pickle(embedding_path)
+    if embedding is None:
+        raise ValueError(f"Error loading embedding file: {embedding_path}")
+    print(f"Loaded embedding with shape: {embedding.shape}")
+    return embedding
 
 def detect_and_compare_faces(image_path, reference_embedding, threshold=0.6):
     """
@@ -31,30 +30,24 @@ def detect_and_compare_faces(image_path, reference_embedding, threshold=0.6):
     Returns:
         list: List of tuples (face_region, similarity_score) for matches above threshold
     """
-    try:
-        # Detect faces and get their embeddings
-        face_analysis = DeepFace.represent(str(image_path), model_name='ArcFace', enforce_detection=False)
-        
-        if not face_analysis:
-            return []
-        
-        matches = []
-        for i, face_data in enumerate(face_analysis):
-            face_embedding = np.array(face_data['embedding']).reshape(1, -1)
-            reference_embedding_reshaped = reference_embedding.reshape(1, -1)
-            
-            # Calculate cosine similarity
-            similarity = cosine_similarity(face_embedding, reference_embedding_reshaped)[0][0]
-            
-            if similarity >= threshold:
-                face_region = face_data['facial_area']
-                matches.append((face_region, similarity, i))
-        
-        return matches
-        
-    except Exception as e:
-        print_error(f"Error processing {image_path.name}: {e}")
+    # Detect faces and get their embeddings
+    face_analysis = get_face_embeddings(image_path, enforce_detection=False)
+    
+    if not face_analysis:
         return []
+        
+    matches = []
+    for i, face_data in enumerate(face_analysis):
+        face_embedding = face_data['embedding']
+        
+        # Calculate cosine similarity
+        similarity = calculate_face_similarity(face_embedding, reference_embedding)
+        
+        if similarity >= threshold:
+            face_region = face_data['facial_area']
+            matches.append((face_region, similarity, i))
+    
+    return matches
 
 def extract_face_crop(image_path, face_region, output_path):
     """Extract and save face crop from image."""
@@ -93,9 +86,7 @@ def process_images(images_folder, embedding_path, threshold=0.6, output_folder="
     output_path.mkdir(exist_ok=True)
     
     # Get all image files
-    image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'}
-    image_files = [f for f in images_folder.iterdir() 
-                   if f.is_file() and f.suffix.lower() in image_extensions]
+    image_files = get_image_files(images_folder, exclude_subdirs=True)
     
     if not image_files:
         print(f"No image files found in {images_folder}")
@@ -144,7 +135,7 @@ def main():
     parser = argparse.ArgumentParser(description='Detect star faces in images using precomputed embeddings')
     parser.add_argument('celebrity_name', help='Celebrity name (e.g., "Bill Murray")')
     # Get default threshold from environment variable
-    default_threshold = float(os.getenv('TESTING_DETECTION_THRESHOLD', 0.6))
+    default_threshold = get_env_float('TESTING_DETECTION_THRESHOLD', 0.6)
     parser.add_argument('--threshold', '-t', type=float, default=default_threshold,
                        help=f'Similarity threshold for face matching (default: {default_threshold})')
     parser.add_argument('--output', '-o', default='detected_headshots',
@@ -154,10 +145,10 @@ def main():
     
     try:
         # Convert celebrity name to folder format (lowercase, spaces to underscores)
-        celeb_folder = args.celebrity_name.lower().replace(' ', '_')
+        celeb_folder = get_celebrity_folder_name(args.celebrity_name)
         
         # Construct paths automatically
-        images_folder = f"testing/{celeb_folder}/"
+        images_folder = get_celebrity_folder_path(args.celebrity_name, 'testing')
         embedding_file = f"training/{celeb_folder}/{celeb_folder}_average_embedding.pkl"
         
         # Verify paths exist

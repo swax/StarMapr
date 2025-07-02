@@ -5,36 +5,32 @@ import argparse
 import pickle
 from pathlib import Path
 from deepface import DeepFace
-from utilities import print_error, print_summary
+from utils import save_pickle, get_image_files, print_dry_run_header, print_error, print_summary
+from utils_deepface import get_face_embeddings
 
 def detect_faces_in_frame(frame_path):
     """Detect all faces in a frame and return face data with bounding boxes"""
-    try:
-        # Use DeepFace to detect faces and get facial areas
-        face_analysis = DeepFace.represent(str(frame_path), model_name='ArcFace', enforce_detection=False)
-        
-        if not face_analysis:
-            return []
-        
-        faces_data = []
-        for i, face_data in enumerate(face_analysis):
-            face_region = face_data['facial_area']
-            faces_data.append({
-                'face_id': i + 1,
-                'bounding_box': {
-                    'x': face_region['x'],
-                    'y': face_region['y'],
-                    'w': face_region['w'],
-                    'h': face_region['h']
-                },
-                'embedding': face_data['embedding']
-            })
-        
-        return faces_data
-        
-    except Exception as e:
-        print_error(f"Error detecting faces in {frame_path}: {str(e)}")
+    # Use DeepFace to detect faces and get facial areas
+    face_analysis = get_face_embeddings(frame_path, enforce_detection=False)
+    
+    if not face_analysis:
         return []
+    
+    faces_data = []
+    for i, face_data in enumerate(face_analysis):
+        face_region = face_data['facial_area']
+        faces_data.append({
+            'face_id': i + 1,
+            'bounding_box': {
+                'x': face_region['x'],
+                'y': face_region['y'],
+                'w': face_region['w'],
+                'h': face_region['h']
+            },
+            'embedding': face_data['embedding']
+        })
+    
+    return faces_data
 
 def save_face_data(frame_path, faces_data):
     """Save face detection data to pickle file alongside frame"""
@@ -46,13 +42,7 @@ def save_face_data(frame_path, faces_data):
         'faces': faces_data
     }
     
-    try:
-        with open(pkl_path, 'wb') as f:
-            pickle.dump(frame_data, f)
-        return True
-    except Exception as e:
-        print_error(f"Error saving face data to {pkl_path}: {str(e)}")
-        return False
+    return save_pickle(frame_data, pkl_path)
 
 def main():
     parser = argparse.ArgumentParser(description='Detect faces in extracted frames and save bounding box data')
@@ -77,9 +67,7 @@ def main():
         return 1
     
     # Get all image files
-    image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'}
-    image_files = [f for f in frames_dir.iterdir() 
-                   if f.is_file() and f.suffix.lower() in image_extensions]
+    image_files = get_image_files(frames_dir, exclude_subdirs=True)
     
     if not image_files:
         print_error(f"No image files found in {frames_dir}")
@@ -92,7 +80,7 @@ def main():
     print(f"Face data will be saved to: {frames_dir}")
     
     if args.dry_run:
-        print("Dry run - no files will be created")
+        print_dry_run_header("no files will be created")
         for img_file in image_files:
             pkl_path = img_file.with_suffix('.pkl')
             status = "EXISTS" if pkl_path.exists() else "WOULD CREATE"

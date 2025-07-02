@@ -11,6 +11,7 @@ import sys
 import subprocess
 from pathlib import Path
 from dotenv import load_dotenv
+from utils import get_celebrity_folder_name, get_env_int
 
 # Load environment variables
 load_dotenv()
@@ -44,9 +45,9 @@ def get_image_count(mode):
         int or None: Number of images to download, or None to use .env default
     """
     if mode == 'training':
-        env_default = int(os.getenv('TRAINING_IMAGE_COUNT', 20))
+        env_default = get_env_int('TRAINING_IMAGE_COUNT', 20)
     else:
-        env_default = int(os.getenv('TESTING_IMAGE_COUNT', 30))
+        env_default = get_env_int('TESTING_IMAGE_COUNT', 30)
     
     while True:
         try:
@@ -68,7 +69,7 @@ def display_menu(celebrity_name):
     Args:
         celebrity_name (str): Name of the celebrity
     """
-    celebrity_folder = celebrity_name.lower().replace(' ', '_')
+    celebrity_folder = get_celebrity_folder_name(celebrity_name)
     
     print(f"\n=== StarMapr Pipeline for '{celebrity_name}' ===")
     print("Select a step to run:")
@@ -130,7 +131,7 @@ def main():
     
     # Get celebrity name
     celebrity_name = get_celebrity_name()
-    celebrity_folder = celebrity_name.lower().replace(' ', '_')
+    celebrity_folder = get_celebrity_folder_name(celebrity_name)
     
     # Track image counts for download steps
     training_count = None

@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 from collections import defaultdict
 from dotenv import load_dotenv
-from utilities import print_error, print_summary
+from utils import add_training_testing_args, get_mode_and_path_from_args, get_image_files, get_env_int, print_dry_run_header, print_dry_run_summary, print_error, print_summary
 
 # Load environment variables
 load_dotenv()
@@ -140,9 +140,7 @@ def remove_duplicate_images(celebrity_folder_path, similarity_threshold=5, dry_r
     duplicates_folder = folder_path / "duplicates"
     
     # Get all image files (excluding those already in duplicates folder)
-    image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'}
-    image_files = [f for f in folder_path.iterdir() 
-                   if f.is_file() and f.suffix.lower() in image_extensions]
+    image_files = get_image_files(folder_path, exclude_subdirs=True)
     
     if not image_files:
         print_error(f"No image files found in {folder_path}")
@@ -150,7 +148,7 @@ def remove_duplicate_images(celebrity_folder_path, similarity_threshold=5, dry_r
     
     print(f"Found {len(image_files)} images in {folder_path}")
     if dry_run:
-        print("DRY RUN MODE - No files will be moved")
+        print_dry_run_header("No files will be moved")
     print(f"Using similarity threshold: {similarity_threshold} (lower = more strict)")
     print()
     
@@ -212,20 +210,16 @@ def remove_duplicate_images(celebrity_folder_path, similarity_threshold=5, dry_r
         print_summary(f"Successfully moved {moved_count}/{len(images_to_move)} duplicate images to duplicates folder")
     
     elif images_to_move and dry_run:
-        print(f"\nDRY RUN: Would move {len(images_to_move)} duplicate images")
+        print_dry_run_summary(len(images_to_move), "move duplicate images")
 
 def main():
     parser = argparse.ArgumentParser(description='Remove near-duplicate images from celebrity folder')
     
-    # Mutually exclusive group for mode selection
-    mode_group = parser.add_mutually_exclusive_group(required=True)
-    mode_group.add_argument('--training', metavar='CELEBRITY_NAME',
-                           help='Remove duplicates from training/CELEBRITY_NAME/ folder')
-    mode_group.add_argument('--testing', metavar='CELEBRITY_NAME', 
-                           help='Remove duplicates from testing/CELEBRITY_NAME/ folder')
+    # Add standard training/testing arguments
+    add_training_testing_args(parser)
     
     # Get default threshold from environment variable
-    default_threshold = int(os.getenv('TRAINING_DUPLICATE_THRESHOLD', 5))
+    default_threshold = get_env_int('TRAINING_DUPLICATE_THRESHOLD', 5)
     parser.add_argument('--threshold', type=int, default=default_threshold,
                        help=f'Similarity threshold (0-64, lower = more strict, default: {default_threshold})')
     parser.add_argument('--dry-run', action='store_true', 
@@ -238,12 +232,7 @@ def main():
         sys.exit(1)
     
     # Determine celebrity folder path based on mode
-    if args.training:
-        celebrity_name = args.training.lower().replace(' ', '_')
-        celebrity_folder_path = f'training/{celebrity_name}/'
-    else:  # args.testing
-        celebrity_name = args.testing.lower().replace(' ', '_')
-        celebrity_folder_path = f'testing/{celebrity_name}/'
+    mode, celebrity_name, celebrity_folder_path = get_mode_and_path_from_args(args)
     
     try:
         remove_duplicate_images(celebrity_folder_path, args.threshold, args.dry_run)

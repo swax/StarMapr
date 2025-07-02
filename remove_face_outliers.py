@@ -9,31 +9,12 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from collections import defaultdict
 from dotenv import load_dotenv
-from utilities import print_error, print_summary
+from utils import add_training_testing_args, get_mode_and_path_from_args, get_image_files, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity
+from utils_deepface import get_single_face_embedding
 
 # Load environment variables
 load_dotenv()
 
-def get_face_embedding(image_path):
-    """
-    Get face embedding for an image using DeepFace ArcFace model.
-    
-    Args:
-        image_path (Path): Path to the image file
-        
-    Returns:
-        np.array or None: Face embedding vector, None if error or no face detected
-    """
-    try:
-        # Use DeepFace to get face embedding (enforce_detection=False to avoid exceptions)
-        embeddings = DeepFace.represent(str(image_path), model_name='ArcFace', enforce_detection=False)
-        if embeddings and len(embeddings) > 0:
-            # Return the first face embedding if multiple faces detected
-            return np.array(embeddings[0]['embedding'])
-        return None
-    except Exception as e:
-        print_error(f"Error processing {image_path.name}: {e}")
-        return None
 
 def find_face_outliers(celebrity_folder_path, similarity_threshold=0.1, dry_run=False):
     """
@@ -56,10 +37,8 @@ def find_face_outliers(celebrity_folder_path, similarity_threshold=0.1, dry_run=
     outliers_folder = folder_path / "outliers"
     
     # Get all image files (excluding those already in subfolders)
-    image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'}
-    image_files = [f for f in folder_path.iterdir() 
-                   if f.is_file() and f.suffix.lower() in image_extensions 
-                   and not f.name.startswith('.')]
+    image_files = [f for f in get_image_files(folder_path, exclude_subdirs=True) 
+                   if not f.name.startswith('.')]
     
     if len(image_files) < 3:
         print(f"Need at least 3 images to detect outliers. Found {len(image_files)} images.")
@@ -67,7 +46,7 @@ def find_face_outliers(celebrity_folder_path, similarity_threshold=0.1, dry_run=
     
     print(f"Analyzing {len(image_files)} images for face consistency...")
     if dry_run:
-        print("DRY RUN MODE - No files will be moved")
+        print_dry_run_header("No files will be moved")
     print()
     
     # Extract embeddings for all images
@@ -76,7 +55,7 @@ def find_face_outliers(celebrity_folder_path, similarity_threshold=0.1, dry_run=
     
     for img_file in image_files:
         print(f"Processing: {img_file.name}")
-        embedding = get_face_embedding(img_file)
+        embedding = get_single_face_embedding(img_file)
         if embedding is not None:
             embeddings[img_file] = embedding
             valid_images.append(img_file)
@@ -152,7 +131,7 @@ def find_face_outliers(celebrity_folder_path, similarity_threshold=0.1, dry_run=
             
             print(f"\nSuccessfully moved {moved_count}/{len(outliers)} outlier images")
         else:
-            print(f"DRY RUN: Would move {len(outliers)} outlier images to outliers folder")
+            print_dry_run_summary(len(outliers), "move outlier images to outliers folder")
     else:
         print("No outliers detected - all faces appear to be consistent!")
     
@@ -177,15 +156,11 @@ def find_face_outliers(celebrity_folder_path, similarity_threshold=0.1, dry_run=
 def main():
     parser = argparse.ArgumentParser(description='Remove face outliers from celebrity training images')
     
-    # Mutually exclusive group for mode selection
-    mode_group = parser.add_mutually_exclusive_group(required=True)
-    mode_group.add_argument('--training', metavar='CELEBRITY_NAME',
-                           help='Remove face outliers from training/CELEBRITY_NAME/ folder')
-    mode_group.add_argument('--testing', metavar='CELEBRITY_NAME', 
-                           help='Remove face outliers from testing/CELEBRITY_NAME/ folder')
+    # Add standard training/testing arguments
+    add_training_testing_args(parser)
     
     # Get default threshold from environment variable
-    default_threshold = float(os.getenv('TRAINING_OUTLIER_THRESHOLD', 0.1))
+    default_threshold = get_env_float('TRAINING_OUTLIER_THRESHOLD', 0.1)
     parser.add_argument('--threshold', type=float, default=default_threshold,
                        help=f'Similarity threshold for outlier detection (default: {default_threshold})')
     parser.add_argument('--dry-run', action='store_true', 
@@ -199,12 +174,7 @@ def main():
         sys.exit(1)
     
     # Determine celebrity folder path based on arguments
-    if args.training:
-        celebrity_name = args.training.lower().replace(' ', '_')
-        celebrity_folder_path = f'training/{celebrity_name}/'
-    else:  # args.testing
-        celebrity_name = args.testing.lower().replace(' ', '_')
-        celebrity_folder_path = f'testing/{celebrity_name}/'
+    mode, celebrity_name, celebrity_folder_path = get_mode_and_path_from_args(args)
     
     try:
         find_face_outliers(celebrity_folder_path, args.threshold, args.dry_run)

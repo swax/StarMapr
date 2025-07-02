@@ -42,15 +42,13 @@ GOOGLE_API_KEY=your_api_key_here
 GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
 
 # Training pipeline thresholds
-TRAINING_IMAGE_COUNT=20
 TRAINING_DUPLICATE_THRESHOLD=5
 TRAINING_OUTLIER_THRESHOLD=0.1
 
 # Testing pipeline thresholds
-TESTING_IMAGE_COUNT=30
 TESTING_DETECTION_THRESHOLD=0.6
 
-# Video processing defaults
+# Operations pipeline defaults
 OPERATIONS_EXTRACT_FRAME_COUNT=50
 OPERATIONS_HEADSHOT_MATCH_THRESHOLD=0.6
 ```
@@ -185,7 +183,7 @@ All default values are configurable through environment variables in the `.env` 
 - **Testing detection threshold**: 0.6 cosine similarity (`TESTING_DETECTION_THRESHOLD`)
 - **Frame extraction count**: 50 frames (`OPERATIONS_EXTRACT_FRAME_COUNT`)
 - **Headshot match threshold**: 0.6 cosine similarity (`OPERATIONS_HEADSHOT_MATCH_THRESHOLD`)
-- **Image download counts**: 40 training, 40 testing (`TRAINING_IMAGE_COUNT`, `TESTING_IMAGE_COUNT`)
+- **Image downloads**: 20 images per page (10 general + 10 show-specific)
 
 All thresholds are adjustable with command-line `--threshold` flags.
 
@@ -245,12 +243,12 @@ If the correct headshots are not being found for a video, follow these steps to 
      ```
 
 6. **Increase Training/Testing Data**
-   - If insufficient data was found, increase image download counts in `.env`:
+   - If insufficient data was found, download additional pages:
+     ```bash
+     python3 download_celebrity_images.py "Celebrity Name" --training --show "Show Name" --page 2
+     python3 download_celebrity_images.py "Celebrity Name" --testing --show "Show Name" --page 3
      ```
-     TRAINING_IMAGE_COUNT=40
-     TESTING_IMAGE_COUNT=50
-     ```
-   - Re-download and process more images for better reference data
+   - Each page downloads 20 more images (10 general + 10 show-specific)
 
 ## Contributing
 

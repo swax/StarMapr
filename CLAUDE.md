@@ -22,6 +22,8 @@ The system consists of eleven main components plus two utility modules:
 
 2. **download_celebrity_images.py** - Downloads training images from Google Image Search
    - Uses Google Custom Search API to fetch celebrity photos
+   - Downloads 10 general images and 10 show-specific images (20 total per page)
+   - Increasing page number pulls the next 20 images for more training data
    - Optimized search parameters for face portraits
    - Automatically creates celebrity folders in proper structure
    - Names images using first 8 characters of GUIDs to prevent collisions on reruns, allowing safe duplicate removal and bad image handling
@@ -132,19 +134,17 @@ All scripts now use `--training` and `--testing` flags to specify the dataset ty
 
 ### Download Celebrity Images
 ```bash
-# Uses default count from TRAINING_IMAGE_COUNT/TESTING_IMAGE_COUNT in .env
-python3 download_celebrity_images.py "Celebrity Name" --training
-python3 download_celebrity_images.py "Celebrity Name" --testing
+# Downloads 20 images per page (10 general + 10 show-specific)
+python3 download_celebrity_images.py "Celebrity Name" --training --show "Show Name"
+python3 download_celebrity_images.py "Celebrity Name" --testing --show "Show Name"
 
-# Or specify custom count
-python3 download_celebrity_images.py "Celebrity Name" 15 --training
-python3 download_celebrity_images.py "Celebrity Name" 10 --testing
+# Specify page number for more images (page 2 = images 21-40, etc.)
+python3 download_celebrity_images.py "Celebrity Name" --training --show "Show Name" --page 2
+python3 download_celebrity_images.py "Celebrity Name" --testing --show "Show Name" --page 3
 ```
 Requires configuration in .env file:
 - GOOGLE_API_KEY=your_api_key_here
 - GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
-- TRAINING_IMAGE_COUNT=20
-- TESTING_IMAGE_COUNT=30
 
 ### Remove Duplicate Images
 ```bash
@@ -192,7 +192,7 @@ python3 eval_star_detection.py "Celebrity Name"
 python3 eval_star_detection.py "Celebrity Name" --threshold 0.7
 ```
 
-### Video Processing Pipeline
+### Operations Pipeline
 
 #### Download Videos
 ```bash
@@ -255,20 +255,20 @@ The project requires:
 The complete pipeline follows this sequence. You can use the interactive pipeline runner (`python3 run_pipeline.py`) for guided execution, or run commands manually:
 
 ### Training Pipeline (Solo Portraits)
-1. **Download Training Data**: `python3 download_celebrity_images.py "Celebrity Name" --training`
+1. **Download Training Data**: `python3 download_celebrity_images.py "Celebrity Name" --training --show "Show Name"`
 2. **Remove Duplicates**: `python3 remove_dupe_training_images.py --training "Celebrity Name"`
 3. **Remove Bad Images**: `python3 remove_bad_training_images.py --training "Celebrity Name"` (keeps exactly 1 face)
 4. **Remove Face Outliers**: `python3 remove_face_outliers.py --training "Celebrity Name"` (removes inconsistent faces)
 5. **Generate Embeddings**: `python3 compute_average_embeddings.py "Celebrity Name"`
 
 ### Testing Pipeline (Group Photos)
-1. **Download Test Data**: `python3 download_celebrity_images.py "Celebrity Name" --testing`
+1. **Download Test Data**: `python3 download_celebrity_images.py "Celebrity Name" --testing --show "Show Name"`
 2. **Remove Duplicates**: `python3 remove_dupe_training_images.py --testing "Celebrity Name"`
 3. **Remove Bad Images**: `python3 remove_bad_training_images.py --testing "Celebrity Name"` (keeps 4-10 faces)
 4. **Run Detection**: `python3 eval_star_detection.py "Celebrity Name"`
 
 
-### Video Processing Pipeline
+### Operations Pipeline
 1. **Download Video**: `python3 download_video.py "https://youtube.com/watch?v=VIDEO_ID"`
 2. **Extract Frames**: `python3 extract_video_frames.py videos/youtube_VIDEO_ID/` (uses default frame count)
 3. **Extract Faces**: `python3 extract_frame_faces.py videos/youtube_VIDEO_ID/`
@@ -291,8 +291,6 @@ All default values configurable via environment variables in .env file:
 - **TESTING_DETECTION_THRESHOLD**: 0.6 (cosine similarity, 0.0-1.0, adjustable via --threshold)
 - **OPERATIONS_EXTRACT_FRAME_COUNT**: 50 (number of frames to extract from videos)
 - **OPERATIONS_HEADSHOT_MATCH_THRESHOLD**: 0.6 (cosine similarity, 0.0-1.0, adjustable via --threshold)
-- **TRAINING_IMAGE_COUNT**: 20 (default training images to download)
-- **TESTING_IMAGE_COUNT**: 30 (default testing images to download)
 
 ### Other Parameters:
 - **Video Headshot Extraction**: Top 5 most similar faces with 10% padding around face region

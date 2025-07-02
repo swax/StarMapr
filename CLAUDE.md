@@ -12,7 +12,7 @@ The system follows a **sequential pipeline architecture** with five main stages 
 
 **Pipeline Flow**: Data Collection → Duplicate Removal → Data Cleaning → Face Consistency Validation → Embedding Generation → Face Detection
 
-The system consists of eleven main components:
+The system consists of eleven main components plus two utility modules:
 
 1. **run_pipeline.py** - Interactive pipeline runner for streamlined workflow execution
    - Provides numbered menu of all pipeline steps
@@ -81,6 +81,23 @@ The system consists of eleven main components:
     - Calculates cosine similarity between detected faces and reference celebrity
     - Selects top 5 most similar faces and extracts cropped headshots
     - Saves headshots with similarity scores and frame information
+
+### Utility Modules
+
+12. **utils.py** - Common utility functions and helpers
+    - Celebrity name/folder path conversion and validation
+    - Standard argument parsing for --training/--testing flags
+    - Image file discovery with supported format filtering
+    - Environment variable management for thresholds and defaults
+    - Color-coded console output (red for errors, blue for summaries)
+    - Pickle file operations with error handling
+    - Face similarity calculations using cosine similarity
+
+13. **utils_deepface.py** - DeepFace-specific utilities with caching
+    - Face embedding generation using DeepFace ArcFace model
+    - Automatic .pkl file caching for face analysis data
+    - Structured face data format with bounding boxes and embeddings
+    - Separated from utils.py to minimize CUDA warnings for non-AI scripts
 
 ## Data Structure
 

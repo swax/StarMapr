@@ -2,7 +2,6 @@
 import os
 import sys
 import argparse
-from deepface import DeepFace
 from pathlib import Path
 import shutil
 import numpy as np

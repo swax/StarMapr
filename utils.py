@@ -276,3 +276,71 @@ def get_supported_image_extensions():
         set: Set of supported extensions (with dots)
     """
     return {'.gif', '.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'}
+
+
+def get_corresponding_pkl_file(image_path):
+    """
+    Get the corresponding pkl file path for an image file.
+    
+    Args:
+        image_path (str or Path): Path to the image file
+        
+    Returns:
+        Path or None: Path to corresponding pkl file if it exists, None otherwise
+    """
+    image_path = Path(image_path)
+    pkl_path = image_path.with_suffix('.pkl')
+    return pkl_path if pkl_path.exists() else None
+
+
+def move_file_with_pkl(source_path, destination_folder, dry_run=False):
+    """
+    Move a file and its corresponding pkl file (if it exists) to destination folder.
+    
+    Args:
+        source_path (str or Path): Path to the source file
+        destination_folder (str or Path): Destination folder
+        dry_run (bool): If True, only report what would be moved
+        
+    Returns:
+        tuple: (moved_files_count, total_files_attempted)
+    """
+    import shutil
+    
+    source_path = Path(source_path)
+    destination_folder = Path(destination_folder)
+    moved_count = 0
+    attempted_count = 0
+    
+    # Move the main file
+    try:
+        if not dry_run:
+            destination_folder.mkdir(parents=True, exist_ok=True)
+            destination = destination_folder / source_path.name
+            shutil.move(str(source_path), str(destination))
+            print(f"  ✓ Moved: {source_path.name}")
+        else:
+            print(f"  → Would move: {source_path.name}")
+        moved_count += 1
+        attempted_count += 1
+    except Exception as e:
+        print_error(f"Failed to move {source_path.name}: {e}")
+        attempted_count += 1
+    
+    # Move corresponding pkl file if it exists
+    pkl_path = get_corresponding_pkl_file(source_path)
+    if pkl_path:
+        try:
+            if not dry_run:
+                pkl_destination = destination_folder / pkl_path.name
+                shutil.move(str(pkl_path), str(pkl_destination))
+                print(f"  ✓ Moved: {pkl_path.name}")
+            else:
+                print(f"  → Would move: {pkl_path.name}")
+            moved_count += 1
+            attempted_count += 1
+        except Exception as e:
+            print_error(f"Failed to move {pkl_path.name}: {e}")
+            attempted_count += 1
+    
+    return moved_count, attempted_count

@@ -7,7 +7,7 @@ import shutil
 import cv2
 import numpy as np
 from collections import defaultdict
-from utils import add_training_testing_args, get_mode_and_path_from_args, print_dry_run_header, print_dry_run_summary, get_supported_image_extensions, print_error, print_summary
+from utils import add_training_testing_args, get_mode_and_path_from_args, print_dry_run_header, print_dry_run_summary, get_supported_image_extensions, print_error, print_summary, move_file_with_pkl
 from utils_deepface import get_face_embeddings
 
 def count_faces_in_image(image_path):
@@ -138,24 +138,24 @@ def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
     
     # Move bad images and unsupported files if not in dry run mode
     if all_files_to_move and not dry_run:
-        # Create bad folder
-        bad_folder.mkdir(exist_ok=True)
         print(f"\nMoving {len(all_files_to_move)} files to {bad_folder}...")
         
-        moved_count = 0
-        for file_to_move in all_files_to_move:
-            try:
-                destination = bad_folder / file_to_move.name
-                shutil.move(str(file_to_move), str(destination))
-                print(f"  ✓ Moved: {file_to_move.name}")
-                moved_count += 1
-            except Exception as e:
-                print_error(f"Failed to move {file_to_move.name}: {e}")
+        total_moved_count = 0
+        total_attempted_count = 0
         
-        print_summary(f"Successfully moved {moved_count}/{len(all_files_to_move)} files to bad folder")
+        for file_to_move in all_files_to_move:
+            moved_count, attempted_count = move_file_with_pkl(file_to_move, bad_folder, dry_run)
+            total_moved_count += moved_count
+            total_attempted_count += attempted_count
+        
+        print_summary(f"Successfully moved {total_moved_count}/{total_attempted_count} files to bad folder")
     
     elif all_files_to_move and dry_run:
-        print_dry_run_summary(len(all_files_to_move), "move files to bad folder")
+        total_files_to_move = 0
+        for file_to_move in all_files_to_move:
+            moved_count, attempted_count = move_file_with_pkl(file_to_move, bad_folder, dry_run=True)
+            total_files_to_move += attempted_count
+        print_dry_run_summary(total_files_to_move, "move files to bad folder")
     
     if not all_files_to_move:
         print_summary(f"No files need to be moved - all supported images meet the {face_description} requirement!")

@@ -34,6 +34,17 @@ def get_celebrity_name():
         print("Please enter a valid celebrity name.")
 
 
+def get_show_name():
+    """
+    Get optional show name from user input.
+    
+    Returns:
+        str or None: Show name entered by user, or None if skipped
+    """
+    show = input("Enter show/movie name (e.g., 'SNL'): ").strip()
+    return show if show else None
+
+
 def get_image_count(mode):
     """
     Get number of images to download for the given mode.
@@ -111,7 +122,14 @@ def run_command(command, description):
     print(f"{'='*60}")
     
     try:
-        result = subprocess.run(command, check=True, capture_output=False)
+        # Create fresh environment with reloaded .env variables
+        env = os.environ.copy()
+        # Re-read .env file to get any changes made while script is running
+        from dotenv import dotenv_values
+        env_vars = dotenv_values('.env')
+        env.update(env_vars)
+        
+        result = subprocess.run(command, check=True, capture_output=False, env=env)
         print(f"\n✓ {description} completed successfully!")
         return True
     except subprocess.CalledProcessError as e:
@@ -129,8 +147,9 @@ def main():
     """
     print("Welcome to StarMapr Pipeline Runner!")
     
-    # Get celebrity name
+    # Get celebrity name and optional show
     celebrity_name = get_celebrity_name()
+    show_name = get_show_name()
     celebrity_folder = get_celebrity_folder_name(celebrity_name)
     
     # Track image counts for download steps
@@ -165,6 +184,9 @@ def main():
                     command = ['python3', 'download_celebrity_images.py', celebrity_name, '--training']
                 else:
                     command = ['python3', 'download_celebrity_images.py', celebrity_name, str(training_count), '--training']
+                # Add show parameter if provided
+                if show_name:
+                    command.extend(['--show', show_name])
                 if run_command(command, "Download training images"):
                     last_step = 1
                 
@@ -200,6 +222,9 @@ def main():
                     command = ['python3', 'download_celebrity_images.py', celebrity_name, '--testing']
                 else:
                     command = ['python3', 'download_celebrity_images.py', celebrity_name, str(testing_count), '--testing']
+                # Add show parameter if provided
+                if show_name:
+                    command.extend(['--show', show_name])
                 if run_command(command, "Download testing images"):
                     last_step = 6
                 

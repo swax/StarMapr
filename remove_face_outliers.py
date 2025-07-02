@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from collections import defaultdict
 from dotenv import load_dotenv
-from utils import add_training_testing_args, get_mode_and_path_from_args, get_image_files, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity
+from utils import add_training_testing_args, get_mode_and_path_from_args, get_image_files, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity, move_file_with_pkl
 from utils_deepface import get_single_face_embedding
 
 # Load environment variables
@@ -115,22 +115,23 @@ def find_face_outliers(celebrity_folder_path, similarity_threshold=0.1, dry_run=
         
         # Move outlier images if not in dry run mode
         if not dry_run:
-            outliers_folder.mkdir(exist_ok=True)
             print(f"Moving {len(outliers)} outlier images to {outliers_folder}...")
             
-            moved_count = 0
-            for img, sim in outliers:
-                try:
-                    destination = outliers_folder / img.name
-                    shutil.move(str(img), str(destination))
-                    print(f"  ✓ Moved: {img.name}")
-                    moved_count += 1
-                except Exception as e:
-                    print_error(f"Failed to move {img.name}: {e}")
+            total_moved_count = 0
+            total_attempted_count = 0
             
-            print(f"\nSuccessfully moved {moved_count}/{len(outliers)} outlier images")
+            for img, sim in outliers:
+                moved_count, attempted_count = move_file_with_pkl(img, outliers_folder, dry_run)
+                total_moved_count += moved_count
+                total_attempted_count += attempted_count
+            
+            print(f"\nSuccessfully moved {total_moved_count}/{total_attempted_count} files")
         else:
-            print_dry_run_summary(len(outliers), "move outlier images to outliers folder")
+            total_files_to_move = 0
+            for img, sim in outliers:
+                moved_count, attempted_count = move_file_with_pkl(img, outliers_folder, dry_run=True)
+                total_files_to_move += attempted_count
+            print_dry_run_summary(total_files_to_move, "move outlier files to outliers folder")
     else:
         print("No outliers detected - all faces appear to be consistent!")
     

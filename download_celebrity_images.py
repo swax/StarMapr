@@ -18,7 +18,7 @@ from utils import get_celebrity_folder_path, get_env_int, ensure_folder_exists, 
 load_dotenv()
 
 
-def download_celebrity_images(celebrity_name, num_images, mode='training', api_key=None, search_engine_id=None):
+def download_celebrity_images(celebrity_name, num_images, mode='training', show=None, api_key=None, search_engine_id=None):
     """
     Download celebrity images from Google Image Search
     
@@ -26,6 +26,7 @@ def download_celebrity_images(celebrity_name, num_images, mode='training', api_k
         celebrity_name (str): Name of the celebrity to search for
         num_images (int): Number of images to download
         mode (str): 'training' for solo portraits or 'testing' for group photos
+        show (str): Optional show name to include in search. If provided, splits downloads between normal and show-specific queries
         api_key (str): Google Custom Search API key
         search_engine_id (str): Google Custom Search Engine ID
     """
@@ -54,32 +55,52 @@ def download_celebrity_images(celebrity_name, num_images, mode='training', api_k
     download_path = get_celebrity_folder_path(celebrity_name, mode)
     ensure_folder_exists(download_path)
     
-    # Search parameters based on mode
-    if mode == 'training':
-        # Optimized for solo celebrity portraits
-        search_params = {
-            'q': f'{celebrity_name} face',
-            'num': num_images,
-            'fileType': 'jpg|jpeg|png',
-            'safe': 'medium',
-            'imgType': 'face',
-            'imgSize': 'medium'
-        }
-    else:  # testing mode
-        # Optimized for group photos containing the celebrity
-        search_params = {
-            'q': f'{celebrity_name} group',
-            'num': num_images,
-            'fileType': 'jpg|jpeg|png',
-            'safe': 'medium',
-            'imgType': 'photo',
-            'imgSize': 'large'
-        }
+    def create_search_params(query, num_imgs):
+        """Create search parameters based on mode"""
+        if mode == 'training':
+            return {
+                'q': query,
+                'num': num_imgs,
+                'fileType': 'jpg|jpeg|png',
+                'safe': 'medium',
+                'imgType': 'face',
+                'imgSize': 'medium'
+            }
+        else:  # testing mode
+            return {
+                'q': query,
+                'num': num_imgs,
+                'fileType': 'jpg|jpeg|png',
+                'safe': 'medium',
+                'imgType': 'photo',
+                'imgSize': 'large'
+            }
+    
+    query_suffix = 'face' if mode == 'training' else 'group'
+
+    # Determine search queries and image counts
+    if show:
+        # Split downloads between normal and show-specific queries
+        normal_images = num_images // 2
+        show_images = num_images - normal_images
+        
+        searches = []
+        searches.append((f'{celebrity_name} {query_suffix}', normal_images, 'normal'))
+        searches.append((f'{celebrity_name} {show} {query_suffix}', show_images, f'show-specific ({show})'))
+        
+        print(f"Downloading {normal_images} normal and {show_images} show-specific images for '{celebrity_name}'...")
+    else:
+        # Single search without show parameter
+        searches = [(f'{celebrity_name} {query_suffix}', num_images, 'normal')]
+        print(f"Searching for {num_images} images of '{celebrity_name}'...")
     
     try:
-        # Perform search and download
-        print(f"Searching for {num_images} images of '{celebrity_name}'...")
-        gis.search(search_params=search_params, path_to_dir=download_path)
+        # Perform searches and downloads
+        for query, num_imgs, search_type in searches:
+            if len(searches) > 1:
+                print(f"  Downloading {num_imgs} {search_type} images...")
+            search_params = create_search_params(query, num_imgs)
+            gis.search(search_params=search_params, path_to_dir=download_path)
         
         # Get downloaded files and rename them with GUID prefixes
         downloaded_files = [f for f in os.listdir(download_path)]
@@ -102,7 +123,9 @@ def download_celebrity_images(celebrity_name, num_images, mode='training', api_k
             except OSError as e:
                 print_error(f"Warning: Could not rename {filename}: {e}")
         
-        print_summary(f"Successfully downloaded {len(downloaded_files)} images for '{celebrity_name}' - Renamed {renamed_count} files with GUID-based names - Images saved to: {download_path}")
+        print(f"Renamed {renamed_count} files with GUID-based names")
+
+        print_summary(f"Successfully downloaded {len(downloaded_files)} images for '{celebrity_name}' - Images saved to: {download_path}")
         
         return True
         
@@ -135,6 +158,9 @@ def main():
     parser.add_argument('--search-engine-id', 
                        help='Google Custom Search Engine ID (or set GOOGLE_SEARCH_ENGINE_ID env var)')
     
+    parser.add_argument('--show', 
+                       help='Optional show name to include in search. Downloads half normal images, half show-specific')
+    
     args = parser.parse_args()
     
     # Get default image count if not provided
@@ -162,6 +188,7 @@ def main():
         celebrity_name=args.celebrity_name,
         num_images=num_images,
         mode=mode,
+        show=args.show,
         api_key=args.api_key,
         search_engine_id=args.search_engine_id
     )

@@ -185,7 +185,7 @@ All default values are configurable through environment variables in the `.env` 
 - **Testing detection threshold**: 0.6 cosine similarity (`TESTING_DETECTION_THRESHOLD`)
 - **Frame extraction count**: 50 frames (`OPERATIONS_EXTRACT_FRAME_COUNT`)
 - **Headshot match threshold**: 0.6 cosine similarity (`OPERATIONS_HEADSHOT_MATCH_THRESHOLD`)
-- **Image download counts**: 20 training, 30 testing (`TRAINING_IMAGE_COUNT`, `TESTING_IMAGE_COUNT`)
+- **Image download counts**: 40 training, 40 testing (`TRAINING_IMAGE_COUNT`, `TESTING_IMAGE_COUNT`)
 
 All thresholds are adjustable with command-line `--threshold` flags.
 
@@ -206,6 +206,51 @@ StarMapr was designed to streamline actor identification for the Sketch Comedy D
 6. **Populate SCDB** with identified actors and clean headshot images
 
 Visit [SketchTV.lol](https://www.sketchtv.lol/) to see the results in action!
+
+## Troubleshooting
+
+### Video Headshot Extraction Issues
+
+If the correct headshots are not being found for a video, follow these steps to improve accuracy:
+
+1. **Check Training Data Quality**
+   - Ensure outliers have been pruned effectively from training images
+   - Verify that remaining training images are actually of the target celebrity
+   - Use `remove_face_outliers.py` with adjusted threshold if needed:
+     ```bash
+     python3 remove_face_outliers.py --training "Celebrity Name" --threshold 0.05
+     ```
+
+2. **Adjust Outlier Detection Threshold**
+   - Lower threshold (e.g., 0.05) = stricter outlier removal
+   - Higher threshold (e.g., 0.2) = more lenient outlier removal
+   - Edit `.env` file: `TRAINING_OUTLIER_THRESHOLD=0.05`
+
+3. **Regenerate Average Embeddings**
+   - After cleaning training data, regenerate the reference embeddings:
+     ```bash
+     python3 compute_average_embeddings.py "Celebrity Name"
+     ```
+
+4. **Test Detection Accuracy**
+   - Run testing pipeline with new average embeddings to verify improved accuracy:
+     ```bash
+     python3 eval_star_detection.py "Celebrity Name"
+     ```
+
+5. **Retry Video Headshot Extraction**
+   - Extract headshots from video using the improved reference embeddings:
+     ```bash
+     python3 extract_video_headshots.py "Celebrity Name" videos/youtube_VIDEO_ID/
+     ```
+
+6. **Increase Training/Testing Data**
+   - If insufficient data was found, increase image download counts in `.env`:
+     ```
+     TRAINING_IMAGE_COUNT=40
+     TESTING_IMAGE_COUNT=50
+     ```
+   - Re-download and process more images for better reference data
 
 ## Contributing
 

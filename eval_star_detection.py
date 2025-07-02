@@ -106,7 +106,7 @@ def process_images(images_folder, embedding_path, threshold=0.6, output_folder="
             for face_region, similarity, face_idx in matches:
                 # Create output filename
                 base_name = img_file.stem
-                output_filename = f"{base_name}_face_{face_idx+1}_sim_{similarity:.3f}.jpg"
+                output_filename = f"{base_name}_{similarity:.3f}.jpg"
                 output_file_path = output_path / output_filename
                 
                 # Extract and save face crop

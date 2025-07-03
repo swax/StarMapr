@@ -80,8 +80,14 @@ def process_images(images_folder, embedding_path, threshold=0.6, output_folder="
     # Load reference embedding
     reference_embedding = load_embedding(embedding_path)
     
-    # Create output folder
+    # Create output folder (clear existing files first)
     output_path = images_folder / output_folder
+    
+    # Clear existing files in output folder if it exists
+    if output_path.exists():
+        import shutil
+        shutil.rmtree(output_path)
+    
     output_path.mkdir(exist_ok=True)
     
     # Get all image files

@@ -183,12 +183,11 @@ All default values are configurable through environment variables in the `.env` 
 - **Testing detection threshold**: 0.6 cosine similarity (`TESTING_DETECTION_THRESHOLD`)
 - **Frame extraction count**: 50 frames (`OPERATIONS_EXTRACT_FRAME_COUNT`)
 - **Headshot match threshold**: 0.6 cosine similarity (`OPERATIONS_HEADSHOT_MATCH_THRESHOLD`)
-- **Image downloads**: 20 images per page (10 general + 10 show-specific)
 
 All thresholds are adjustable with command-line `--threshold` flags.
 
 **Technical specs**:
-- **Supported formats**: .jpg, .jpeg, .png, .bmp, .tiff, .webp
+- **Supported formats**: .gif, .jpg, .jpeg, .png, .bmp, .tiff, .webp
 - **Face detection model**: ArcFace via DeepFace
 - **Similarity metric**: Cosine similarity
 

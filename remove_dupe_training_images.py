@@ -123,7 +123,8 @@ def find_duplicate_groups(image_files, similarity_threshold=5):
 
 def remove_duplicate_images(celebrity_folder_path, similarity_threshold=5, dry_run=False):
     """
-    Remove near-duplicate images from celebrity folder, keeping the first one in each group.
+    Remove near-duplicate images from celebrity folder, keeping the oldest one in each group.
+    Keeping the oldest is important as it may have a corresponding pkl file that we don't want to abandon.
     
     Args:
         celebrity_folder_path (str): Path to celebrity folder containing training or testing images
@@ -165,8 +166,8 @@ def remove_duplicate_images(celebrity_folder_path, similarity_threshold=5, dry_r
     
     for i, group in enumerate(duplicate_groups, 1):
         print(f"\nGroup {i} ({len(group)} similar images):")
-        # Sort by file size (keep largest) or modification time (keep newest)
-        group.sort(key=lambda x: x.stat().st_size, reverse=True)
+        # Sort by modification time (keep oldest)
+        group.sort(key=lambda x: x.stat().st_mtime)
         
         keep_image = group[0]
         duplicate_images = group[1:]

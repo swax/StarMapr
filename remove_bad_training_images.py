@@ -64,7 +64,7 @@ def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
     images_to_move = []
     images_with_good_faces = []
     images_with_errors = []
-    unsupported_to_move = unsupported_files.copy()
+    unsupported_to_move = [f for f in unsupported_files if f.suffix.lower() != '.pkl']
     
     # Define face count requirements based on mode
     if mode == 'training':

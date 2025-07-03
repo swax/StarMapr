@@ -22,14 +22,14 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
     """
     Download celebrity images from Google Image Search
     
-    Downloads 10 general images and 10 show-specific images (20 total per page).
-    Increasing page number pulls the next 20 images for more training data.
+    Downloads 20 images using different search queries for each page.
+    Each page uses a different search term to get varied results.
     
     Args:
         celebrity_name (str): Name of the celebrity to search for
         mode (str): 'training' for solo portraits or 'testing' for group photos
         show (str): Show name to include in search for targeted results
-        page (int): Page number for pagination (default: 1)
+        page (int): Page number (1-5) - each uses different search terms
         api_key (str): Google Custom Search API key
         search_engine_id (str): Google Custom Search Engine ID
     """
@@ -58,54 +58,52 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
     download_path = get_celebrity_folder_path(celebrity_name, mode)
     ensure_folder_exists(download_path)
     
-    def create_search_params(query, num_imgs, start_index):
-        """Create search parameters based on mode"""
-        if mode == 'training':
-            return {
-                'q': query,
-                'num': num_imgs,
-                'start': start_index,
-                'fileType': 'jpg|jpeg|png',
-                'safe': 'medium',
-                'imgType': 'face',
-                'imgSize': 'medium'
-            }
-        else:  # testing mode
-            return {
-                'q': query,
-                'num': num_imgs,
-                'start': start_index,
-                'fileType': 'jpg|jpeg|png',
-                'safe': 'medium',
-                'imgType': 'photo',
-                'imgSize': 'large'
-            }
+    #*** Actually paging Google Search results doesn't work at all, the start parameter is ignored.
+
+    # Define search terms for different pages
+    if mode == 'training':
+        search_terms = [
+            f'{celebrity_name} {show}',    # Page 1: name + show
+            celebrity_name,                # Page 2: just the name
+            f'{celebrity_name} face',      # Page 3: name + face
+            f'{celebrity_name} headshot',  # Page 4: name + headshot
+            f'{celebrity_name} portrait'   # Page 5: name + portrait
+        ]
+    else:  # testing mode
+        search_terms = [
+            f'{celebrity_name} group',         # Page 1: name + group
+            f'{celebrity_name} cast',          # Page 2: name + cast
+            f'{celebrity_name} team',          # Page 3: name + team
+            f'{celebrity_name} with friends',  # Page 4: name + with friends
+            f'{celebrity_name} ensemble'       # Page 5: name + ensemble
+        ]
     
-    query_suffix = 'face' if mode == 'training' else 'group'
+    # Get search query for this page
+    if page > len(search_terms):
+        print_error(f"Page {page} is not supported. Maximum page is {len(search_terms)}.")
+        return False
     
-    # Always download 10 general + 10 show-specific images (20 total)
-    images_per_search = 10
+    query = search_terms[page - 1]
+
+    # Needs to be increments of 10, google queries in blocks of 10
+    images_to_download = 20
     
-    # Calculate start index for pagination (each page = 20 images total)
-    start_index = (page - 1) * images_per_search + 1
-    
-    # Create search queries
-    searches = []
-    searches.append((f'{celebrity_name} {query_suffix}', images_per_search, start_index, 'general'))
-    searches.append((f'{celebrity_name} {show} {query_suffix}', images_per_search, start_index, f'show-specific ({show})'))
-    
-    print(f"Downloading page {page} images for '{celebrity_name}' (10 general + 10 {show}-specific = 20 total)...")
+    print(f"Downloading page {page} images for '{celebrity_name}' using query: '{query}' (20 total)...")
     
     # Get initial file count to track new downloads
     initial_files = set(os.listdir(download_path))
     
     try:
         # Perform searches and downloads
-        for query, num_imgs, start_idx, search_type in searches:
-            print(f"  Downloading {num_imgs} {search_type} images...")
-            search_params = create_search_params(query, num_imgs, start_idx)
-            gis.search(search_params=search_params, path_to_dir=download_path)
-        
+        search_params = {
+            'q': query,
+            'num': images_to_download,
+            'fileType': 'jpg|jpeg|png',
+            'imgSize': 'medium' if mode == 'training' else 'large',
+        }
+            
+        gis.search(search_params=search_params, path_to_dir=download_path)
+    
         # Get all files after download and identify newly downloaded ones
         all_files = set(os.listdir(download_path))
         newly_downloaded_files = list(all_files - initial_files)
@@ -166,7 +164,7 @@ def main():
                        help='Show name to include in search. Downloads 10 general + 10 show-specific images (20 total)')
     
     parser.add_argument('--page', type=int, default=1,
-                       help='Page number for pagination (default: 1). Each page downloads 20 images.')
+                       help='Page number (1-5, default: 1). Each page uses different search terms to download 20 images.')
     
     args = parser.parse_args()
     
@@ -175,8 +173,9 @@ def main():
         print_error("Page number must be positive")
         sys.exit(1)
     
-    if args.page > 10:
-        print("Warning: High page number requested. Google API has daily limits.")
+    if args.page > 5:
+        print_error("Page number must be 1-5. Each page uses different search terms.")
+        sys.exit(1)
     
     # Determine mode from arguments
     mode = 'training' if args.training else 'testing'

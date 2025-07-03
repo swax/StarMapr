@@ -281,7 +281,7 @@ All default values configurable via environment variables in .env file:
 
 - **Face Detection Model**: ArcFace via DeepFace
 - **Similarity Metric**: Cosine similarity
-- **Supported Image Formats**: .jpg, .jpeg, .png, .bmp, .tiff, .webp
+- **Supported Image Formats**: .gif, .jpg, .jpeg, .png, .bmp, .tiff, .webp
 - **Training Face Count**: Exactly 1 face required
 - **Testing Face Count**: 4-10 faces required
 

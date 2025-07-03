@@ -20,8 +20,8 @@ import shutil
 from pathlib import Path
 from dotenv import load_dotenv
 from utils import (
-    get_celebrity_folder_path, get_image_files, get_env_int,
-    print_error, print_run_summary, ensure_folder_exists
+    get_celebrity_folder_path, get_celebrity_folder_name, get_image_files, get_env_int,
+    get_average_embedding_path, print_error, print_run_summary, ensure_folder_exists
 )
 
 # Load environment variables
@@ -53,17 +53,46 @@ def fatal_error(message):
     sys.exit(1)
 
 
-def handle_fresh_flag(celebrity_name):
-    """Handle --fresh flag by deleting existing folders after confirmation."""
+def copy_model_to_models_dir(celebrity_name):
+    """
+    Copy the average embedding file from training directory to models directory.
+    
+    Args:
+        celebrity_name (str): Name of the celebrity
+        
+    Returns:
+        bool: True if successful, False if failed
+    """
+    try:
+        # Get paths using utility functions
+        source_path = get_average_embedding_path(celebrity_name, 'training')
+        dest_path = get_average_embedding_path(celebrity_name, 'models')
+        
+        # Create models directory if it doesn't exist
+        dest_path.parent.mkdir(exist_ok=True)
+        
+        # Copy file to models directory
+        shutil.copy2(source_path, dest_path)
+        
+        print_run_summary(f"✓ Copied model to: {dest_path}")
+        return True
+        
+    except Exception as e:
+        print_error(f"Failed to copy model file: {e}")
+        return False
+
+
+def handle_retrain_flag(celebrity_name):
+    """Handle --retrain flag by deleting existing folders after confirmation."""
     training_folder = get_celebrity_folder_path(celebrity_name, 'training')
     testing_folder = get_celebrity_folder_path(celebrity_name, 'testing')
     
     folders_exist = os.path.exists(training_folder) or os.path.exists(testing_folder)
     if not folders_exist:
-        print(f"No existing folders found for '{celebrity_name}', proceeding with fresh start.")
+        print(f"No existing folders found for '{celebrity_name}', proceeding with training.")
         return
     
-    print_error(f"⚠️  WARNING: --fresh will DELETE existing folders for '{celebrity_name}'")
+    print_error(f"⚠️  WARNING: --retrain will DELETE existing folders for '{celebrity_name}'")
     print_error(f"⚠️  This action cannot be undone!")
     
     if input("Type 'delete' to confirm: ").strip().lower() != 'delete':
@@ -227,18 +256,39 @@ def run_testing_pipeline(celebrity_name, show_name, max_pages, min_headshots):
     return final_headshots >= min_headshots, final_headshots
 
 
+def check_existing_model(celebrity_name):
+    """
+    Check if a model already exists for the celebrity.
+    
+    Args:
+        celebrity_name (str): Name of the celebrity
+        
+    Returns:
+        bool: True if model exists, False otherwise
+    """
+    model_path = get_average_embedding_path(celebrity_name, 'models')
+    return model_path.exists()
+
+
 def main():
     """Main function to run the comprehensive training pipeline."""
     parser = argparse.ArgumentParser(description='Run comprehensive celebrity training pipeline')
     parser.add_argument('celebrity_name', help='Name of the celebrity (e.g., "Bill Murray")')
     parser.add_argument('show_name', help='Name of the show/movie (e.g., "SNL")')
-    parser.add_argument('--fresh', action='store_true', help='Delete existing celebrity folders before starting')
+    parser.add_argument('--retrain', action='store_true', help='Delete existing celebrity folders before starting')
     
     args = parser.parse_args()
     
-    # Handle fresh flag if specified
-    if args.fresh:
-        handle_fresh_flag(args.celebrity_name)
+    # Check if model already exists (unless using --retrain flag)
+    if not args.retrain and check_existing_model(args.celebrity_name):
+        model_path = get_average_embedding_path(args.celebrity_name, 'models')
+        print_run_summary(f"✓ Model already exists: {model_path}")
+        print_run_summary(f"Skipping training for '{args.celebrity_name}' (use --retrain to retrain)")
+        sys.exit(0)
+    
+    # Handle retrain flag if specified
+    if args.retrain:
+        handle_retrain_flag(args.celebrity_name)
     
     # Get configuration from environment
     min_training_images = get_env_int('TRAINING_MIN_IMAGES', 15)
@@ -270,6 +320,13 @@ def main():
     
     if testing_success:
         print_run_summary(f"🎉 SUCCESS! Found {headshot_count} headshots (>= {min_testing_headshots} required)")
+        
+        # Copy model file to models directory
+        if copy_model_to_models_dir(args.celebrity_name):
+            print_run_summary("✓ Model successfully copied to models directory")
+        else:
+            print_error("⚠️ Warning: Failed to copy model file, but training was successful")
+        
         sys.exit(0)
     else:
         fatal_error(f"FAILED! Only found {headshot_count} headshots (< {min_testing_headshots} required)")

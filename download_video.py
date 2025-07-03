@@ -19,6 +19,7 @@ import sys
 import re
 import subprocess
 import json
+import shutil
 from pathlib import Path
 from urllib.parse import urlparse
 from utils import print_error, print_summary
@@ -92,19 +93,25 @@ def download_video(video_url, site, video_id, title):
     folder_name = f"{site}_{video_id}"
     video_dir = videos_dir / folder_name
     
-    # Create directories
-    video_dir.mkdir(parents=True, exist_ok=True)
+    # Check if video already exists
+    if video_dir.exists() and any(video_dir.iterdir()):
+        print(f"Video already exists in {video_dir}/, skipping download")
+        return True
     
-    print(f"Downloading {site} video '{title}' to {video_dir}/")
+    # Create temp directory
+    temp_dir = Path("temp") / folder_name
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    
+    print(f"Downloading {site} video '{title}' to temp folder...")
     
     # Sanitize title for filename
     safe_title = sanitize_filename(title)
     
-    # yt-dlp command to download video
+    # yt-dlp command to download video to temp folder
     cmd = [
         'yt-dlp',
-        '-o', str(video_dir / f'{safe_title}.%(ext)s'),
-        '--format', 'best[height<=1080]',  # Download best quality up to 1080p
+        '-o', str(temp_dir / f'{safe_title}.%(ext)s'),
+        '--format', 'bestvideo[height<=720]',  # Download best quality up to 1080p
         '--write-info-json',  # Save metadata
         '--write-thumbnail',  # Save thumbnail
         '--write-description',  # Save description if available
@@ -113,11 +120,37 @@ def download_video(video_url, site, video_id, title):
     
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-        print(f"Successfully downloaded video to {video_dir}/")
-        return True
+        print(f"Download completed, moving to {video_dir}/")
+        
+        # Create final video directory
+        video_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Move all files from temp to final location
+        try:
+            for file_path in temp_dir.iterdir():
+                if file_path.is_file():
+                    dest_path = video_dir / file_path.name
+                    shutil.move(str(file_path), str(dest_path))
+            
+            # Clean up temp directory
+            shutil.rmtree(temp_dir)
+            
+            print(f"Successfully downloaded video to {video_dir}/")
+            return True
+            
+        except Exception as e:
+            print_error(f"Error moving files from temp to final location: {e}")
+            # Clean up temp directory on error
+            if temp_dir.exists():
+                shutil.rmtree(temp_dir)
+            return False
+            
     except subprocess.CalledProcessError as e:
         print_error(f"Error downloading video: {e}")
         print_error(f"Error output: {e.stderr}")
+        # Clean up temp directory on error
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
         return False
 
 

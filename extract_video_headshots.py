@@ -10,16 +10,14 @@ import shutil
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
-from utils import get_celebrity_folder_name, load_pickle, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity
+from utils import get_celebrity_folder_name, get_average_embedding_path, load_pickle, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity
 
 # Load environment variables
 load_dotenv()
 
 def load_celebrity_embedding(celebrity_name):
     """Load the precomputed average embedding for a celebrity."""
-    # Convert celebrity name to folder format
-    celeb_folder = get_celebrity_folder_name(celebrity_name)
-    embedding_path = Path(f"training/{celeb_folder}/{celeb_folder}_average_embedding.pkl")
+    embedding_path = get_average_embedding_path(celebrity_name, 'models')
     
     if not embedding_path.exists():
         raise FileNotFoundError(f"Celebrity embedding file not found: {embedding_path}")

@@ -11,13 +11,13 @@ import sys
 import subprocess
 from pathlib import Path
 from dotenv import load_dotenv
-from utils import get_celebrity_folder_name
+from utils import get_celebrity_folder_name, get_average_embedding_path
 
 # Load environment variables
 load_dotenv()
 
 # Pipeline configuration
-TOTAL_PIPELINE_STEPS = 14
+TOTAL_PIPELINE_STEPS = 15
 
 
 def get_celebrity_name():
@@ -89,15 +89,53 @@ def display_menu(celebrity_name):
     print("7. Remove duplicate testing images")
     print("8. Remove bad testing images (keep 4-10 faces)")
     print("9. Detect faces in test images")
+    print("10. Accept model (copy to models directory)")
     print()
     print("OPERATIONS PIPELINE:")
-    print("10. Download video from URL")
-    print("11. Extract frames from video")
-    print("12. Extract faces from video frames")
-    print("13. Extract celebrity headshots from video")
+    print("11. Download video from URL")
+    print("12. Extract frames from video")
+    print("13. Extract faces from video frames")
+    print("14. Extract celebrity headshots from video")
     print()
     print(f"{TOTAL_PIPELINE_STEPS}. Exit")
     print()
+
+
+def copy_model_to_models_dir(celebrity_name):
+    """
+    Copy the average embedding file from training directory to models directory.
+    
+    Args:
+        celebrity_name (str): Name of the celebrity
+        
+    Returns:
+        bool: True if successful, False if failed
+    """
+    try:
+        import shutil
+        
+        # Get paths using utility functions
+        source_path = get_average_embedding_path(celebrity_name, 'training')
+        dest_path = get_average_embedding_path(celebrity_name, 'models')
+        
+        # Check if source exists
+        if not source_path.exists():
+            print(f"✗ Source embedding file not found: {source_path}")
+            print("Make sure you have run 'Compute average embeddings' first.")
+            return False
+        
+        # Create models directory if it doesn't exist
+        dest_path.parent.mkdir(exist_ok=True)
+        
+        # Copy file to models directory
+        shutil.copy2(source_path, dest_path)
+        
+        print(f"✓ Model successfully copied to: {dest_path}")
+        return True
+        
+    except Exception as e:
+        print(f"✗ Failed to copy model file: {e}")
+        return False
 
 
 def run_command(command, description):
@@ -227,6 +265,17 @@ def main():
                     last_step = 9
                 
             elif choice == '10':
+                # Accept model (copy to models directory)
+                print(f"\n{'='*60}")
+                print("Accepting model: Copy average embedding to models directory")
+                print(f"{'='*60}")
+                if copy_model_to_models_dir(celebrity_name):
+                    print(f"\n✓ Model acceptance completed successfully!")
+                    last_step = 10
+                else:
+                    print(f"\n✗ Model acceptance failed!")
+                
+            elif choice == '11':
                 # Download video from URL
                 video_url = input("\nEnter video URL (YouTube, Vimeo, TikTok, etc.): ").strip()
                 if not video_url:
@@ -234,9 +283,9 @@ def main():
                     continue
                 command = ['python3', 'download_video.py', video_url]
                 if run_command(command, "Download video from URL"):
-                    last_step = 10
+                    last_step = 11
                 
-            elif choice == '11':
+            elif choice == '12':
                 # Extract frames from video
                 if video_folder_path:
                     default_prompt = f"\nEnter path to video folder (default: {video_folder_path}): "
@@ -260,9 +309,9 @@ def main():
                 else:
                     command = ['python3', 'extract_video_frames.py', video_folder, frame_count]
                 if run_command(command, "Extract frames from video"):
-                    last_step = 11
+                    last_step = 12
                 
-            elif choice == '12':
+            elif choice == '13':
                 # Extract faces from video frames
                 if video_folder_path:
                     default_prompt = f"\nEnter path to video folder (default: {video_folder_path}): "
@@ -275,9 +324,9 @@ def main():
                 
                 command = ['python3', 'extract_frame_faces.py', video_folder]
                 if run_command(command, "Extract faces from video frames"):
-                    last_step = 12
+                    last_step = 13
                 
-            elif choice == '13':
+            elif choice == '14':
                 # Extract celebrity headshots from video
                 if video_folder_path:
                     default_prompt = f"\nEnter path to video folder (default: {video_folder_path}): "
@@ -290,7 +339,7 @@ def main():
                 
                 command = ['python3', 'extract_video_headshots.py', celebrity_name, video_folder]
                 if run_command(command, f"Extract {celebrity_name} headshots from video"):
-                    last_step = 13
+                    last_step = 14
                 
             elif choice == str(TOTAL_PIPELINE_STEPS):
                 print("\nExiting StarMapr Pipeline Runner. Goodbye!")

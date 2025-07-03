@@ -111,7 +111,7 @@ def download_video(video_url, site, video_id, title):
     cmd = [
         'yt-dlp',
         '-o', str(temp_dir / f'{safe_title}.%(ext)s'),
-        '--format', 'bestvideo[height<=720]',  # Download best quality up to 1080p
+        '--format', 'bestvideo[height<=720][vcodec!^=av01]',  # Download best quality up to 720p, excluding AV1 codec
         '--write-info-json',  # Save metadata
         '--write-thumbnail',  # Save thumbnail
         '--write-description',  # Save description if available
@@ -157,8 +157,6 @@ def download_video(video_url, site, video_id, title):
 def main():
     parser = argparse.ArgumentParser(description='Download video from various sites to videos/[site]_[video_id]/ folder')
     parser.add_argument('url', help='Video URL from supported site')
-    parser.add_argument('--format', default='best[height<=1080]', 
-                       help='Video format (default: best[height<=1080])')
     parser.add_argument('--list-extractors', action='store_true',
                        help='List all supported sites/extractors')
     

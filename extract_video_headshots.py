@@ -106,12 +106,16 @@ def extract_face_crop(frames_dir, frame_file, face_data, output_path):
         bbox = face_data['bounding_box']
         x, y, w, h = bbox['x'], bbox['y'], bbox['w'], bbox['h']
         
-        # Add some padding around the face (10% on each side)
-        padding = int(min(w, h) * 0.1)
-        x_start = max(0, x - padding)
-        y_start = max(0, y - padding)
-        x_end = min(img.shape[1], x + w + padding)
-        y_end = min(img.shape[0], y + h + padding)
+        # Add custom padding: 50% height on top, double height on bottom, double width on left and right
+        padding_top = int(h * 0.5)
+        padding_bottom = int(h * 1.5)
+        padding_left = int(w * 1.5)
+        padding_right = int(w * 1.5)
+        
+        x_start = max(0, x - padding_left)
+        y_start = max(0, y - padding_top)
+        x_end = min(img.shape[1], x + w + padding_right)
+        y_end = min(img.shape[0], y + h + padding_bottom)
         
         face_crop = img[y_start:y_end, x_start:x_end]
         

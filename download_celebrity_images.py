@@ -10,12 +10,50 @@ import os
 import argparse
 import sys
 import uuid
+import shutil
 from google_images_search import GoogleImagesSearch
 from dotenv import load_dotenv
 from utils import get_celebrity_folder_path, get_env_int, ensure_folder_exists, print_error, print_summary
 
 # Load environment variables from .env file
 load_dotenv()
+
+
+def copy_images_from_cache_to_destination(cache_folder, destination_folder):
+    """
+    Copy images from cache folder to destination folder, renaming with new GUIDs.
+    
+    Args:
+        cache_folder (str): Path to cache folder containing images
+        destination_folder (str): Path to destination folder
+        
+    Returns:
+        int: Number of files successfully copied
+    """
+    ensure_folder_exists(destination_folder)
+    
+    # Get all image files from cache
+    cached_files = [f for f in os.listdir(cache_folder) 
+                   if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'))]
+    
+    copied_count = 0
+    for filename in cached_files:
+        source_path = os.path.join(cache_folder, filename)
+        # Get file extension
+        ext = os.path.splitext(filename)[1].lower()
+        # Create new GUID-based filename (first 8 characters)
+        guid_prefix = str(uuid.uuid4()).replace('-', '')[:8]
+        new_filename = f"{guid_prefix}{ext}"
+        dest_path = os.path.join(destination_folder, new_filename)
+        
+        try:
+            shutil.copy2(source_path, dest_path)
+            copied_count += 1
+            print(f"  Copied: {filename} → {new_filename}")
+        except Exception as e:
+            print_error(f"Warning: Could not copy {filename}: {e}")
+    
+    return copied_count
 
 
 def download_celebrity_images(celebrity_name, mode='training', show=None, page=1, api_key=None, search_engine_id=None):
@@ -85,16 +123,38 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
     
     query = search_terms[page - 1]
 
+    # Generate cache key and check for cached images
+    cache_key = query.replace(' ', '_')
+    cache_folder = f'download_cache/images/{mode}/{cache_key}/'
+    
+    # Check if cache folder exists and has images
+    if os.path.exists(cache_folder):
+        cached_files = [f for f in os.listdir(cache_folder) 
+                       if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'))]
+        
+        if cached_files:
+            print(f"Found {len(cached_files)} cached images for query: '{query}'")
+            print(f"Copying cached images to: {download_path}")
+            
+            # Use common function to copy cached files to destination
+            copied_count = copy_images_from_cache_to_destination(cache_folder, download_path)
+            
+            print_summary(f"Successfully copied {copied_count} cached images for '{celebrity_name}' - Images saved to: {download_path}")
+            return True
+
     # Needs to be increments of 10, google queries in blocks of 10
     images_to_download = 20
     
     print(f"Downloading page {page} images for '{celebrity_name}' using query: '{query}' (20 total)...")
     
-    # Get initial file count to track new downloads
-    initial_files = set(os.listdir(download_path))
+    # Ensure cache folder exists and download directly to cache
+    ensure_folder_exists(cache_folder)
+    
+    # Get initial file count in cache to track new downloads
+    initial_cache_files = set(os.listdir(cache_folder))
     
     try:
-        # Perform searches and downloads
+        # Perform searches and downloads directly to cache folder
         search_params = {
             'q': query,
             'num': images_to_download,
@@ -102,32 +162,19 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
             'imgSize': 'medium' if mode == 'training' else 'large',
         }
             
-        gis.search(search_params=search_params, path_to_dir=download_path)
+        gis.search(search_params=search_params, path_to_dir=cache_folder)
     
-        # Get all files after download and identify newly downloaded ones
-        all_files = set(os.listdir(download_path))
-        newly_downloaded_files = list(all_files - initial_files)
+        # Get all files after download and identify newly downloaded ones in cache
+        all_cache_files = set(os.listdir(cache_folder))
+        newly_downloaded_files = list(all_cache_files - initial_cache_files)
         print(f"Actually downloaded {len(newly_downloaded_files)} new files")
         
-        # Rename only newly downloaded files using first 8 characters of GUID
-        renamed_count = 0
-        for filename in sorted(newly_downloaded_files):
-            old_path = os.path.join(download_path, filename)
-            # Get file extension
-            ext = os.path.splitext(filename)[1].lower()
-            # Create new GUID-based filename (first 8 characters)
-            guid_prefix = str(uuid.uuid4()).replace('-', '')[:8]
-            new_filename = f"{guid_prefix}{ext}"
-            new_path = os.path.join(download_path, new_filename)
-            
-            try:
-                os.rename(old_path, new_path)
-                renamed_count += 1
-                print(f"  Renamed: {filename} → {new_filename}")
-            except OSError as e:
-                print_error(f"Warning: Could not rename {filename}: {e}")
+        # Keep original filenames in cache (no GUID renaming here)
+        print(f"Downloaded {len(newly_downloaded_files)} new files to cache")
         
-        print(f"Renamed {renamed_count} files with GUID-based names")
+        # Now copy all images from cache to destination using common function
+        print(f"Copying images from cache to: {download_path}")
+        copied_count = copy_images_from_cache_to_destination(cache_folder, download_path)
 
         print_summary(f"Successfully downloaded {len(newly_downloaded_files)} new images for '{celebrity_name}' - Images saved to: {download_path}")
         

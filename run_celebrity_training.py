@@ -16,6 +16,7 @@ import os
 import sys
 import subprocess
 import argparse
+import shutil
 from pathlib import Path
 from dotenv import load_dotenv
 from utils import (
@@ -50,6 +51,30 @@ def count_detected_headshots(celebrity_name):
 def fatal_error(message):
     print_error(f"❌ {message}")
     sys.exit(1)
+
+
+def handle_fresh_flag(celebrity_name):
+    """Handle --fresh flag by deleting existing folders after confirmation."""
+    training_folder = get_celebrity_folder_path(celebrity_name, 'training')
+    testing_folder = get_celebrity_folder_path(celebrity_name, 'testing')
+    
+    folders_exist = os.path.exists(training_folder) or os.path.exists(testing_folder)
+    if not folders_exist:
+        print(f"No existing folders found for '{celebrity_name}', proceeding with fresh start.")
+        return
+    
+    print_error(f"⚠️  WARNING: --fresh will DELETE existing folders for '{celebrity_name}'")
+    print_error(f"⚠️  This action cannot be undone!")
+    
+    if input("Type 'delete' to confirm: ").strip().lower() != 'delete':
+        print_error("Operation cancelled.")
+        sys.exit(1)
+    
+    for folder in [training_folder, testing_folder]:
+        if os.path.exists(folder):
+            shutil.rmtree(folder)
+    
+    print_run_summary(f"✓ Deleted existing folders for '{celebrity_name}'")
 
 
 def run_subprocess_command(command_list, description):
@@ -207,8 +232,13 @@ def main():
     parser = argparse.ArgumentParser(description='Run comprehensive celebrity training pipeline')
     parser.add_argument('celebrity_name', help='Name of the celebrity (e.g., "Bill Murray")')
     parser.add_argument('show_name', help='Name of the show/movie (e.g., "SNL")')
+    parser.add_argument('--fresh', action='store_true', help='Delete existing celebrity folders before starting')
     
     args = parser.parse_args()
+    
+    # Handle fresh flag if specified
+    if args.fresh:
+        handle_fresh_flag(args.celebrity_name)
     
     # Get configuration from environment
     min_training_images = get_env_int('TRAINING_MIN_IMAGES', 15)

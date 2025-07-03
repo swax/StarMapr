@@ -64,9 +64,9 @@ def get_face_embeddings(image_path, enforce_detection=False):
             import cv2
             image = cv2.imread(str(image_path))
             image_height, image_width = image.shape[:2]
-            faces_dir = image_path.parent / 'faces'
-            faces_dir.mkdir(exist_ok=True)
-            base_name = image_path.stem
+            #faces_dir = image_path.parent / 'faces'
+            #faces_dir.mkdir(exist_ok=True)
+            #base_name = image_path.stem
         except Exception as e:
             print_error(f"Error setting up face extraction for {image_path.name}: {e}")
             image = None
@@ -85,16 +85,16 @@ def get_face_embeddings(image_path, enforce_detection=False):
             if (abs(face_width - image_width) <= 3 and abs(face_height - image_height) <= 3):
                 continue
             
-            # Extract and save face crop
-            if image is not None:
-                try:
-                    x, y, w, h = face_region['x'], face_region['y'], face_width, face_height
-                    face_crop = image[y:y+h, x:x+w]
-                    face_filename = f"{base_name}_face_{len(faces_data)+1}{image_path.suffix}"
-                    face_path = faces_dir / face_filename
-                    cv2.imwrite(str(face_path), face_crop)
-                except Exception as e:
-                    print_error(f"Error saving face crop {i+1} for {image_path.name}: {e}")
+            # Extract and save face crop: Used to debug face detection issues
+            #if image is not None:
+            #    try:
+            #        x, y, w, h = face_region['x'], face_region['y'], face_width, face_height
+            #        face_crop = image[y:y+h, x:x+w]
+            #        face_filename = f"{base_name}_face_{len(faces_data)+1}{image_path.suffix}"
+            #        face_path = faces_dir / face_filename
+            #        cv2.imwrite(str(face_path), face_crop)
+            #    except Exception as e:
+            #        print_error(f"Error saving face crop {i+1} for {image_path.name}: {e}")
                 
             faces_data.append({
                 'face_id': len(faces_data) + 1,

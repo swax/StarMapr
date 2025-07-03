@@ -8,7 +8,7 @@ from pathlib import Path
 import cv2
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
-from utils import get_celebrity_folder_path, get_celebrity_folder_name, get_image_files, load_pickle, get_env_float, print_error, print_summary, calculate_face_similarity
+from utils import get_celebrity_folder_path, get_celebrity_folder_name, get_image_files, get_average_embedding_path, load_pickle, get_env_float, print_error, print_summary, calculate_face_similarity
 from utils_deepface import get_face_embeddings
 
 # Load environment variables
@@ -154,7 +154,7 @@ def main():
         
         # Construct paths automatically
         images_folder = get_celebrity_folder_path(args.celebrity_name, 'testing')
-        embedding_file = f"training/{celeb_folder}/{celeb_folder}_average_embedding.pkl"
+        embedding_file = get_average_embedding_path(args.celebrity_name, 'training')
         
         # Verify paths exist
         if not os.path.exists(images_folder):

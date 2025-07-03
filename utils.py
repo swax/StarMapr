@@ -42,6 +42,43 @@ def get_celebrity_folder_name(celebrity_name):
     return celebrity_name.lower().replace(' ', '_')
 
 
+def get_average_embedding_filename(celebrity_name):
+    """
+    Generate the standard filename for average embedding files.
+    
+    Args:
+        celebrity_name (str): The celebrity name
+        
+    Returns:
+        str: Formatted filename (e.g., 'bill_murray_average_embedding.pkl')
+    """
+    celebrity_folder = get_celebrity_folder_name(celebrity_name)
+    return f"{celebrity_folder}_average_embedding.pkl"
+
+
+def get_average_embedding_path(celebrity_name, location='training'):
+    """
+    Generate the full path to the average embedding file.
+    
+    Args:
+        celebrity_name (str): The celebrity name
+        location (str): Either 'training' for training folder or 'models' for models folder
+        
+    Returns:
+        Path: Full path to the average embedding file
+    """
+    filename = get_average_embedding_filename(celebrity_name)
+    
+    if location == 'training':
+        base_path = Path(get_celebrity_folder_path(celebrity_name, 'training'))
+    elif location == 'models':
+        base_path = Path("models")
+    else:
+        raise ValueError(f"Invalid location: {location}. Must be 'training' or 'models'")
+    
+    return base_path / filename
+
+
 def add_training_testing_args(parser):
     """
     Add standard --training/--testing mutually exclusive arguments to parser.

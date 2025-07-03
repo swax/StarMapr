@@ -9,7 +9,9 @@ __pycache__/
 *.pkl
 
 # Resource folders
-download_cache/
+models/
+search_cache/
+temp/
 testing/
 training/
 videos/

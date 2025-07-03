@@ -125,7 +125,7 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
 
     # Generate cache key and check for cached images
     cache_key = query.replace(' ', '_')
-    cache_folder = f'download_cache/images/{mode}/{cache_key}/'
+    cache_folder = f'search_cache/images/{mode}/{cache_key}/'
     
     # Check if cache folder exists and has images
     if os.path.exists(cache_folder):

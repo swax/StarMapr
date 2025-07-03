@@ -9,7 +9,7 @@ that don't need DeepFace functionality.
 import numpy as np
 import pickle
 from pathlib import Path
-from utils import print_error
+from utils import print_error, get_env_int
 
 def get_face_embeddings(image_path, enforce_detection=False):
     """
@@ -55,16 +55,54 @@ def get_face_embeddings(image_path, enforce_detection=False):
             return []
         
         # Convert to structured format with face IDs and bounding boxes
+        # Filter out faces smaller than minimum size
+        min_face_size = get_env_int('MIN_FACE_SIZE', 50)
         faces_data = []
+        
+        # Load image for face extraction
+        try:
+            import cv2
+            image = cv2.imread(str(image_path))
+            image_height, image_width = image.shape[:2]
+            faces_dir = image_path.parent / 'faces'
+            faces_dir.mkdir(exist_ok=True)
+            base_name = image_path.stem
+        except Exception as e:
+            print_error(f"Error setting up face extraction for {image_path.name}: {e}")
+            image = None
+            image_height, image_width = 0, 0
+        
         for i, face_data in enumerate(face_analysis):
             face_region = face_data['facial_area']
+            face_width = face_region['w']
+            face_height = face_region['h']
+            
+            # Skip faces smaller than minimum size
+            if face_width < min_face_size or face_height < min_face_size:
+                continue
+            
+            # Skip faces that are nearly the same size as the image (within 3px) Sometimes it thinks the whole image is a face
+            if (abs(face_width - image_width) <= 3 and abs(face_height - image_height) <= 3):
+                continue
+            
+            # Extract and save face crop
+            if image is not None:
+                try:
+                    x, y, w, h = face_region['x'], face_region['y'], face_width, face_height
+                    face_crop = image[y:y+h, x:x+w]
+                    face_filename = f"{base_name}_face_{len(faces_data)+1}{image_path.suffix}"
+                    face_path = faces_dir / face_filename
+                    cv2.imwrite(str(face_path), face_crop)
+                except Exception as e:
+                    print_error(f"Error saving face crop {i+1} for {image_path.name}: {e}")
+                
             faces_data.append({
-                'face_id': i + 1,
+                'face_id': len(faces_data) + 1,
                 'bounding_box': {
                     'x': face_region['x'],
                     'y': face_region['y'],
-                    'w': face_region['w'],
-                    'h': face_region['h']
+                    'w': face_width,
+                    'h': face_height
                 },
                 'embedding': face_data['embedding']
             })
@@ -101,5 +139,6 @@ def get_single_face_embedding(image_path):
     """
     embeddings = get_face_embeddings(image_path)
     return np.array(embeddings[0]['embedding']) if embeddings else None
+
 
 

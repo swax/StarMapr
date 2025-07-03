@@ -6,6 +6,7 @@ import argparse
 import numpy as np
 import pickle
 import cv2
+import shutil
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
@@ -137,15 +138,15 @@ def extract_top_headshots(celebrity_name, video_folder_path, threshold=0.6, dry_
     if not frames_dir.exists():
         raise FileNotFoundError(f"Frames directory not found: {frames_dir}")
     
-    # Create headshots output directory
-    headshots_dir = video_folder / "headshots"
+    # Create celebrity-specific headshots output directory
+    celeb_name_clean = celebrity_name.lower().replace(' ', '_')
+    headshots_dir = video_folder / "headshots" / celeb_name_clean
     
     if not dry_run:
-        headshots_dir.mkdir(exist_ok=True)
-        
-        # Clean up existing headshots
-        for existing_file in headshots_dir.glob("*.jpg"):
-            existing_file.unlink()
+        # Remove existing celebrity headshots folder and recreate it
+        if headshots_dir.exists():
+            shutil.rmtree(headshots_dir)
+        headshots_dir.mkdir(parents=True, exist_ok=True)
     
     # Load celebrity reference embedding
     reference_embedding = load_celebrity_embedding(celebrity_name)
@@ -162,8 +163,6 @@ def extract_top_headshots(celebrity_name, video_folder_path, threshold=0.6, dry_
     top_matches = matches[:5]
     
     print(f"\nTop {len(top_matches)} matches:")
-    
-    celeb_name_clean = celebrity_name.lower().replace(' ', '_')
     
     for i, (similarity, frame_file, face_data, pkl_path) in enumerate(top_matches, 1):
         bbox = face_data['bounding_box']

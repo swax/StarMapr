@@ -291,6 +291,7 @@ All default values configurable via environment variables in .env file:
 - **TESTING_DETECTION_THRESHOLD**: 0.6 (cosine similarity, 0.0-1.0, adjustable via --threshold)
 - **OPERATIONS_EXTRACT_FRAME_COUNT**: 50 (number of frames to extract from videos)
 - **OPERATIONS_HEADSHOT_MATCH_THRESHOLD**: 0.6 (cosine similarity, 0.0-1.0, adjustable via --threshold)
+- **MIN_FACE_SIZE**: 50 (minimum face size in pixels for processing, filters out faces smaller than this)
 
 ### Other Parameters:
 - **Video Headshot Extraction**: Top 5 most similar faces with 10% padding around face region

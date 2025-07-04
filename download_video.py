@@ -26,6 +26,10 @@ from utils import print_error, print_summary
 
 
 def extract_site_and_id(url):
+    # if url is mock_video, return mock data
+    if url.lower() == "mock_video":
+        return "mock", "video", "Mock Video Title"
+
     """Extract site name and video ID from URL."""
     try:
         # Use yt-dlp to extract info without downloading
@@ -97,6 +101,11 @@ def download_video(video_url, site, video_id, title):
     if video_dir.exists() and any(video_dir.iterdir()):
         print(f"Video already exists in {video_dir}/, skipping download")
         return True
+
+    # Ensure we dont try to download a mock video
+    if folder_name.startswith('mock_'):
+        print_error("Mock video data not found")
+        return False
     
     # Create temp directory
     temp_dir = Path("temp") / folder_name

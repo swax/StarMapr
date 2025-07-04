@@ -16,7 +16,7 @@ The system follows a **three-tier hierarchical architecture**:
 
 **Pipeline Flow**: Training → Testing → Operations
 
-The system consists of 16 components organized in three execution tiers:
+The system consists of 17 components organized in three execution tiers:
 
 ### Top-Level Orchestration (Complete Workflow)
 
@@ -88,6 +88,7 @@ The system consists of 16 components organized in three execution tiers:
 15. **utils.py** - Common functions (path conversion, argument parsing, file operations)
 16. **utils_deepface.py** - DeepFace utilities with caching
 17. **print_pkl.py** - Pickle file inspector
+18. **run_integration_test.py** - Integration test script with mock data
 
 ## Data Structure
 
@@ -111,6 +112,15 @@ python3 run_celebrity_training.py "Celebrity Name" "Show Name"
 ### Manual Control
 ```bash
 python3 run_pipeline_steps.py
+```
+
+### Integration Testing
+```bash
+# Unzip mock data first
+unzip mocks.zip
+
+# Run integration test
+python3 run_integration_test.py
 ```
 
 ### Manual Commands

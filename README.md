@@ -29,12 +29,18 @@ git clone https://github.com/swax/StarMapr.git
 cd StarMapr
 ```
 
-2. Install dependencies:
+2. Install Git LFS and pull large files:
+```bash
+git lfs install
+git lfs pull
+```
+
+3. Install dependencies:
 ```bash
 pip install deepface numpy opencv-python scikit-learn google-images-search python-dotenv yt-dlp
 ```
 
-3. Set up configuration:
+4. Set up configuration:
 Create a `.env` file with:
 ```
 # Google API credentials (required for image downloading)
@@ -58,7 +64,7 @@ TESTING_MIN_HEADSHOTS=4
 MAX_DOWNLOAD_PAGES=5
 ```
 
-4. Test the installation:
+5. Test the installation:
 ```bash
 # Extract mock data
 unzip mocks.zip

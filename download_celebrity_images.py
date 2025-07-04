@@ -13,7 +13,7 @@ import uuid
 import shutil
 from google_images_search import GoogleImagesSearch
 from dotenv import load_dotenv
-from utils import get_celebrity_folder_path, get_env_int, ensure_folder_exists, print_error, print_summary
+from utils import get_celebrity_folder_name, get_celebrity_folder_path, get_env_int, ensure_folder_exists, print_error, print_summary
 
 # Load environment variables from .env file
 load_dotenv()
@@ -33,8 +33,7 @@ def copy_images_from_cache_to_destination(cache_folder, destination_folder):
     ensure_folder_exists(destination_folder)
     
     # Get all image files from cache
-    cached_files = [f for f in os.listdir(cache_folder) 
-                   if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'))]
+    cached_files = os.listdir(cache_folder)
     
     copied_count = 0
     for filename in cached_files:
@@ -124,13 +123,13 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
     query = search_terms[page - 1]
 
     # Generate cache key and check for cached images
-    cache_key = query.replace(' ', '_')
-    cache_folder = f'search_cache/{mode}/{cache_key}/'
-    
+    celebrity_folder = get_celebrity_folder_name(celebrity_name)
+    cache_key = query.lower().replace(' ', '_')
+    cache_folder = f'search_cache/{celebrity_folder}/{mode}/{cache_key}/'
+
     # Check if cache folder exists and has images
     if os.path.exists(cache_folder):
-        cached_files = [f for f in os.listdir(cache_folder) 
-                       if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'))]
+        cached_files = os.listdir(cache_folder)
         
         if cached_files:
             print(f"Found {len(cached_files)} cached images for query: '{query}'")
@@ -141,6 +140,11 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
             
             print_summary(f"Successfully copied {copied_count} cached images for '{celebrity_name}' - Images saved to: {download_path}")
             return True
+
+    # If celebrity name starts with 'mock_' return an error here as it should not get to this point
+    if celebrity_name.lower().startswith('mock_'):
+        print_error("Mock celebrity data not found")
+        return False
 
     # Needs to be increments of 10, google queries in blocks of 10
     images_to_download = 20

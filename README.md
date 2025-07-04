@@ -58,6 +58,15 @@ TESTING_MIN_HEADSHOTS=4
 MAX_DOWNLOAD_PAGES=5
 ```
 
+4. Test the installation:
+```bash
+# Extract mock data
+unzip mocks.zip
+
+# Run integration test
+python3 run_integration_test.py
+```
+
 ## Quick Start
 
 ### Primary Entry Point (Recommended)
@@ -145,6 +154,7 @@ StarMapr/
 ├── run_headshot_detection.py      # ★ PRIMARY ENTRY POINT - End-to-end workflow
 ├── run_celebrity_training.py      # ★ MID-LEVEL - Celebrity training automation
 ├── run_pipeline_steps.py          # ★ LOW-LEVEL - Manual pipeline control
+├── run_integration_test.py         # Integration test script with mock data
 ├── download_celebrity_images.py   # Google Image Search downloader
 ├── download_video.py              # Video downloader for multiple platforms
 ├── extract_video_frames.py        # Video frame extraction using binary search
@@ -182,6 +192,12 @@ StarMapr/
 - Manual step-by-step execution of training pipeline
 - Provides numbered menu of all 15 pipeline steps
 - Built-in error checking and user-friendly prompts
+
+#### Integration Testing (`run_integration_test.py`)
+- Complete end-to-end integration test using mock data
+- Tests entire pipeline with hardcoded mock celebrity and video
+- Validates file counts and processing results
+- Requires extracting `mocks.zip` to base directory first
 
 ### Image Collection (`download_celebrity_images.py`)
 - Downloads celebrity photos from Google Image Search

@@ -113,14 +113,11 @@ def run_subprocess_command(command_list, description):
     """
     try:
         print(f"Running: {description}")
-        result = subprocess.run(command_list, check=True, capture_output=True, text=True)
-        if result.stdout:
-            print(result.stdout.strip())
+        # Don't capture output - let it stream to console in real-time so errors are visible
+        result = subprocess.run(command_list, check=True)
         return True
     except subprocess.CalledProcessError as e:
         print_error(f"Failed: {description}")
-        if e.stderr:
-            print_error(e.stderr.strip())
         return False
 
 

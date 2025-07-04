@@ -190,9 +190,12 @@ def main():
         success = download_video(args.url, site, video_id, title)
         
         if success:
-            print_summary(f"Video downloaded successfully to videos/{site}_{video_id}/")
+            video_folder = f"videos/{site}_{video_id}"
+            result = {"success": True, "video_folder": video_folder}
+            print(json.dumps(result))
         else:
-            print_error("Failed to download video")
+            result = {"success": False, "video_folder": None}
+            print(json.dumps(result))
             sys.exit(1)
             
     except Exception as e:

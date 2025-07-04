@@ -17,6 +17,7 @@ import sys
 import subprocess
 import argparse
 import shutil
+import time
 from pathlib import Path
 from dotenv import load_dotenv
 from utils import (
@@ -82,8 +83,8 @@ def copy_model_to_models_dir(celebrity_name):
         return False
 
 
-def handle_retrain_flag(celebrity_name):
-    """Handle --retrain flag by deleting existing folders after confirmation."""
+def delete_existing_folders(celebrity_name):
+    """Start fresh in case the last run failed and training is in an incomplete state."""
     training_folder = get_celebrity_folder_path(celebrity_name, 'training')
     testing_folder = get_celebrity_folder_path(celebrity_name, 'testing')
     
@@ -91,13 +92,6 @@ def handle_retrain_flag(celebrity_name):
     if not folders_exist:
         print(f"No existing folders found for '{celebrity_name}', proceeding with training.")
         return
-    
-    print_error(f"⚠️  WARNING: --retrain will DELETE existing folders for '{celebrity_name}'")
-    print_error(f"⚠️  This action cannot be undone!")
-    
-    if input("Type 'delete' to confirm: ").strip().lower() != 'delete':
-        print_error("Operation cancelled.")
-        sys.exit(1)
     
     for folder in [training_folder, testing_folder]:
         if os.path.exists(folder):
@@ -272,6 +266,8 @@ def check_existing_model(celebrity_name):
 
 def main():
     """Main function to run the comprehensive training pipeline."""
+    start_time = time.time()
+    
     parser = argparse.ArgumentParser(description='Run comprehensive celebrity training pipeline')
     parser.add_argument('celebrity_name', help='Name of the celebrity (e.g., "Bill Murray")')
     parser.add_argument('show_name', help='Name of the show/movie (e.g., "SNL")')
@@ -286,9 +282,8 @@ def main():
         print_run_summary(f"Skipping training for '{args.celebrity_name}' (use --retrain to retrain)")
         sys.exit(0)
     
-    # Handle retrain flag if specified
-    if args.retrain:
-        handle_retrain_flag(args.celebrity_name)
+    # Clean any previous failed runs
+    delete_existing_folders(args.celebrity_name)
     
     # Get configuration from environment
     min_training_images = get_env_int('TRAINING_MIN_IMAGES', 15)
@@ -313,10 +308,15 @@ def main():
         args.celebrity_name, args.show_name, max_pages, min_testing_headshots
     )
     
+    # Calculate elapsed time
+    elapsed_time = time.time() - start_time
+    elapsed_minutes = elapsed_time / 60
+    
     # Final results
     print_run_summary(f"\n=== FINAL RESULTS for '{args.celebrity_name}' ===")
     print(f"Training images: {training_count}")
     print(f"Detected headshots: {headshot_count}")
+    print(f"Total execution time: {elapsed_minutes:.1f} minutes ({elapsed_time:.1f} seconds)")
     
     if testing_success:
         print_run_summary(f"🎉 SUCCESS! Found {headshot_count} headshots (>= {min_testing_headshots} required)")

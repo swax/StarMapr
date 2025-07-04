@@ -138,6 +138,7 @@ def copy_model_to_models_dir(celebrity_name):
         return False
 
 
+
 def run_command(command, description):
     """
     Run a shell command and display the result.
@@ -145,6 +146,9 @@ def run_command(command, description):
     Args:
         command (list): Command to run as list of arguments
         description (str): Description of what the command does
+        
+    Returns:
+        tuple: (success: bool, last_line: str or None)
     """
     print(f"\n{'='*60}")
     print(f"Running: {description}")
@@ -159,16 +163,23 @@ def run_command(command, description):
         env_vars = dotenv_values('.env')
         env.update(env_vars)
         
-        result = subprocess.run(command, check=True, capture_output=False, env=env)
+        # Always capture output to get the last line
+        result = subprocess.run(command, check=True, capture_output=True, text=True, env=env)
+        
+        # Get the last non-empty line of output
+        stdout_lines = result.stdout.strip().split('\n')
+        last_line = stdout_lines[-1] if stdout_lines else ""
+        
         print(f"\n✓ {description} completed successfully!")
-        return True
+        return True, last_line
+            
     except subprocess.CalledProcessError as e:
         print(f"\n✗ {description} failed with exit code {e.returncode}")
-        return False
+        return False, None
     except FileNotFoundError:
         print(f"\n✗ Command not found: {command[0]}")
         print("Make sure all required Python scripts are in the current directory.")
-        return False
+        return False, None
 
 
 def main():
@@ -210,32 +221,27 @@ def main():
                 command = ['python3', 'download_celebrity_images.py', celebrity_name, '--training', '--show', show_name]
                 if training_page != 1:
                     command.extend(['--page', str(training_page)])
-                if run_command(command, "Download training images"):
-                    last_step = 1
+                success, _ = run_command(command, "Download training images")
                 
             elif choice == '2':
                 # Remove duplicate training images
                 command = ['python3', 'remove_dupe_training_images.py', '--training', celebrity_name]
-                if run_command(command, "Remove duplicate training images"):
-                    last_step = 2
+                success, _ = run_command(command, "Remove duplicate training images")
                 
             elif choice == '3':
                 # Remove bad training images
                 command = ['python3', 'remove_bad_training_images.py', '--training', celebrity_name]
-                if run_command(command, "Remove bad training images"):
-                    last_step = 3
+                success, _ = run_command(command, "Remove bad training images")
                 
             elif choice == '4':
                 # Remove outlier faces
                 command = ['python3', 'remove_face_outliers.py', '--training', celebrity_name]
-                if run_command(command, "Remove outlier faces"):
-                    last_step = 4
+                success, _ = run_command(command, "Remove outlier faces")
                 
             elif choice == '5':
                 # Compute average embeddings
                 command = ['python3', 'compute_average_embeddings.py', celebrity_name]
-                if run_command(command, "Compute average embeddings"):
-                    last_step = 5
+                success, _ = run_command(command, "Compute average embeddings")
                 
             elif choice == '6':
                 # Download testing images
@@ -243,26 +249,22 @@ def main():
                 command = ['python3', 'download_celebrity_images.py', celebrity_name, '--testing', '--show', show_name]
                 if testing_page != 1:
                     command.extend(['--page', str(testing_page)])
-                if run_command(command, "Download testing images"):
-                    last_step = 6
+                success, _ = run_command(command, "Download testing images")
                 
             elif choice == '7':
                 # Remove duplicate testing images
                 command = ['python3', 'remove_dupe_training_images.py', '--testing', celebrity_name]
-                if run_command(command, "Remove duplicate testing images"):
-                    last_step = 7
+                success, _ = run_command(command, "Remove duplicate testing images")
                 
             elif choice == '8':
                 # Remove bad testing images
                 command = ['python3', 'remove_bad_training_images.py', '--testing', celebrity_name]
-                if run_command(command, "Remove bad testing images"):
-                    last_step = 8
+                success, _ = run_command(command, "Remove bad testing images")
                 
             elif choice == '9':
                 # Detect faces
                 command = ['python3', 'eval_star_detection.py', celebrity_name]
-                if run_command(command, "Detect faces in test images"):
-                    last_step = 9
+                success, _ = run_command(command, "Detect faces in test images")
                 
             elif choice == '10':
                 # Accept model (copy to models directory)
@@ -282,8 +284,17 @@ def main():
                     print("No URL provided.")
                     continue
                 command = ['python3', 'download_video.py', video_url]
-                if run_command(command, "Download video from URL"):
-                    last_step = 11
+                success, last_line = run_command(command, "Download video from URL")
+                # Parse JSON output to get video folder path
+                if success and last_line:
+                    try:
+                        import json
+                        json_result = json.loads(last_line)
+                        if json_result.get("success"):
+                            video_folder_path = json_result.get("video_folder")
+                            print(f"Video folder: {video_folder_path}")
+                    except json.JSONDecodeError:
+                        pass  # Not JSON, ignore
                 
             elif choice == '12':
                 # Extract frames from video
@@ -308,8 +319,7 @@ def main():
                     command = ['python3', 'extract_video_frames.py', video_folder]
                 else:
                     command = ['python3', 'extract_video_frames.py', video_folder, frame_count]
-                if run_command(command, "Extract frames from video"):
-                    last_step = 12
+                success, _ = run_command(command, "Extract frames from video")
                 
             elif choice == '13':
                 # Extract faces from video frames
@@ -323,8 +333,7 @@ def main():
                     video_folder = video_folder_path
                 
                 command = ['python3', 'extract_frame_faces.py', video_folder]
-                if run_command(command, "Extract faces from video frames"):
-                    last_step = 13
+                success, _ = run_command(command, "Extract faces from video frames")
                 
             elif choice == '14':
                 # Extract celebrity headshots from video
@@ -338,8 +347,7 @@ def main():
                     video_folder = video_folder_path
                 
                 command = ['python3', 'extract_video_headshots.py', celebrity_name, video_folder]
-                if run_command(command, f"Extract {celebrity_name} headshots from video"):
-                    last_step = 14
+                success, _ = run_command(command, f"Extract {celebrity_name} headshots from video")
                 
             elif choice == str(TOTAL_PIPELINE_STEPS):
                 print("\nExiting StarMapr Pipeline Runner. Goodbye!")
@@ -347,6 +355,10 @@ def main():
                 
             else:
                 print(f"\nInvalid choice: {choice}. Please enter a number between 1 and {TOTAL_PIPELINE_STEPS}.")
+            
+            # Update last_step for successful runs (except exit)
+            if choice != str(TOTAL_PIPELINE_STEPS) and choice != '10' and 'success' in locals() and success:
+                last_step = int(choice)
                 
         except KeyboardInterrupt:
             print("\n\nExiting StarMapr Pipeline Runner. Goodbye!")

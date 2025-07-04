@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
-from utils import get_celebrity_folder_name, get_average_embedding_path, load_pickle, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity
+from utils import get_celebrity_folder_name, get_average_embedding_path, load_pickle, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity, get_headshot_crop_coordinates
 
 # Load environment variables
 load_dotenv()
@@ -104,19 +104,16 @@ def extract_face_crop(frames_dir, frame_file, face_data, output_path):
         
         # Extract face region using bounding box
         bbox = face_data['bounding_box']
-        x, y, w, h = bbox['x'], bbox['y'], bbox['w'], bbox['h']
         
-        # Add custom padding: 50% height on top, double height on bottom, double width on left and right
-        padding_top = int(h * 0.5)
-        padding_bottom = int(h * 1.5)
-        padding_left = int(w * 1.5)
-        padding_right = int(w * 1.5)
+        # Get crop coordinates using utility function
+        img_width, img_height = img.shape[1], img.shape[0]
+        crop_coords = get_headshot_crop_coordinates(bbox, img_width, img_height)
+        x_start, y_start, x_end, y_end = crop_coords['x_start'], crop_coords['y_start'], crop_coords['x_end'], crop_coords['y_end']
         
-        x_start = max(0, x - padding_left)
-        y_start = max(0, y - padding_top)
-        x_end = min(img.shape[1], x + w + padding_right)
-        y_end = min(img.shape[0], y + h + padding_bottom)
-        
+        if crop_coords['clipped']:
+            print_error(f"Face crop for {frame_file} is clipped, skipping extraction, this should have been prevented in extract_frame_faces.py")
+            return False
+
         face_crop = img[y_start:y_end, x_start:x_end]
         
         # Save the cropped face

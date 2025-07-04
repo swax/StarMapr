@@ -9,9 +9,9 @@ that don't need DeepFace functionality.
 import numpy as np
 import pickle
 from pathlib import Path
-from utils import print_error, get_env_int
+from utils import print_error, get_env_int, get_headshot_crop_coordinates
 
-def get_face_embeddings(image_path, enforce_detection=False):
+def get_face_embeddings(image_path, headshotable_only=False):
     """
     Get face embeddings using DeepFace ArcFace model with pkl file caching.
     
@@ -21,7 +21,8 @@ def get_face_embeddings(image_path, enforce_detection=False):
     
     Args:
         image_path (str or Path): Path to the image
-        enforce_detection (bool): Whether to enforce face detection
+        headshotable_only (bool): If True, only include faces that can be cropped 
+                                 as headshots without clipping at image edges
         
     Returns:
         list: List of face analysis results with structured data, empty list if error
@@ -47,8 +48,8 @@ def get_face_embeddings(image_path, enforce_detection=False):
         from deepface import DeepFace
         face_analysis = DeepFace.represent(
             str(image_path), 
-            model_name='ArcFace', 
-            enforce_detection=enforce_detection
+            model_name='ArcFace',
+            enforce_detection=False,  # Allow processing even if no faces are detected
         )
         
         if not face_analysis:
@@ -85,6 +86,19 @@ def get_face_embeddings(image_path, enforce_detection=False):
             if (abs(face_width - image_width) <= 3 and abs(face_height - image_height) <= 3):
                 continue
             
+            # Skip faces that would be clipped when cropped as headshots (if headshotable_only is True)
+            bbox = {
+                'x': face_region['x'],
+                'y': face_region['y'],
+                'w': face_width,
+                'h': face_height
+            }
+
+            if headshotable_only and image_width > 0 and image_height > 0:
+                crop_coords = get_headshot_crop_coordinates(bbox, image_width, image_height)
+                if crop_coords['clipped']:
+                    continue
+            
             # Extract and save face crop: Used to debug face detection issues
             #if image is not None:
             #    try:
@@ -98,12 +112,7 @@ def get_face_embeddings(image_path, enforce_detection=False):
                 
             faces_data.append({
                 'face_id': len(faces_data) + 1,
-                'bounding_box': {
-                    'x': face_region['x'],
-                    'y': face_region['y'],
-                    'w': face_width,
-                    'h': face_height
-                },
+                'bounding_box': bbox,
                 'embedding': face_data['embedding']
             })
         

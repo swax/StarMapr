@@ -36,7 +36,7 @@ def compute_average_embeddings(folder_path):
     
     for img_file in image_files:
         print(f"Processing: {img_file.name}")
-        face_embeddings = get_face_embeddings(img_file, enforce_detection=True)
+        face_embeddings = get_face_embeddings(img_file)
         if face_embeddings:
             embeddings.append(face_embeddings[0]['embedding'])
             successful_embeddings += 1

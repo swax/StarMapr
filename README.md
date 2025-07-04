@@ -43,31 +43,51 @@ GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
 
 # Training pipeline thresholds
 TRAINING_DUPLICATE_THRESHOLD=5
-TRAINING_OUTLIER_THRESHOLD=0.1
+TRAINING_OUTLIER_THRESHOLD=0.2
 
 # Testing pipeline thresholds
-TESTING_DETECTION_THRESHOLD=0.6
+TESTING_DETECTION_THRESHOLD=0.4
 
 # Operations pipeline defaults
 OPERATIONS_EXTRACT_FRAME_COUNT=50
-OPERATIONS_HEADSHOT_MATCH_THRESHOLD=0.6
+OPERATIONS_HEADSHOT_MATCH_THRESHOLD=0.4
+
+# Comprehensive training script configuration
+TRAINING_MIN_IMAGES=15
+TESTING_MIN_HEADSHOTS=4
+MAX_DOWNLOAD_PAGES=5
 ```
 
 ## Quick Start
 
-### Interactive Pipeline Runner (Recommended)
-Run the complete pipeline interactively with guided menu options:
+### Primary Entry Point (Recommended)
+Complete end-to-end workflow from video URL to extracted headshots:
 ```bash
-python3 run_pipeline.py
+python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" "Bill Murray" "Tina Fey"
+python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --celebrities "Bill Murray,Tina Fey,Amy Poehler"
 ```
-This script provides a numbered menu to execute each pipeline step in order, with automatic path management and validation.
+**TOP-LEVEL SCRIPT**: This is the main entry point that orchestrates the entire process. It automatically trains celebrities, downloads video, and extracts headshots.
+
+### Individual Celebrity Training
+For training a single celebrity without video processing:
+```bash
+python3 run_celebrity_training.py "Celebrity Name" "Show Name"
+```
+**MID-LEVEL SCRIPT**: Called automatically by `run_headshot_detection.py`, but can be run standalone for celebrity training.
+
+### Manual Pipeline Control  
+For debugging, testing, or manual step-by-step control:
+```bash
+python3 run_pipeline_steps.py
+```
+**LOW-LEVEL SCRIPT**: Interactive menu for manual execution of individual pipeline components.
 
 ### Manual Pipeline Execution
 
 #### Training Pipeline
 ```bash
 # 1. Download training images (solo portraits)
-python3 download_celebrity_images.py "Bill Murray" 20 --training
+python3 download_celebrity_images.py "Bill Murray" --training --show "SNL"
 
 # 2. Remove duplicate images
 python3 remove_dupe_training_images.py --training "Bill Murray"
@@ -85,12 +105,12 @@ python3 compute_average_embeddings.py "Bill Murray"
 #### Testing Pipeline
 ```bash
 # 6. Download testing images (group photos)
-python3 download_celebrity_images.py "Bill Murray" 15 --testing
+python3 download_celebrity_images.py "Bill Murray" --testing --show "SNL"
 
 # 7. Remove duplicate images
 python3 remove_dupe_training_images.py --testing "Bill Murray"
 
-# 8. Remove bad images (keep 4-10 faces)
+# 8. Remove bad images (keep 3-10 faces for group testing)
 python3 remove_bad_training_images.py --testing "Bill Murray"
 
 # 9. Detect faces in test images
@@ -116,38 +136,58 @@ python3 extract_video_headshots.py "Bill Murray" videos/youtube_VIDEO_ID/
 
 ```
 StarMapr/
-├── training/                    # Celebrity training images
-│   └── [celebrity_name]/        # Individual celebrity folders
-├── testing/                     # Test images to process
-│   └── detected_headshots/      # Extracted face crops
-├── videos/                      # Downloaded videos and extracted frames
-│   └── [site]_[video_id]/       # Individual video folders with frames/
-├── run_pipeline.py              # Interactive pipeline runner
-├── download_celebrity_images.py # Google Image Search downloader
-├── download_video.py            # Video downloader for multiple platforms
-├── extract_video_frames.py      # Video frame extraction using binary search
-├── extract_frame_faces.py       # Face detection in video frames
-├── extract_video_headshots.py   # Celebrity headshot extraction from video frames
+├── training/                      # Celebrity training images
+│   └── [celebrity_name]/          # Individual celebrity folders
+├── testing/                       # Test images to process
+│   └── detected_headshots/        # Extracted face crops
+├── videos/                        # Downloaded videos and extracted frames
+│   └── [site]_[video_id]/         # Individual video folders with frames/
+├── run_headshot_detection.py      # ★ PRIMARY ENTRY POINT - End-to-end workflow
+├── run_celebrity_training.py      # ★ MID-LEVEL - Celebrity training automation
+├── run_pipeline_steps.py          # ★ LOW-LEVEL - Manual pipeline control
+├── download_celebrity_images.py   # Google Image Search downloader
+├── download_video.py              # Video downloader for multiple platforms
+├── extract_video_frames.py        # Video frame extraction using binary search
+├── extract_frame_faces.py         # Face detection in video frames
+├── extract_video_headshots.py     # Celebrity headshot extraction from video frames
 ├── remove_dupe_training_images.py # Duplicate removal tool
-├── remove_bad_training_images.py # Image quality cleaner
-├── remove_face_outliers.py      # Face consistency validator
-├── compute_average_embeddings.py # Embedding generator
-├── eval_star_detection.py      # Face detection and matching
-├── utils.py                     # Common utility functions and helpers
-└── utils_deepface.py           # DeepFace-specific utilities with caching
+├── remove_bad_training_images.py  # Image quality cleaner
+├── remove_face_outliers.py        # Face consistency validator
+├── compute_average_embeddings.py  # Embedding generator
+├── eval_star_detection.py         # Face detection and matching
+├── print_pkl.py                   # Pickle file inspection utility
+├── utils.py                       # Common utility functions and helpers
+└── utils_deepface.py              # DeepFace-specific utilities with caching
 ```
 
 ## Core Components
 
-### Pipeline Runner (`run_pipeline.py`)
-- Interactive menu-driven pipeline execution
-- Automatic path management and validation
-- Step-by-step guidance through training and testing workflows
+### Script Hierarchy
+
+#### Top-Level Orchestration (`run_headshot_detection.py`)
+- **PRIMARY ENTRY POINT** for end-to-end video processing
+- Takes video URL and list of celebrities as input
+- Automatically calls `run_celebrity_training.py` for each celebrity
+- Downloads video and orchestrates video operations pipeline
+- Extracts headshots for all successfully trained celebrities
+
+#### Mid-Level Automation (`run_celebrity_training.py`)
+- Automated celebrity training pipeline for individual celebrities
+- Called by `run_headshot_detection.py` but can run standalone
+- Iteratively processes images until quality thresholds are met
+- Handles both training and testing phases automatically
+
+#### Low-Level Control (`run_pipeline_steps.py`)
+- Manual pipeline runner with interactive numbered menu
+- Manual step-by-step execution of training pipeline
+- Provides numbered menu of all 15 pipeline steps
 - Built-in error checking and user-friendly prompts
 
 ### Image Collection (`download_celebrity_images.py`)
 - Downloads celebrity photos from Google Image Search
-- Optimized search parameters for face portraits
+- 20 images per page, each page uses different keywords
+- Training: different keywords for more face variety
+- Testing: keywords targeting group photos
 - Automatic folder organization
 
 ### Data Cleaning (`remove_dupe_training_images.py`, `remove_bad_training_images.py`, `remove_face_outliers.py`)
@@ -179,10 +219,13 @@ StarMapr/
 All default values are configurable through environment variables in the `.env` file:
 
 - **Training duplicate threshold**: 5 Hamming distance (`TRAINING_DUPLICATE_THRESHOLD`)
-- **Training outlier threshold**: 0.1 cosine similarity (`TRAINING_OUTLIER_THRESHOLD`)
-- **Testing detection threshold**: 0.6 cosine similarity (`TESTING_DETECTION_THRESHOLD`)
+- **Training outlier threshold**: 0.2 cosine similarity (`TRAINING_OUTLIER_THRESHOLD`)
+- **Testing detection threshold**: 0.4 cosine similarity (`TESTING_DETECTION_THRESHOLD`)
 - **Frame extraction count**: 50 frames (`OPERATIONS_EXTRACT_FRAME_COUNT`)
-- **Headshot match threshold**: 0.6 cosine similarity (`OPERATIONS_HEADSHOT_MATCH_THRESHOLD`)
+- **Headshot match threshold**: 0.4 cosine similarity (`OPERATIONS_HEADSHOT_MATCH_THRESHOLD`)
+- **Training minimum images**: 15 (`TRAINING_MIN_IMAGES`)
+- **Testing minimum headshots**: 4 (`TESTING_MIN_HEADSHOTS`)
+- **Maximum download pages**: 5 (`MAX_DOWNLOAD_PAGES`)
 
 All thresholds are adjustable with command-line `--threshold` flags.
 
@@ -247,7 +290,7 @@ If the correct headshots are not being found for a video, follow these steps to 
      python3 download_celebrity_images.py "Celebrity Name" --training --show "Show Name" --page 2
      python3 download_celebrity_images.py "Celebrity Name" --testing --show "Show Name" --page 3
      ```
-   - Each page downloads 20 more images (10 general + 10 show-specific)
+   - Each page downloads 20 more images using different keywords for variety
 
 ## Contributing
 

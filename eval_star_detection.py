@@ -30,7 +30,7 @@ def detect_and_compare_faces(image_path, reference_embedding, threshold=0.6):
         list: List of tuples (face_region, similarity_score) for matches above threshold
     """
     # Detect faces and get their embeddings
-    face_analysis = get_face_embeddings(image_path, enforce_detection=False)
+    face_analysis = get_face_embeddings(image_path)
     
     if not face_analysis:
         return []

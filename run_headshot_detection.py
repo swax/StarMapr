@@ -16,6 +16,7 @@ import sys
 import subprocess
 import argparse
 import re
+import time
 from pathlib import Path
 from dotenv import load_dotenv
 from utils import (
@@ -86,25 +87,31 @@ def run_subprocess_command(command_list, description, capture_output=False):
 
 def extract_video_folder_from_output(stdout, stderr):
     """
-    Extract video folder path from download_video.py output.
+    Extract video folder path from download_video.py JSON output.
     
     Args:
-        stdout (str): Standard output from download command
+        stdout (str): Standard output from download command (JSON format)
         stderr (str): Standard error from download command
         
     Returns:
         str or None: Video folder path if found
     """
-    # Look for patterns like "videos/youtube_ABC123/" in the output
-    combined_output = stdout + stderr
-    
-    # Pattern to match video folder paths
-    pattern = r'videos/[a-zA-Z0-9_]+_[a-zA-Z0-9_-]+/?'
-    matches = re.findall(pattern, combined_output)
-    
-    if matches:
-        # Return the first match, ensure it ends without trailing slash for consistency
-        return matches[0].rstrip('/')
+    try:
+        # Parse JSON output from download_video.py (last line)
+        import json
+        # Get the last non-empty line which should be the JSON output
+        stdout_lines = stdout.strip().split('\n')
+        last_line = stdout_lines[-1] if stdout_lines else ""
+        result = json.loads(last_line)
+        if result.get("success") and result.get("video_folder"):
+            return result["video_folder"]
+    except (json.JSONDecodeError, KeyError, AttributeError):
+        # Fallback: try the old regex approach for backward compatibility
+        combined_output = stdout + stderr
+        pattern = r'videos/[a-zA-Z0-9_]+_[a-zA-Z0-9_-]+/?'
+        matches = re.findall(pattern, combined_output)
+        if matches:
+            return matches[0].rstrip('/')
     
     return None
 
@@ -293,6 +300,8 @@ def run_operations_pipeline_with_adaptive_frames(video_folder, trained_celebriti
 
 def main():
     """Main function to run headshot detection pipeline."""
+    start_time = time.time()
+    
     parser = argparse.ArgumentParser(
         description='Run headshot detection pipeline for video and celebrities',
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -351,9 +360,14 @@ Examples:
     # Step 3: Run operations pipeline with adaptive frame extraction
     headshot_results = run_operations_pipeline_with_adaptive_frames(video_folder, trained_celebrities)
     
+    # Calculate elapsed time
+    elapsed_time = time.time() - start_time
+    elapsed_minutes = elapsed_time / 60
+    
     # Final summary
     print_run_summary(f"\n=== FINAL RESULTS ===")
     print(f"Video folder: {video_folder}")
+    print(f"Total execution time: {elapsed_minutes:.1f} minutes ({elapsed_time:.1f} seconds)")
     
     total_headshots = 0
     for celebrity_name in trained_celebrities:

@@ -67,7 +67,7 @@ def main():
         
         try:
             # Detect faces (automatically handles caching)
-            faces_data = get_face_embeddings(img_file, enforce_detection=False)
+            faces_data = get_face_embeddings(img_file, headshotable_only=True)
             
             face_count = len(faces_data)
             total_faces += face_count

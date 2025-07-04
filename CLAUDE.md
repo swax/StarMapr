@@ -4,302 +4,167 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-StarMapr is a Python application for celebrity face recognition and detection. It uses DeepFace with the ArcFace model to create facial embeddings and perform face matching across images.
+StarMapr is a Python application for celebrity face recognition and detection using DeepFace with the ArcFace model.
 
 ## Core Architecture
 
-The system follows a **sequential pipeline architecture** with five main stages that process celebrity images from raw downloads to face detection:
+The system follows a **three-tier hierarchical architecture**:
 
-**Pipeline Flow**: Data Collection → Duplicate Removal → Data Cleaning → Face Consistency Validation → Embedding Generation → Face Detection
+**Top Level**: `run_headshot_detection.py` - Complete end-to-end workflow
+**Mid Level**: `run_celebrity_training.py` - Automated celebrity training + testing
+**Low Level**: `run_pipeline_steps.py` - Manual step-by-step execution
 
-The system consists of eleven main components plus two utility modules:
+**Pipeline Flow**: Training → Testing → Operations
 
-1. **run_pipeline.py** - Interactive pipeline runner for streamlined workflow execution
-   - Provides numbered menu of all pipeline steps
-   - Automatic path validation and error checking
-   - Guided celebrity name input and image count selection
-   - Seamless execution of training and testing workflows
+The system consists of 16 components organized in three execution tiers:
 
-2. **download_celebrity_images.py** - Downloads training images from Google Image Search
-   - Uses Google Custom Search API to fetch celebrity photos
-   - Downloads 10 general images and 10 show-specific images (20 total per page)
-   - Increasing page number pulls the next 20 images for more training data
-   - Optimized search parameters for face portraits
-   - Automatically creates celebrity folders in proper structure
-   - Names images using first 8 characters of GUIDs to prevent collisions on reruns, allowing safe duplicate removal and bad image handling
+### Top-Level Orchestration (Complete Workflow)
 
-3. **remove_dupe_training_images.py** - Removes near-duplicate images from celebrity folders
-   - Uses perceptual hashing to identify visually similar images
-   - Keeps the largest file from each duplicate group
-   - Moves duplicates to a subfolder to reduce training redundancy
+1. **run_headshot_detection.py** - **PRIMARY ENTRY POINT**
+   - Takes video URL and celebrities as input
+   - Calls `run_celebrity_training.py` for each celebrity
+   - Executes full operations pipeline (download → frames → faces → headshots)
+   - Uses adaptive frame extraction if no headshots found
 
-4. **remove_bad_training_images.py** - Removes images that don't meet face count requirements
-   - Training mode: Removes images without exactly 1 face
-   - Testing mode: Removes images with fewer than 4 or more than 10 faces
-   - Uses DeepFace for accurate face detection and validation
+### Mid-Level Automation (Training + Testing)
 
-5. **remove_face_outliers.py** - Removes face outliers from celebrity training images
-   - Compares all faces using DeepFace ArcFace embeddings and cosine similarity
-   - Identifies faces that are significantly different from the majority group
-   - Moves outlier faces to an `outliers/` subfolder
-   - Helps ensure training data consistency by removing incorrect celebrity faces
+2. **run_celebrity_training.py** - Automated celebrity training + testing
+   - Runs complete training pipeline (steps 1-5)
+   - Runs complete testing pipeline (steps 6-10)
+   - Iteratively downloads until thresholds met (15+ training, 4+ detected headshots)
+   - Copies final model to models directory
 
-6. **compute_average_embeddings.py** - Processes a folder of celebrity images to create average embeddings
-   - Generates embeddings using DeepFace with ArcFace model
-   - Computes average embedding vector for all images of a celebrity
-   - Saves embeddings as pickle files (.pkl)
+3. **run_pipeline_steps.py** - Manual pipeline runner
+   - Interactive numbered menu of all 15 pipeline steps
+   - Manual step-by-step execution of training pipeline
+   - Used for debugging and manual control
 
-7. **eval_star_detection.py** - Detects matching faces in test images using precomputed embeddings
-   - Loads reference embeddings from pickle files
-   - Processes test images to find matching faces
-   - Extracts face crops and saves them with similarity scores
-   - Uses cosine similarity for face matching
+### TRAINING PIPELINE (Steps 1-5)
 
-8. **download_video.py** - Downloads videos from various platforms for processing
-   - Downloads videos from YouTube, Vimeo, TikTok, and other supported sites using yt-dlp
-   - Saves videos to `videos/[site]_[video_id]/` folder structure
-   - Includes metadata extraction (title, description, thumbnail)
-   - Supports format selection and quality control (default: best up to 1080p)
+1. **download_celebrity_images.py** - Downloads from Google Image Search
+   - 20 images per page, each page uses different keywords
+   - Training: different keywords for more face variety
+   - Testing: keywords targeting group photos
+   - GUID-based naming prevents collisions
 
-9. **extract_video_frames.py** - Extracts frames from videos using binary search pattern
-   - Takes video folder path and automatically finds video file within folder
-   - Uses binary search pattern to extract representative frames from videos
-   - Creates frames in a `frames/` subfolder within the video folder
-   - Allows specifying the number of frames to extract
-   - Names frames with zero-padded frame numbers (e.g., `00000123.jpg`)
-   - Skips existing frames to allow resuming interrupted extractions
+2. **remove_dupe_training_images.py** - Removes near-duplicates
+   - Perceptual hashing, keeps largest file
 
-10. **extract_frame_faces.py** - Detects faces in extracted video frames
-    - Takes video folder path and automatically processes frames in `frames/` subfolder
-    - Processes all frames to detect faces using DeepFace ArcFace
-    - Saves face detection data with bounding boxes and embeddings to pickle files
-    - Creates `.pkl` files alongside each frame image with face metadata
-    - Supports multiple faces per frame with individual face IDs
-    - Enables face tracking and analysis across video sequences
+3. **remove_bad_training_images.py** - Face count validation
+   - Training: exactly 1 face | Testing: 3-10 faces
 
-11. **extract_video_headshots.py** - Extracts celebrity headshots from video frames
-    - Takes celebrity name and video folder path as parameters
-    - Loads celebrity reference embeddings and scans frame face data
-    - Calculates cosine similarity between detected faces and reference celebrity
-    - Selects top 5 most similar faces and extracts cropped headshots
-    - Saves headshots with similarity scores and frame information
+4. **remove_face_outliers.py** - Removes inconsistent faces
+   - Cosine similarity comparison, moves outliers to subfolder
 
-### Utility Modules
+5. **compute_average_embeddings.py** - Creates celebrity embeddings
+   - Generates and averages ArcFace embeddings, saves as .pkl
 
-12. **utils.py** - Common utility functions and helpers
-    - Celebrity name/folder path conversion and validation
-    - Standard argument parsing for --training/--testing flags
-    - Image file discovery with supported format filtering
-    - Environment variable management for thresholds and defaults
-    - Color-coded console output (red for errors, blue for summaries)
-    - Pickle file operations with error handling
-    - Face similarity calculations using cosine similarity
+### TESTING PIPELINE (Steps 6-10)
 
-13. **utils_deepface.py** - DeepFace-specific utilities with caching
-    - Face embedding generation using DeepFace ArcFace model
-    - Automatic .pkl file caching for face analysis data
-    - Structured face data format with bounding boxes and embeddings
-    - Separated from utils.py to minimize CUDA warnings for non-AI scripts
+6. **download_celebrity_images.py** - Downloads test images (same as step 1)
+7. **remove_dupe_training_images.py** - Removes test duplicates (same as step 2)
+8. **remove_bad_training_images.py** - Test face validation (keeps 3-10 people for group testing)
+9. **eval_star_detection.py** - Detects matching faces in test images
+   - Loads reference embeddings, extracts matching face crops
+
+10. **Accept Model** - Copies embedding to models directory
+
+### OPERATIONS PIPELINE (Steps 11-14)
+
+11. **download_video.py** - Downloads videos using yt-dlp
+    - Supports YouTube, Vimeo, TikTok, saves to `videos/[site]_[id]/`
+
+12. **extract_video_frames.py** - Extracts frames using binary search
+    - Saves to `frames/` subfolder with zero-padded naming
+
+13. **extract_frame_faces.py** - Detects faces in frames
+    - Creates .pkl files with face data alongside each frame
+
+14. **extract_video_headshots.py** - Extracts celebrity headshots
+    - Matches against reference embeddings, saves top 5 matches
+
+### UTILITY MODULES
+
+15. **utils.py** - Common functions (path conversion, argument parsing, file operations)
+16. **utils_deepface.py** - DeepFace utilities with caching
+17. **print_pkl.py** - Pickle file inspector
 
 ## Data Structure
 
-- `training/` - Training data organized by celebrity name
-  - Each celebrity folder contains multiple images and an average embedding file
-  - Example: `training/bill_murray/` contains training images and `bill_murray_average_embedding.pkl`
-- `testing/` - Test images to process for face detection
-  - Organized by celebrity for validation
-  - Contains `detected_headshots/` subfolder with extraction results
-- `videos/` - Downloaded videos organized by source and video ID
-  - Each video folder contains the video file, metadata, and extracted frames
-  - Example: `videos/youtube_ABC123/` contains video file and `frames/` subfolder
-  - Frame data includes both image files and corresponding face detection pickle files
-  - Extracted headshots are saved in `headshots/` subfolder with similarity scores
+- `training/[celebrity]/` - Training images + `[celebrity]_average_embedding.pkl`
+- `testing/[celebrity]/` - Test images + `detected_headshots/` subfolder  
+- `models/[celebrity]/` - Final accepted models
+- `videos/[site]_[id]/` - Video file + `frames/` + `headshots/` subfolders
 
-## Dependencies Installation
+## Usage
 
+### Primary Entry Point
+```bash
+python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" "Bill Murray" "Tina Fey"
+```
+
+### Mid-Level Training
+```bash
+python3 run_celebrity_training.py "Celebrity Name" "Show Name"
+```
+
+### Manual Control
+```bash
+python3 run_pipeline_steps.py
+```
+
+### Manual Commands
+```bash
+# Training pipeline (steps 1-5)
+python3 download_celebrity_images.py "Name" --training --show "Show" --page 1
+python3 remove_dupe_training_images.py --training "Name"
+python3 remove_bad_training_images.py --training "Name"
+python3 remove_face_outliers.py --training "Name"
+python3 compute_average_embeddings.py "Name"
+
+# Testing pipeline (steps 6-10)
+python3 download_celebrity_images.py "Name" --testing --show "Show"
+python3 remove_dupe_training_images.py --testing "Name"
+python3 remove_bad_training_images.py --testing "Name"
+python3 eval_star_detection.py "Name"
+
+# Operations pipeline (steps 11-14)
+python3 download_video.py "https://youtube.com/watch?v=VIDEO_ID"
+python3 extract_video_frames.py videos/youtube_ABC123/
+python3 extract_frame_faces.py videos/youtube_ABC123/
+python3 extract_video_headshots.py "Name" videos/youtube_ABC123/
+```
+
+## Dependencies
 ```bash
 pip install deepface numpy opencv-python scikit-learn google-images-search python-dotenv yt-dlp
 ```
 
-## Common Commands
+## Pipeline Stages
 
-### Interactive Pipeline Runner (Recommended)
-```bash
-python3 run_pipeline.py
-```
-Launches an interactive menu that guides you through the complete pipeline process for a celebrity. The script automatically handles path management, validates prerequisites, and provides numbered options for each step.
-
-### Manual Commands
-All scripts now use `--training` and `--testing` flags to specify the dataset type and automatically handle folder paths.
-
-### Download Celebrity Images
-```bash
-# Downloads 20 images per page (10 general + 10 show-specific)
-python3 download_celebrity_images.py "Celebrity Name" --training --show "Show Name"
-python3 download_celebrity_images.py "Celebrity Name" --testing --show "Show Name"
-
-# Specify page number for more images (page 2 = images 21-40, etc.)
-python3 download_celebrity_images.py "Celebrity Name" --training --show "Show Name" --page 2
-python3 download_celebrity_images.py "Celebrity Name" --testing --show "Show Name" --page 3
-```
-Requires configuration in .env file:
-- GOOGLE_API_KEY=your_api_key_here
-- GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
-
-### Remove Duplicate Images
-```bash
-# Training dataset
-python3 remove_dupe_training_images.py --training "Celebrity Name"
-
-# Testing dataset
-python3 remove_dupe_training_images.py --testing "Celebrity Name"
-```
-
-### Remove Bad Images
-```bash
-# Training dataset (keeps images with exactly 1 face)
-python3 remove_bad_training_images.py --training "Celebrity Name"
-
-# Testing dataset (keeps images with 4-10 faces)
-python3 remove_bad_training_images.py --testing "Celebrity Name"
-```
-
-### Remove Face Outliers
-```bash
-# Training dataset (removes faces inconsistent with majority)
-python3 remove_face_outliers.py --training "Celebrity Name"
-
-# Testing dataset
-python3 remove_face_outliers.py --testing "Celebrity Name"
-
-# Custom similarity threshold (default from TRAINING_OUTLIER_THRESHOLD)
-python3 remove_face_outliers.py --training "Celebrity Name" --threshold 0.2
-```
-
-### Generate Average Embeddings
-```bash
-python3 compute_average_embeddings.py "Celebrity Name"
-```
-
-### Detect Faces in Images
-```bash
-python3 eval_star_detection.py "Celebrity Name"
-```
-
-### Custom Threshold Detection
-```bash
-# Custom threshold (default from TESTING_DETECTION_THRESHOLD)
-python3 eval_star_detection.py "Celebrity Name" --threshold 0.7
-```
-
-### Operations Pipeline
-
-#### Download Videos
-```bash
-# Download from any supported platform (YouTube, Vimeo, TikTok, etc.)
-python3 download_video.py "https://www.youtube.com/watch?v=VIDEO_ID"
-python3 download_video.py "https://vimeo.com/123456789"
-
-# List all supported video platforms
-python3 download_video.py --list-extractors
-```
-
-#### Extract Frames from Video
-```bash
-# Extract frames using default count from OPERATIONS_EXTRACT_FRAME_COUNT
-python3 extract_video_frames.py videos/youtube_ABC123/
-
-# Or specify custom frame count
-python3 extract_video_frames.py videos/youtube_ABC123/ 50
-
-# Dry run to see what frames would be extracted
-python3 extract_video_frames.py videos/youtube_ABC123/ 50 --dry-run
-```
-
-#### Extract Faces from Video Frames
-```bash
-# Process all frames (script automatically uses frames/ subfolder)
-python3 extract_frame_faces.py videos/youtube_ABC123/
-
-# Dry run to see what would be processed
-python3 extract_frame_faces.py videos/youtube_ABC123/ --dry-run
-```
-
-#### Extract Celebrity Headshots from Video
-```bash
-# Extract top 5 headshots for a celebrity from video frames
-python3 extract_video_headshots.py "Bill Murray" videos/youtube_ABC123/
-
-# Custom similarity threshold (default from OPERATIONS_HEADSHOT_MATCH_THRESHOLD)
-python3 extract_video_headshots.py "Bill Murray" videos/youtube_ABC123/ --threshold 0.7
-
-# Dry run to see what would be extracted
-python3 extract_video_headshots.py "Bill Murray" videos/youtube_ABC123/ --dry-run
-```
-
-## Dependencies
-
-The project requires:
-- Python 3.x
-- deepface
-- numpy  
-- opencv-python (cv2)
-- scikit-learn
-- google-images-search (for image downloading)
-- python-dotenv (for environment variables)
-- yt-dlp (for video downloading)
-- pickle (built-in)
-
-## Pipeline Workflow
-
-The complete pipeline follows this sequence. You can use the interactive pipeline runner (`python3 run_pipeline.py`) for guided execution, or run commands manually:
-
-### Training Pipeline (Solo Portraits)
-1. **Download Training Data**: `python3 download_celebrity_images.py "Celebrity Name" --training --show "Show Name"`
-2. **Remove Duplicates**: `python3 remove_dupe_training_images.py --training "Celebrity Name"`
-3. **Remove Bad Images**: `python3 remove_bad_training_images.py --training "Celebrity Name"` (keeps exactly 1 face)
-4. **Remove Face Outliers**: `python3 remove_face_outliers.py --training "Celebrity Name"` (removes inconsistent faces)
-5. **Generate Embeddings**: `python3 compute_average_embeddings.py "Celebrity Name"`
-
-### Testing Pipeline (Group Photos)
-1. **Download Test Data**: `python3 download_celebrity_images.py "Celebrity Name" --testing --show "Show Name"`
-2. **Remove Duplicates**: `python3 remove_dupe_training_images.py --testing "Celebrity Name"`
-3. **Remove Bad Images**: `python3 remove_bad_training_images.py --testing "Celebrity Name"` (keeps 4-10 faces)
-4. **Run Detection**: `python3 eval_star_detection.py "Celebrity Name"`
+**Training (Steps 1-5)**: Download → Remove Dupes → Remove Bad → Remove Outliers → Generate Embeddings
+**Testing (Steps 6-10)**: Download → Remove Dupes → Remove Bad → Detect Faces → Accept Model  
+**Operations (Steps 11-14)**: Download Video → Extract Frames → Extract Faces → Extract Headshots
 
 
-### Operations Pipeline
-1. **Download Video**: `python3 download_video.py "https://youtube.com/watch?v=VIDEO_ID"`
-2. **Extract Frames**: `python3 extract_video_frames.py videos/youtube_VIDEO_ID/` (uses default frame count)
-3. **Extract Faces**: `python3 extract_frame_faces.py videos/youtube_VIDEO_ID/`
-4. **Extract Celebrity Headshots**: `python3 extract_video_headshots.py "Celebrity Name" videos/youtube_VIDEO_ID/`
+## Configuration
 
+### Environment Variables (.env)
+- **TRAINING_DUPLICATE_THRESHOLD**: 5 (Hamming distance)
+- **TRAINING_OUTLIER_THRESHOLD**: 0.2 (cosine similarity)
+- **TESTING_DETECTION_THRESHOLD**: 0.4 (cosine similarity)
+- **OPERATIONS_EXTRACT_FRAME_COUNT**: 50
+- **OPERATIONS_HEADSHOT_MATCH_THRESHOLD**: 0.4
+- **MIN_FACE_SIZE**: 50 (pixels)
+- **TRAINING_MIN_IMAGES**: 15 (minimum training images required)
+- **TESTING_MIN_HEADSHOTS**: 4 (minimum detected headshots required)
+- **MAX_DOWNLOAD_PAGES**: 5 (maximum pages to download)
+- **GOOGLE_API_KEY**: your_api_key_here
+- **GOOGLE_SEARCH_ENGINE_ID**: your_search_engine_id_here
 
-## Key Parameters
-
-All default values configurable via environment variables in .env file:
-
-- **Face Detection Model**: ArcFace via DeepFace
-- **Similarity Metric**: Cosine similarity
-- **Supported Image Formats**: .gif, .jpg, .jpeg, .png, .bmp, .tiff, .webp
-- **Training Face Count**: Exactly 1 face required
-- **Testing Face Count**: 4-10 faces required
-
-### Environment Variables:
-- **TRAINING_DUPLICATE_THRESHOLD**: 5 (Hamming distance, 0-64, adjustable via --threshold)
-- **TRAINING_OUTLIER_THRESHOLD**: 0.1 (cosine similarity, 0.0-1.0, adjustable via --threshold)  
-- **TESTING_DETECTION_THRESHOLD**: 0.6 (cosine similarity, 0.0-1.0, adjustable via --threshold)
-- **OPERATIONS_EXTRACT_FRAME_COUNT**: 50 (number of frames to extract from videos)
-- **OPERATIONS_HEADSHOT_MATCH_THRESHOLD**: 0.6 (cosine similarity, 0.0-1.0, adjustable via --threshold)
-- **MIN_FACE_SIZE**: 50 (minimum face size in pixels for processing, filters out faces smaller than this)
-
-### Other Parameters:
-- **Video Headshot Extraction**: Top 5 most similar faces with 10% padding around face region
-
-## Architecture Notes
-
-- **GUID-based Naming**: Image files use first 8 characters of GUIDs to prevent filename collisions
-- **Automatic Folder Management**: Scripts create `bad/`, `duplicates/`, and `outliers/` subfolders automatically
-- **Dry-run Support**: Most scripts support `--dry-run` flag for safe testing
-- **Error Handling**: Comprehensive exception handling with detailed user feedback
-- **Modular Design**: Each script handles a single responsibility in the pipeline
+### Key Parameters
+- **Model**: ArcFace via DeepFace
+- **Similarity**: Cosine similarity
+- **Training Face Count**: Exactly 1 (solo portraits)
+- **Testing Face Count**: 3-10 (group photos for embedding validation)
+- **Headshot Extraction**: Top 5 matches

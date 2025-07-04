@@ -20,7 +20,7 @@ def count_faces_in_image(image_path):
     Returns:
         int: Number of faces detected, -1 if error occurred
     """
-    face_analysis = get_face_embeddings(image_path, enforce_detection=False)
+    face_analysis = get_face_embeddings(image_path)
     return len(face_analysis) if face_analysis else -1
 
 def move_files_to_folder(files_to_move, destination_folder, folder_name, dry_run=False):

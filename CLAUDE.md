@@ -16,6 +16,24 @@ The system follows a **three-tier hierarchical architecture**:
 
 **Pipeline Flow**: Training → Testing → Operations
 
+### Architecture Diagram
+
+```
+run_integration_test.py             # Integration test root
+└── run_headshot_detection.py       # ★ PRIMARY ENTRY POINT
+    ├── run_celebrity_training.py   # ★ MID-LEVEL automation
+    │   ├── download_celebrity_images.py
+    │   ├── remove_dupe_training_images.py
+    │   ├── remove_bad_training_images.py
+    │   ├── remove_face_outliers.py
+    │   ├── compute_average_embeddings.py
+    │   └── eval_star_detection.py
+    ├── download_video.py
+    ├── extract_video_frames.py
+    ├── extract_frame_faces.py
+    └── extract_video_headshots.py
+```
+
 The system consists of 17 components organized in three execution tiers:
 
 ### Top-Level Orchestration (Complete Workflow)
@@ -160,17 +178,17 @@ pip install deepface numpy opencv-python scikit-learn google-images-search pytho
 ## Configuration
 
 ### Environment Variables (.env)
-- **TRAINING_DUPLICATE_THRESHOLD**: 5 (Hamming distance)
-- **TRAINING_OUTLIER_THRESHOLD**: 0.2 (cosine similarity)
-- **TESTING_DETECTION_THRESHOLD**: 0.4 (cosine similarity)
-- **OPERATIONS_EXTRACT_FRAME_COUNT**: 50
-- **OPERATIONS_HEADSHOT_MATCH_THRESHOLD**: 0.4
-- **MIN_FACE_SIZE**: 50 (pixels)
-- **TRAINING_MIN_IMAGES**: 15 (minimum training images required)
-- **TESTING_MIN_HEADSHOTS**: 4 (minimum detected headshots required)
-- **MAX_DOWNLOAD_PAGES**: 5 (maximum pages to download)
-- **GOOGLE_API_KEY**: your_api_key_here
-- **GOOGLE_SEARCH_ENGINE_ID**: your_search_engine_id_here
+- **GOOGLE_API_KEY**: your_api_key_here (Google Custom Search API key)
+- **GOOGLE_SEARCH_ENGINE_ID**: your_search_engine_id_here (Google Custom Search Engine ID)
+- **MAX_DOWNLOAD_PAGES**: 5 (maximum pages to download by google image search)
+- **TRAINING_MIN_IMAGES**: 15 (number of good images to find for training)
+- **TRAINING_DUPLICATE_THRESHOLD**: 5 (0-64, lower = more strict)
+- **TRAINING_OUTLIER_THRESHOLD**: 0.2 (0.0-1.0, lower = more strict)
+- **TESTING_DETECTION_THRESHOLD**: 0.4 (0.0-1.0, lower = more strict)
+- **TESTING_MIN_HEADSHOTS**: 4 (threshold of headshot detections for successful test)
+- **OPERATIONS_EXTRACT_FRAME_COUNT**: 50 (number of frames to extract from videos)
+- **OPERATIONS_HEADSHOT_MATCH_THRESHOLD**: 0.4 (0.0-1.0, lower = more strict)
+- **MIN_FACE_SIZE**: 50 (minimum face size for processing, width x height in pixels)
 
 ### Key Parameters
 - **Model**: ArcFace via DeepFace

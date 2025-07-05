@@ -11,12 +11,19 @@ import subprocess
 import sys
 import os
 import shutil
+import argparse
 from pathlib import Path
-from utils import get_average_embedding_path
+from utils import get_average_embedding_path, print_error
+
+def print_header(text):
+    """Print a header in yellow color."""
+    yellow = '\033[93m'
+    reset = '\033[0m'
+    print(f"{yellow}{text}{reset}")
 
 def verify_file_counts():
     """Verify that the mock_celebrity folders have the expected number of files."""
-    print("=== VERIFYING FILE COUNTS ===")
+    print_header("VERIFYING FILE COUNTS")
     
     # Expected file counts based on Thomas Lennon reference
     expected_counts = {
@@ -41,7 +48,7 @@ def verify_file_counts():
     for folder_path, expected_count in expected_counts.items():
         folder = Path(folder_path)
         if not folder.exists():
-            print(f"❌ Folder not found: {folder_path}")
+            print_error(f"❌ Folder not found: {folder_path}")
             all_passed = False
             continue
         
@@ -51,7 +58,7 @@ def verify_file_counts():
         print(f"{folder_path}: {actual_count} files (expected {expected_count})")
         
         if actual_count != expected_count:
-            print(f"❌ File count mismatch in {folder_path}")
+            print_error(f"❌ File count mismatch in {folder_path}")
             all_passed = False
         else:
             print(f"✅ {folder_path} correct")
@@ -59,13 +66,13 @@ def verify_file_counts():
     if all_passed:
         print("✅ All file counts verified successfully")
     else:
-        print("❌ Some file counts did not match expectations")
+        print_error("❌ Some file counts did not match expectations")
     
     return all_passed
 
 def cleanup_mock_folders():
     """Clean up existing mock folders before running test."""
-    print("=== CLEANING UP MOCK FOLDERS ===")
+    print_header("CLEANING UP MOCK FOLDERS")
 
     folders_to_remove = [
         'search_cache/mock_celebrity',
@@ -92,11 +99,11 @@ def cleanup_mock_folders():
 
 def seed_mock_data():
     """Copy mock data from mocks/ folder to base folder structure."""
-    print("=== SEEDING MOCK DATA ===")
+    print_header("SEEDING MOCK DATA")
     
     mocks_folder = Path('mocks')
     if not mocks_folder.exists():
-        print("❌ mocks/ folder not found")
+        print_error("❌ mocks/ folder not found")
         return False
     
     # Copy all contents from mocks/ to current directory
@@ -113,16 +120,16 @@ def seed_mock_data():
     print("✅ Mock data seeded successfully")
     return True
 
-def run_integration_test():
+def run_integration_test(verbose=False):
     """Run the integration test with hardcoded mock parameters."""
-    print("=== STARMAPR INTEGRATION TEST ===")
+    print_header("STARMAPR INTEGRATION TEST")
     
     # Clean up existing mock folders first
     cleanup_mock_folders()
     
     # Seed mock data
     if not seed_mock_data():
-        print("❌ Failed to seed mock data")
+        print_error("❌ Failed to seed mock data")
         return False
     
     print("Running headshot detection with mock parameters...")
@@ -136,34 +143,42 @@ def run_integration_test():
         '--celebrities', 'MOCK_CELEBRITY'
     ]
     
+    if verbose:
+        command.append('--verbose')
+    
     print(f"Command: {' '.join(command)}")
     print()
     
     try:
         # Run the headshot detection script with mock parameters
         result = subprocess.run(command, check=True)
-        print("\n=== HEADSHOT DETECTION COMPLETED ===")
+        print_header("HEADSHOT DETECTION COMPLETED")
         
         # Verify file counts
         if verify_file_counts():
-            print("\n=== INTEGRATION TEST PASSED ===")
+            print_header("INTEGRATION TEST PASSED")
             return True
         else:
-            print("\n=== INTEGRATION TEST FAILED - File count verification failed ===")
+            print_error("INTEGRATION TEST FAILED - File count verification failed")
             return False
             
     except subprocess.CalledProcessError as e:
-        print(f"\n=== INTEGRATION TEST FAILED ===")
+        print_error("INTEGRATION TEST FAILED")
         print(f"Exit code: {e.returncode}")
         return False
     except Exception as e:
-        print(f"\n=== INTEGRATION TEST ERROR ===")
+        print_error("INTEGRATION TEST ERROR")
         print(f"Error: {e}")
         return False
 
 def main():
     """Main function to run integration test."""
-    success = run_integration_test()
+    parser = argparse.ArgumentParser(description='Run StarMapr integration test')
+    parser.add_argument('--verbose', '-v', action='store_true',
+                       help='Show all output from subprocess commands')
+    
+    args = parser.parse_args()
+    success = run_integration_test(verbose=args.verbose)
     sys.exit(0 if success else 1)
 
 if __name__ == '__main__':

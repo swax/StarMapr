@@ -43,25 +43,38 @@ pip install deepface numpy opencv-python scikit-learn google-images-search pytho
 4. Set up configuration:
 Create a `.env` file with:
 ```
-# Google API credentials (required for image downloading)
+# Google Custom Search API Configuration
+# Get your API key from: https://developers.google.com/custom-search/v1/introduction
+# Get your Search Engine ID from: https://cse.google.com/cse/all
 GOOGLE_API_KEY=your_api_key_here
 GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
 
-# Training pipeline thresholds
+# The max number of pages that can be downloaded by google image search for training/testing purposes
+MAX_DOWNLOAD_PAGES=5
+
+# The number of good images to find to do training with
+TRAINING_MIN_IMAGES=15
+
+# Training duplicate detection threshold (0-64, lower = more strict)
 TRAINING_DUPLICATE_THRESHOLD=5
+
+# Training outlier detection threshold (0.0-1.0, lower = more strict)
 TRAINING_OUTLIER_THRESHOLD=0.2
 
-# Testing pipeline thresholds
+# Testing detection threshold (0.0-1.0, lower = more strict)
 TESTING_DETECTION_THRESHOLD=0.4
 
-# Operations pipeline defaults
+# The threshold of headshot detections to consider a successful test and the model ready
+TESTING_MIN_HEADSHOTS=4
+
+# Operations: number of frames to extract from videos
 OPERATIONS_EXTRACT_FRAME_COUNT=50
+
+# Operations: headshot match threshold (0.0-1.0, lower = more strict)
 OPERATIONS_HEADSHOT_MATCH_THRESHOLD=0.4
 
-# Comprehensive training script configuration
-TRAINING_MIN_IMAGES=15
-TESTING_MIN_HEADSHOTS=4
-MAX_DOWNLOAD_PAGES=5
+# Minimum face size for processing (width x height in pixels)
+MIN_FACE_SIZE=50
 ```
 
 5. Test the installation:
@@ -71,6 +84,32 @@ unzip mocks.zip
 
 # Run integration test
 python3 run_integration_test.py
+```
+
+## Architecture
+
+StarMapr follows a hierarchical architecture with three execution levels:
+
+```
+run_integration_test.py             # Integration test root
+└── run_headshot_detection.py       # ★ PRIMARY ENTRY POINT
+    ├── run_celebrity_training.py   # ★ MID-LEVEL automation
+    |   |   # TESTING
+    │   ├── download_celebrity_images.py
+    │   ├── remove_dupe_training_images.py
+    │   ├── remove_bad_training_images.py
+    │   ├── remove_face_outliers.py -- testing
+    │   ├── compute_average_embeddings.py
+    |   |   # TRAINING
+    │   ├── download_celebrity_images.py
+    │   ├── remove_dupe_training_images.py
+    │   ├── remove_bad_training_images.py
+    │   └── eval_star_detection.py
+    |   # VIDEO PROCESSING
+    ├── download_video.py
+    ├── extract_video_frames.py
+    ├── extract_frame_faces.py
+    └── extract_video_headshots.py
 ```
 
 ## Quick Start
@@ -146,6 +185,13 @@ python3 extract_frame_faces.py videos/youtube_VIDEO_ID/
 # 4. Extract celebrity headshots from video frames
 python3 extract_video_headshots.py "Bill Murray" videos/youtube_VIDEO_ID/
 ```
+
+### Architecture Flow
+
+1. **Integration Test Layer**: `run_integration_test.py` provides end-to-end validation
+2. **Application Layer**: `run_headshot_detection.py` orchestrates the complete workflow
+3. **Training Layer**: `run_celebrity_training.py` handles celebrity model creation
+4. **Pipeline Layer**: Individual scripts handle specific data processing tasks
 
 ## Project Structure
 
@@ -240,14 +286,16 @@ StarMapr/
 
 All default values are configurable through environment variables in the `.env` file:
 
-- **Training duplicate threshold**: 5 Hamming distance (`TRAINING_DUPLICATE_THRESHOLD`)
-- **Training outlier threshold**: 0.2 cosine similarity (`TRAINING_OUTLIER_THRESHOLD`)
-- **Testing detection threshold**: 0.4 cosine similarity (`TESTING_DETECTION_THRESHOLD`)
+- **Google API credentials**: Required for image downloading (`GOOGLE_API_KEY`, `GOOGLE_SEARCH_ENGINE_ID`)
+- **Maximum download pages**: 5 pages (`MAX_DOWNLOAD_PAGES`)
+- **Training minimum images**: 15 images (`TRAINING_MIN_IMAGES`)
+- **Training duplicate threshold**: 5 Hamming distance, 0-64 scale (`TRAINING_DUPLICATE_THRESHOLD`)
+- **Training outlier threshold**: 0.2 cosine similarity, 0.0-1.0 scale (`TRAINING_OUTLIER_THRESHOLD`)
+- **Testing detection threshold**: 0.4 cosine similarity, 0.0-1.0 scale (`TESTING_DETECTION_THRESHOLD`)
+- **Testing minimum headshots**: 4 detected headshots (`TESTING_MIN_HEADSHOTS`)
 - **Frame extraction count**: 50 frames (`OPERATIONS_EXTRACT_FRAME_COUNT`)
-- **Headshot match threshold**: 0.4 cosine similarity (`OPERATIONS_HEADSHOT_MATCH_THRESHOLD`)
-- **Training minimum images**: 15 (`TRAINING_MIN_IMAGES`)
-- **Testing minimum headshots**: 4 (`TESTING_MIN_HEADSHOTS`)
-- **Maximum download pages**: 5 (`MAX_DOWNLOAD_PAGES`)
+- **Headshot match threshold**: 0.4 cosine similarity, 0.0-1.0 scale (`OPERATIONS_HEADSHOT_MATCH_THRESHOLD`)
+- **Minimum face size**: 50 pixels (`MIN_FACE_SIZE`)
 
 All thresholds are adjustable with command-line `--threshold` flags.
 

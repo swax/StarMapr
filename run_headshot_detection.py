@@ -21,12 +21,21 @@ from pathlib import Path
 from dotenv import load_dotenv
 from utils import (
     get_celebrity_folder_name, get_env_int,
-    print_error, print_run_summary
+    print_error
 )
 
 # Load environment variables
 load_dotenv()
 
+# Global verbose flag
+VERBOSE = False
+
+
+def print_header(text):
+    """Print a header in green color."""
+    green = '\033[92m'
+    reset = '\033[0m'
+    print(f"{green}{text}{reset}")
 
 def parse_celebrities(celebrity_args, celebrity_list_arg):
     """
@@ -72,7 +81,20 @@ def run_subprocess_command(command_list, description, capture_output=False):
     """
     try:
         print(f"Running: {description}")
-        result = subprocess.run(command_list, check=True, capture_output=capture_output, text=True)
+        if VERBOSE:
+            result = subprocess.run(command_list, check=True, capture_output=capture_output, text=True)
+        else:
+            result = subprocess.run(command_list, check=True, capture_output=True, text=True)
+            # Only print colored output lines (lines containing ANSI color codes)
+            if result.stdout:
+                for line in result.stdout.split('\n'):
+                    if '\033[' in line:  # ANSI escape sequence for colors
+                        print(line)
+            if result.stderr:
+                for line in result.stderr.split('\n'):
+                    if '\033[' in line:
+                        print(line)
+        
         stdout = result.stdout if capture_output else ""
         stderr = result.stderr if capture_output else ""
         return True, stdout, stderr
@@ -127,14 +149,16 @@ def run_celebrity_training(celebrity_name, show_name):
     Returns:
         bool: True if training successful, False otherwise
     """
-    print_run_summary(f"\n=== TRAINING: {celebrity_name} ===")
+    print_header(f"\n=== TRAINING: {celebrity_name} ===")
     
     command = ['python3', 'run_celebrity_training.py', celebrity_name, show_name]
+    if VERBOSE:
+        command.append('--verbose')
     
     success, _, _ = run_subprocess_command(command, f"Training {celebrity_name}")
     
     if success:
-        print_run_summary(f"✓ Training completed for {celebrity_name}")
+        print(f"✓ Training completed for {celebrity_name}")
     else:
         print_error(f"✗ Training failed for {celebrity_name}")
     
@@ -151,7 +175,7 @@ def download_video(video_url):
     Returns:
         str or None: Video folder path if successful, None if failed
     """
-    print_run_summary(f"\n=== DOWNLOADING VIDEO ===")
+    print_header(f"\n=== DOWNLOADING VIDEO ===")
     print(f"URL: {video_url}")
     
     command = ['python3', 'download_video.py', video_url]
@@ -160,7 +184,7 @@ def download_video(video_url):
     if success:
         video_folder = extract_video_folder_from_output(stdout, stderr)
         if video_folder:
-            print_run_summary(f"✓ Video downloaded to: {video_folder}")
+            print(f"✓ Video downloaded to: {video_folder}")
             return video_folder
         else:
             print_error("Could not determine video folder path from output")
@@ -245,7 +269,7 @@ def run_operations_pipeline_with_adaptive_frames(video_folder, trained_celebriti
     Returns:
         dict: Dictionary mapping celebrity names to headshot counts
     """
-    print_run_summary(f"\n=== OPERATIONS PIPELINE ===")
+    print_header(f"\n=== OPERATIONS PIPELINE ===")
     
     # Get default frame count
     default_frame_count = get_env_int('OPERATIONS_EXTRACT_FRAME_COUNT', 50)
@@ -256,9 +280,9 @@ def run_operations_pipeline_with_adaptive_frames(video_folder, trained_celebriti
         current_frame_count = default_frame_count * multiplier
         
         if multiplier > 1:
-            print_run_summary(f"\n--- Attempt {multiplier}: {current_frame_count} frames ---")
+            print(f"\n--- Attempt {multiplier}: {current_frame_count} frames ---")
         else:
-            print_run_summary(f"\n--- Initial attempt: {current_frame_count} frames ---")
+            print(f"\n--- Initial attempt: {current_frame_count} frames ---")
         
         # Extract frames
         if not extract_frames_from_video(video_folder, current_frame_count):
@@ -278,7 +302,7 @@ def run_operations_pipeline_with_adaptive_frames(video_folder, trained_celebriti
                 results[celebrity_name] = headshot_count
                 total_headshots_found += headshot_count
                 if headshot_count > 0:
-                    print_run_summary(f"✓ Found {headshot_count} headshots for {celebrity_name}")
+                    print(f"✓ Found {headshot_count} headshots for {celebrity_name}")
                 else:
                     print(f"No headshots found for {celebrity_name}")
             else:
@@ -288,9 +312,9 @@ def run_operations_pipeline_with_adaptive_frames(video_folder, trained_celebriti
         # If we found headshots or reached max multiplier, stop
         if total_headshots_found > 0 or multiplier >= max_multiplier:
             if total_headshots_found > 0:
-                print_run_summary(f"✓ Found {total_headshots_found} total headshots with {current_frame_count} frames")
+                print(f"✓ Found {total_headshots_found} total headshots with {current_frame_count} frames")
             else:
-                print_run_summary(f"No headshots found even with {current_frame_count} frames")
+                print(f"No headshots found even with {current_frame_count} frames")
             break
         else:
             print(f"No headshots found with {current_frame_count} frames, trying {default_frame_count * (multiplier + 1)} frames...")
@@ -300,6 +324,7 @@ def run_operations_pipeline_with_adaptive_frames(video_folder, trained_celebriti
 
 def main():
     """Main function to run headshot detection pipeline."""
+    global VERBOSE
     start_time = time.time()
     
     parser = argparse.ArgumentParser(
@@ -317,8 +342,11 @@ Examples:
                        help='Celebrity names (comma-separated)')
     parser.add_argument('--show', required=True,
                        help='Show/movie name for celebrity training (required)')
+    parser.add_argument('--verbose', '-v', action='store_true',
+                       help='Show all output from subprocess commands')
     
     args = parser.parse_args()
+    VERBOSE = args.verbose
     
     # Parse celebrity names
     celebrities = parse_celebrities(args.celebrities, args.celebrity_list)
@@ -327,7 +355,7 @@ Examples:
         print_error("No celebrities specified. Use either positional arguments or --celebrities flag.")
         sys.exit(1)
     
-    print_run_summary(f"=== HEADSHOT DETECTION PIPELINE ===")
+    print_header(f"=== HEADSHOT DETECTION PIPELINE ===")
     print(f"Video URL: {args.video_url}")
     print(f"Celebrities: {', '.join(celebrities)}")
     print(f"Show: {args.show}")
@@ -346,7 +374,7 @@ Examples:
         print_error("No celebrities were successfully trained. Aborting pipeline.")
         sys.exit(1)
     
-    print_run_summary(f"\nTraining Results:")
+    print_header(f"\nTraining Results:")
     print(f"✓ Successfully trained: {', '.join(trained_celebrities)}")
     if failed_celebrities:
         print(f"✗ Failed to train: {', '.join(failed_celebrities)}")
@@ -365,7 +393,7 @@ Examples:
     elapsed_minutes = elapsed_time / 60
     
     # Final summary
-    print_run_summary(f"\n=== FINAL RESULTS ===")
+    print_header(f"\n=== FINAL RESULTS ===")
     print(f"Video folder: {video_folder}")
     print(f"Total execution time: {elapsed_minutes:.1f} minutes ({elapsed_time:.1f} seconds)")
     
@@ -374,18 +402,18 @@ Examples:
         headshot_count = headshot_results.get(celebrity_name, 0)
         total_headshots += headshot_count
         if headshot_count > 0:
-            print_run_summary(f"✓ {celebrity_name}: {headshot_count} headshots")
+            print(f"✓ {celebrity_name}: {headshot_count} headshots")
         else:
-            print(f"✗ {celebrity_name}: No headshots found")
+            print_error(f"✗ {celebrity_name}: No headshots found")
     
     if failed_celebrities:
-        print(f"Training failed: {', '.join(failed_celebrities)}")
+        print_error(f"Training failed: {', '.join(failed_celebrities)}")
     
     if total_headshots > 0:
-        print_run_summary(f"🎉 SUCCESS! Found {total_headshots} total headshots across all celebrities")
+        print(f"🎉 SUCCESS! Found {total_headshots} total headshots across all celebrities")
         sys.exit(0)
     else:
-        print_run_summary(f"❌ No headshots found for any celebrity")
+        print_error(f"❌ No headshots found for any celebrity")
         sys.exit(1)
 
 

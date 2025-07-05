@@ -189,8 +189,7 @@ def get_default_thresholds():
 # ANSI color codes
 class Colors:
     RED = '\033[91m'
-    BLUE = '\033[94m'
-    YELLOW = '\033[93m'
+    PURPLE = '\033[95m'
     RESET = '\033[0m'
 
 
@@ -206,23 +205,12 @@ def print_error(message):
 
 def print_summary(message):
     """
-    Print summary message in blue color.
+    Print summary message in purple color.
     
     Args:
-        message (str): Summary message to print
+        message (str): Summary message to prints
     """
-    print(f"{Colors.BLUE}{message}{Colors.RESET}")
-
-
-def print_run_summary(message):
-    """
-    Print run-level summary message in yellow color.
-    This distinguishes main run print statements from subprocess statuses which are blue.
-    
-    Args:
-        message (str): Run summary message to print
-    """
-    print(f"{Colors.YELLOW}{message}{Colors.RESET}")
+    print(f"{Colors.PURPLE}{message}{Colors.RESET}")
 
 
 def print_dry_run_header(action_description):

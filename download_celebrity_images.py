@@ -13,7 +13,7 @@ import uuid
 import shutil
 from google_images_search import GoogleImagesSearch
 from dotenv import load_dotenv
-from utils import get_celebrity_folder_name, get_celebrity_folder_path, get_env_int, ensure_folder_exists, print_error, print_summary
+from utils import get_celebrity_folder_name, get_celebrity_folder_path, get_env_int, ensure_folder_exists, print_error, print_summary, log
 
 # Load environment variables from .env file
 load_dotenv()
@@ -48,7 +48,7 @@ def copy_images_from_cache_to_destination(cache_folder, destination_folder):
         try:
             shutil.copy2(source_path, dest_path)
             copied_count += 1
-            print(f"  Copied: {filename} → {new_filename}")
+            log(f"  Copied: {filename} → {new_filename}")
         except Exception as e:
             print_error(f"Warning: Could not copy {filename}: {e}")
     
@@ -80,8 +80,8 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
     
     if not api_key or not search_engine_id:
         print_error("Missing API credentials. Please set your keys in the .env file:")
-        print("GOOGLE_API_KEY=your_api_key_here")
-        print("GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here")
+        log("GOOGLE_API_KEY=your_api_key_here")
+        log("GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here")
         return False
     
     # Set up Google Images Search
@@ -132,8 +132,8 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
         cached_files = os.listdir(cache_folder)
         
         if cached_files:
-            print(f"Found {len(cached_files)} cached images for query: '{query}'")
-            print(f"Copying cached images to: {download_path}")
+            log(f"Found {len(cached_files)} cached images for query: '{query}'")
+            log(f"Copying cached images to: {download_path}")
             
             # Use common function to copy cached files to destination
             copied_count = copy_images_from_cache_to_destination(cache_folder, download_path)
@@ -149,7 +149,7 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
     # Needs to be increments of 10, google queries in blocks of 10
     images_to_download = 20
     
-    print(f"Downloading page {page} images for '{celebrity_name}' using query: '{query}' (20 total)...")
+    log(f"Downloading page {page} images for '{celebrity_name}' using query: '{query}' (20 total)...")
     
     # Ensure cache folder exists and download directly to cache
     ensure_folder_exists(cache_folder)
@@ -171,13 +171,13 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
         # Get all files after download and identify newly downloaded ones in cache
         all_cache_files = set(os.listdir(cache_folder))
         newly_downloaded_files = list(all_cache_files - initial_cache_files)
-        print(f"Actually downloaded {len(newly_downloaded_files)} new files")
+        log(f"Actually downloaded {len(newly_downloaded_files)} new files")
         
         # Keep original filenames in cache (no GUID renaming here)
-        print(f"Downloaded {len(newly_downloaded_files)} new files to cache")
+        log(f"Downloaded {len(newly_downloaded_files)} new files to cache")
         
         # Now copy all images from cache to destination using common function
-        print(f"Copying images from cache to: {download_path}")
+        log(f"Copying images from cache to: {download_path}")
         copied_count = copy_images_from_cache_to_destination(cache_folder, download_path)
 
         print_summary(f"Successfully downloaded {len(newly_downloaded_files)} new images for '{celebrity_name}' - Images saved to: {download_path}")

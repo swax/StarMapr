@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 from collections import defaultdict
 from dotenv import load_dotenv
-from utils import add_training_testing_args, get_mode_and_path_from_args, get_image_files, get_env_int, print_dry_run_header, print_dry_run_summary, print_error, print_summary
+from utils import add_training_testing_args, get_mode_and_path_from_args, get_image_files, get_env_int, print_dry_run_header, print_dry_run_summary, print_error, print_summary, log
 
 # Load environment variables
 load_dotenv()
@@ -83,7 +83,7 @@ def find_duplicate_groups(image_files, similarity_threshold=5):
     Returns:
         list: List of duplicate groups, each group is a list of similar images
     """
-    print(f"Computing perceptual hashes for duplicate detection...")
+    log(f"Computing perceptual hashes for duplicate detection...")
     
     # Compute hashes for all images
     image_hashes = {}
@@ -92,7 +92,7 @@ def find_duplicate_groups(image_files, similarity_threshold=5):
         if hash_value:
             image_hashes[img_file] = hash_value
     
-    print(f"Successfully computed hashes for {len(image_hashes)}/{len(image_files)} images")
+    log(f"Successfully computed hashes for {len(image_hashes)}/{len(image_files)} images")
     
     # Find duplicate groups
     processed = set()
@@ -147,48 +147,48 @@ def remove_duplicate_images(celebrity_folder_path, similarity_threshold=5, dry_r
         print_error(f"No image files found in {folder_path}")
         return
     
-    print(f"Found {len(image_files)} images in {folder_path}")
+    log(f"Found {len(image_files)} images in {folder_path}")
     if dry_run:
         print_dry_run_header("No files will be moved")
-    print(f"Using similarity threshold: {similarity_threshold} (lower = more strict)")
-    print()
+    log(f"Using similarity threshold: {similarity_threshold} (lower = more strict)")
+    log("")
     
     # Find duplicate groups
     duplicate_groups = find_duplicate_groups(image_files, similarity_threshold)
     
     if not duplicate_groups:
-        print("No duplicate images found!")
+        log("No duplicate images found!")
         return
     
-    print(f"\nFound {len(duplicate_groups)} groups of duplicate images:")
+    log(f"\nFound {len(duplicate_groups)} groups of duplicate images:")
     
     images_to_move = []
     
     for i, group in enumerate(duplicate_groups, 1):
-        print(f"\nGroup {i} ({len(group)} similar images):")
+        log(f"\nGroup {i} ({len(group)} similar images):")
         # Sort by modification time (keep oldest)
         group.sort(key=lambda x: x.stat().st_mtime)
         
         keep_image = group[0]
         duplicate_images = group[1:]
         
-        print(f"  KEEP: {keep_image.name} ({keep_image.stat().st_size} bytes)")
+        log(f"  KEEP: {keep_image.name} ({keep_image.stat().st_size} bytes)")
         for img in duplicate_images:
-            print(f"  MOVE: {img.name} ({img.stat().st_size} bytes)")
+            log(f"  MOVE: {img.name} ({img.stat().st_size} bytes)")
             images_to_move.append(img)
     
     # Summary
-    print(f"\nSummary:")
-    print(f"Total images analyzed: {len(image_files)}")
-    print(f"Duplicate groups found: {len(duplicate_groups)}")
-    print(f"Images to keep: {len(image_files) - len(images_to_move)}")
-    print(f"Images to move to duplicates folder: {len(images_to_move)}")
+    log(f"\nSummary:")
+    log(f"Total images analyzed: {len(image_files)}")
+    log(f"Duplicate groups found: {len(duplicate_groups)}")
+    log(f"Images to keep: {len(image_files) - len(images_to_move)}")
+    log(f"Images to move to duplicates folder: {len(images_to_move)}")
     
     # Move duplicate images if not in dry run mode
     if images_to_move and not dry_run:
         # Create duplicates folder
         duplicates_folder.mkdir(exist_ok=True)
-        print(f"\nMoving {len(images_to_move)} duplicate images to {duplicates_folder}...")
+        log(f"\nMoving {len(images_to_move)} duplicate images to {duplicates_folder}...")
         
         moved_count = 0
         for img_file in images_to_move:
@@ -203,7 +203,7 @@ def remove_duplicate_images(celebrity_folder_path, similarity_threshold=5, dry_r
                     counter += 1
                 
                 shutil.move(str(img_file), str(destination))
-                print(f"  ✓ Moved: {img_file.name}")
+                log(f"  ✓ Moved: {img_file.name}")
                 moved_count += 1
             except Exception as e:
                 print_error(f"Failed to move {img_file.name}: {e}")

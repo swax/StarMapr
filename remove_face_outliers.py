@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from collections import defaultdict
 from dotenv import load_dotenv
-from utils import add_training_testing_args, get_mode_and_path_from_args, get_image_files, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity, move_file_with_pkl
+from utils import add_training_testing_args, get_mode_and_path_from_args, get_image_files, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity, move_file_with_pkl, log
 from utils_deepface import get_single_face_embedding
 
 # Load environment variables
@@ -40,33 +40,33 @@ def find_face_outliers(celebrity_folder_path, similarity_threshold=0.1, dry_run=
                    if not f.name.startswith('.')]
     
     if len(image_files) < 3:
-        print(f"Need at least 3 images to detect outliers. Found {len(image_files)} images.")
+        log(f"Need at least 3 images to detect outliers. Found {len(image_files)} images.")
         return
     
-    print(f"Analyzing {len(image_files)} images for face consistency...")
+    log(f"Analyzing {len(image_files)} images for face consistency...")
     if dry_run:
         print_dry_run_header("No files will be moved")
-    print()
+    log("")
     
     # Extract embeddings for all images
     embeddings = {}
     valid_images = []
     
     for img_file in image_files:
-        print(f"Processing: {img_file.name}")
+        log(f"Processing: {img_file.name}")
         embedding = get_single_face_embedding(img_file)
         if embedding is not None:
             embeddings[img_file] = embedding
             valid_images.append(img_file)
-            print(f"  ✓ Face embedding extracted")
+            log(f"  ✓ Face embedding extracted")
         else:
-            print(f"  ✗ No face detected or processing error")
+            log(f"  ✗ No face detected or processing error")
     
     if len(valid_images) < 3:
-        print(f"\nInsufficient valid face embeddings ({len(valid_images)}) to detect outliers.")
+        log(f"\nInsufficient valid face embeddings ({len(valid_images)}) to detect outliers.")
         return
     
-    print(f"\nComparing {len(valid_images)} face embeddings...")
+    log(f"\nComparing {len(valid_images)} face embeddings...")
     
     # Create similarity matrix
     embedding_matrix = np.array([embeddings[img] for img in valid_images])
@@ -95,27 +95,27 @@ def find_face_outliers(celebrity_folder_path, similarity_threshold=0.1, dry_run=
     consensus_group.sort(key=lambda x: x[1], reverse=True)
     
     # Report results
-    print(f"\nFace Consistency Analysis Results:")
-    print(f"Similarity threshold: {similarity_threshold}")
-    print(f"Images in consensus group: {len(consensus_group)}")
-    print(f"Outlier images detected: {len(outliers)}")
-    print()
+    log(f"\nFace Consistency Analysis Results:")
+    log(f"Similarity threshold: {similarity_threshold}")
+    log(f"Images in consensus group: {len(consensus_group)}")
+    log(f"Outlier images detected: {len(outliers)}")
+    log("")
     
     if consensus_group:
-        print("Consensus group (keeping):")
+        log("Consensus group (keeping):")
         for img, sim in consensus_group:
-            print(f"  ✓ {img.name} (avg similarity: {sim:.3f})")
-        print()
+            log(f"  ✓ {img.name} (avg similarity: {sim:.3f})")
+        log("")
     
     if outliers:
-        print("Outlier images (will be moved):")
+        log("Outlier images (will be moved):")
         for img, sim in outliers:
-            print(f"  → {img.name} (avg similarity: {sim:.3f})")
-        print()
+            log(f"  → {img.name} (avg similarity: {sim:.3f})")
+        log("")
         
         # Move outlier images if not in dry run mode
         if not dry_run:
-            print(f"Moving {len(outliers)} outlier images to {outliers_folder}...")
+            log(f"Moving {len(outliers)} outlier images to {outliers_folder}...")
             
             total_moved_count = 0
             total_attempted_count = 0
@@ -125,7 +125,7 @@ def find_face_outliers(celebrity_folder_path, similarity_threshold=0.1, dry_run=
                 total_moved_count += moved_count
                 total_attempted_count += attempted_count
             
-            print(f"\nSuccessfully moved {total_moved_count}/{total_attempted_count} files")
+            log(f"\nSuccessfully moved {total_moved_count}/{total_attempted_count} files")
         else:
             total_files_to_move = 0
             for img, sim in outliers:
@@ -133,16 +133,16 @@ def find_face_outliers(celebrity_folder_path, similarity_threshold=0.1, dry_run=
                 total_files_to_move += attempted_count
             print_dry_run_summary(total_files_to_move, "move outlier files to outliers folder")
     else:
-        print("No outliers detected - all faces appear to be consistent!")
+        log("No outliers detected - all faces appear to be consistent!")
     
     # Summary statistics
     if valid_images:
         similarities = list(avg_similarities.values())
-        print(f"\nSimilarity Statistics:")
-        print(f"Mean similarity: {np.mean(similarities):.3f}")
-        print(f"Min similarity: {np.min(similarities):.3f}")
-        print(f"Max similarity: {np.max(similarities):.3f}")
-        print(f"Std deviation: {np.std(similarities):.3f}")
+        log(f"\nSimilarity Statistics:")
+        log(f"Mean similarity: {np.mean(similarities):.3f}")
+        log(f"Min similarity: {np.min(similarities):.3f}")
+        log(f"Max similarity: {np.max(similarities):.3f}")
+        log(f"Std deviation: {np.std(similarities):.3f}")
     
     # Add success summary
     if not dry_run:

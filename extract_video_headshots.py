@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
-from utils import get_celebrity_folder_name, get_average_embedding_path, load_pickle, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity, get_headshot_crop_coordinates
+from utils import get_celebrity_folder_name, get_average_embedding_path, load_pickle, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity, get_headshot_crop_coordinates, log
 
 # Load environment variables
 load_dotenv()
@@ -26,7 +26,7 @@ def load_celebrity_embedding(celebrity_name):
     if embedding is None:
         raise ValueError(f"Error loading celebrity embedding from: {embedding_path}")
     
-    print(f"Loaded celebrity embedding for '{celebrity_name}' with shape: {embedding.shape}")
+    log(f"Loaded celebrity embedding for '{celebrity_name}' with shape: {embedding.shape}")
     return embedding
 
 def load_frame_face_data(pkl_path):
@@ -54,7 +54,7 @@ def calculate_face_similarities(frames_dir, reference_embedding, threshold=0.6):
     if not pkl_files:
         raise ValueError(f"No pickle files found in {frames_dir}")
     
-    print(f"Scanning {len(pkl_files)} frame files for face matches...")
+    log(f"Scanning {len(pkl_files)} frame files for face matches...")
     
     matches = []
     total_faces_scanned = 0
@@ -81,8 +81,8 @@ def calculate_face_similarities(frames_dir, reference_embedding, threshold=0.6):
                 print_error(f"Error processing face in {pkl_path}: {e}")
                 continue
     
-    print(f"Scanned {total_faces_scanned} faces across {len(pkl_files)} frames")
-    print(f"Found {len(matches)} faces above similarity threshold {threshold}")
+    log(f"Scanned {total_faces_scanned} faces across {len(pkl_files)} frames")
+    log(f"Found {len(matches)} faces above similarity threshold {threshold}")
     
     return matches
 
@@ -161,7 +161,7 @@ def extract_top_headshots(celebrity_name, video_folder_path, threshold=0.6, dry_
     matches.sort(key=lambda x: x[0], reverse=True)
     top_matches = matches[:5]
     
-    print(f"\nTop {len(top_matches)} matches:")
+    log(f"\nTop {len(top_matches)} matches:")
     
     for i, (similarity, frame_file, face_data, pkl_path) in enumerate(top_matches, 1):
         bbox = face_data['bounding_box']
@@ -171,15 +171,15 @@ def extract_top_headshots(celebrity_name, video_folder_path, threshold=0.6, dry_
         output_filename = f"{celeb_name_clean}_{similarity:.3f}_{width}x{height}.jpg"
         output_path = headshots_dir / output_filename
         
-        print(f"  {i}. {output_filename} (similarity: {similarity:.3f})")
+        log(f"  {i}. {output_filename} (similarity: {similarity:.3f})")
         
         if dry_run:
-            print(f"     Would extract from: {frame_file}")
+            log(f"     Would extract from: {frame_file}")
             continue
         
         # Extract and save the face crop
         if extract_face_crop(frames_dir, frame_file, face_data, output_path):
-            print(f"     → Saved to: {output_path}")
+            log(f"     → Saved to: {output_path}")
         else:
             print_error("Failed to extract face crop")
     
@@ -202,13 +202,13 @@ def main():
     args = parser.parse_args()
     
     try:
-        print(f"Extracting headshots for: {args.celebrity_name}")
-        print(f"Video folder: {args.video_folder_path}")
-        print(f"Similarity threshold: {args.threshold}")
+        log(f"Extracting headshots for: {args.celebrity_name}")
+        log(f"Video folder: {args.video_folder_path}")
+        log(f"Similarity threshold: {args.threshold}")
         
         if args.dry_run:
             print_dry_run_header("No files will be created")
-            print()
+            log("")
         
         extract_top_headshots(
             args.celebrity_name,

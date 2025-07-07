@@ -5,7 +5,7 @@ import os
 import argparse
 from pathlib import Path
 from dotenv import load_dotenv
-from utils import get_env_int, print_dry_run_header, print_error, print_summary
+from utils import get_env_int, print_dry_run_header, print_error, print_summary, log
 
 # Load environment variables
 load_dotenv()
@@ -94,7 +94,7 @@ def find_video_file(folder_path):
         raise ValueError(f"No video files found in folder: {folder_path}")
     
     if len(video_files) > 1:
-        print(f"Multiple video files found, using: {video_files[0].name}")
+        log(f"Multiple video files found, using: {video_files[0].name}")
     
     return video_files[0]
 
@@ -113,7 +113,7 @@ def main():
     # Find video file in folder
     try:
         video_file = find_video_file(args.folder_path)
-        print(f"Found video file: {video_file}")
+        log(f"Found video file: {video_file}")
     except Exception as e:
         print_error(str(e))
         return 1
@@ -125,16 +125,16 @@ def main():
     # Get video info
     try:
         total_frames = get_video_frame_count(str(video_file))
-        print(f"Video has {total_frames} total frames")
+        log(f"Video has {total_frames} total frames")
     except Exception as e:
         print_error(f"Error reading video: {str(e)}")
         return 1
     
     # Generate frame indices using binary search pattern
     frame_indices = generate_binary_search_indices(total_frames, args.num_frames)
-    print(f"Will extract {len(frame_indices)} frames using binary search pattern")
-    print(f"Frame indices: {frame_indices}")
-    print(f"Frames will be saved to: {frames_dir}")
+    log(f"Will extract {len(frame_indices)} frames using binary search pattern")
+    log(f"Frame indices: {frame_indices}")
+    log(f"Frames will be saved to: {frames_dir}")
     
     if args.dry_run:
         print_dry_run_header("no files will be created")
@@ -154,22 +154,22 @@ def main():
         
         # Skip if frame already exists
         if frame_path.exists():
-            print(f"Skipping frame {frame_idx} - already exists: {frame_path}")
+            log(f"Skipping frame {frame_idx} - already exists: {frame_path}")
             skipped_count += 1
             continue
         
         try:
             # Extract frame
             extract_frame(str(video_file), frame_idx, str(frame_path))
-            print(f"Extracted frame {frame_idx} -> {frame_path}")
+            log(f"Extracted frame {frame_idx} -> {frame_path}")
             extracted_count += 1
                 
         except Exception as e:
             print_error(f"Error extracting frame {frame_idx}: {str(e)}")
     
-    print(f"\nSummary:")
-    print(f"  Frames extracted: {extracted_count}")
-    print(f"  Frames skipped: {skipped_count}")
+    log(f"\nSummary:")
+    log(f"  Frames extracted: {extracted_count}")
+    log(f"  Frames skipped: {skipped_count}")
     
     if extracted_count > 0:
         print_summary(f"Frame extraction completed! Extracted {extracted_count} frames to {frames_dir}")

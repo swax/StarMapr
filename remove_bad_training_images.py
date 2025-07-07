@@ -7,7 +7,7 @@ import shutil
 import cv2
 import numpy as np
 from collections import defaultdict
-from utils import add_training_testing_args, get_mode_and_path_from_args, print_dry_run_header, print_dry_run_summary, get_supported_image_extensions, print_error, print_summary, move_file_with_pkl
+from utils import add_training_testing_args, get_mode_and_path_from_args, print_dry_run_header, print_dry_run_summary, get_supported_image_extensions, print_error, print_summary, move_file_with_pkl, log
 from utils_deepface import get_face_embeddings
 
 def count_faces_in_image(image_path):
@@ -41,7 +41,7 @@ def move_files_to_folder(files_to_move, destination_folder, folder_name, dry_run
     
     if files_to_move:
         if not dry_run:
-            print(f"\nMoving {len(files_to_move)} files to {destination_folder}...")
+            log(f"\nMoving {len(files_to_move)} files to {destination_folder}...")
         
         for file_to_move in files_to_move:
             file_moved_count, file_attempted_count = move_file_with_pkl(file_to_move, destination_folder, dry_run)
@@ -83,12 +83,12 @@ def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
         print_error(f"No files found in {folder_path}")
         return
     
-    print(f"Found {len(all_files)} files in {folder_path}")
-    print(f"  - {len(image_files)} supported image files")
-    print(f"  - {len(unsupported_files)} unsupported format files")
+    log(f"Found {len(all_files)} files in {folder_path}")
+    log(f"  - {len(image_files)} supported image files")
+    log(f"  - {len(unsupported_files)} unsupported format files")
     if dry_run:
         print_dry_run_header("No files will be moved")
-    print()
+    log()
     
     images_to_move = []
     images_with_good_faces = []
@@ -104,49 +104,49 @@ def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
         face_description = f"{min_faces}-{max_faces} faces"
     
     for img_file in image_files:
-        print(f"Analyzing: {img_file.name}")
+        log(f"Analyzing: {img_file.name}")
         face_count = count_faces_in_image(img_file)
         
         if face_count == -1:
-            print(f"  → MOVE TO ERROR: Could not process image")
+            log(f"  → MOVE TO ERROR: Could not process image")
             images_with_errors.append(img_file)
         elif mode == 'training':
             if face_count == required_faces:
-                print(f"  → KEEP: Exactly 1 face detected")
+                log(f"  → KEEP: Exactly 1 face detected")
                 images_with_good_faces.append(img_file)
             else:
                 if face_count == 0:
-                    print(f"  → MOVE TO BAD_FACES: No faces detected")
+                    log(f"  → MOVE TO BAD_FACES: No faces detected")
                 else:
-                    print(f"  → MOVE TO BAD_FACES: {face_count} faces detected (expected exactly 1)")
+                    log(f"  → MOVE TO BAD_FACES: {face_count} faces detected (expected exactly 1)")
                 images_to_move.append(img_file)
         else:  # testing mode
             if min_faces <= face_count <= max_faces:
-                print(f"  → KEEP: {face_count} faces detected (within {min_faces}-{max_faces} range)")
+                log(f"  → KEEP: {face_count} faces detected (within {min_faces}-{max_faces} range)")
                 images_with_good_faces.append(img_file)
             else:
                 if face_count == 0:
-                    print(f"  → MOVE TO BAD_FACES: No faces detected")
+                    log(f"  → MOVE TO BAD_FACES: No faces detected")
                 elif face_count < min_faces:
-                    print(f"  → MOVE TO BAD_FACES: {face_count} faces detected (need at least {min_faces})")
+                    log(f"  → MOVE TO BAD_FACES: {face_count} faces detected (need at least {min_faces})")
                 else:
-                    print(f"  → MOVE TO BAD_FACES: {face_count} faces detected (maximum {max_faces} allowed)")
+                    log(f"  → MOVE TO BAD_FACES: {face_count} faces detected (maximum {max_faces} allowed)")
                 images_to_move.append(img_file)
     
     # Handle unsupported files
     if unsupported_to_move:
-        print(f"\nUnsupported format files (will be moved to unsupported folder):")
+        log(f"\nUnsupported format files (will be moved to unsupported folder):")
         for file in unsupported_to_move:
-            print(f"  → MOVE TO UNSUPPORTED: {file.name} (unsupported format: {file.suffix or 'no extension'})")
+            log(f"  → MOVE TO UNSUPPORTED: {file.name} (unsupported format: {file.suffix or 'no extension'})")
     
     # Summary
-    print(f"\nSummary:")
-    print(f"Total files found: {len(all_files)}")
-    print(f"Supported images analyzed: {len(image_files)}")
-    print(f"Images with {face_description} (keeping): {len(images_with_good_faces)}")
-    print(f"Images to move to bad_faces folder (wrong face count): {len(images_to_move)}")
-    print(f"Unsupported files to move to unsupported folder: {len(unsupported_to_move)}")
-    print(f"Images with processing errors to move to error folder: {len(images_with_errors)}")
+    log(f"\nSummary:")
+    log(f"Total files found: {len(all_files)}")
+    log(f"Supported images analyzed: {len(image_files)}")
+    log(f"Images with {face_description} (keeping): {len(images_with_good_faces)}")
+    log(f"Images to move to bad_faces folder (wrong face count): {len(images_to_move)}")
+    log(f"Unsupported files to move to unsupported folder: {len(unsupported_to_move)}")
+    log(f"Images with processing errors to move to error folder: {len(images_with_errors)}")
     
     # Move files to their respective categorized folders
     total_moved_count = 0

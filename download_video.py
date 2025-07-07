@@ -22,7 +22,7 @@ import json
 import shutil
 from pathlib import Path
 from urllib.parse import urlparse
-from utils import print_error, print_summary
+from utils import print_error, print_summary, log
 
 
 def extract_site_and_id(url):
@@ -99,7 +99,7 @@ def download_video(video_url, site, video_id, title):
     
     # Check if video already exists
     if video_dir.exists() and any(video_dir.iterdir()):
-        print(f"Video already exists in {video_dir}/, skipping download")
+        log(f"Video already exists in {video_dir}/, skipping download")
         return True
 
     # Ensure we dont try to download a mock video
@@ -111,7 +111,7 @@ def download_video(video_url, site, video_id, title):
     temp_dir = Path("temp") / folder_name
     temp_dir.mkdir(parents=True, exist_ok=True)
     
-    print(f"Downloading {site} video '{title}' to temp folder...")
+    log(f"Downloading {site} video '{title}' to temp folder...")
     
     # Sanitize title for filename
     safe_title = sanitize_filename(title)
@@ -129,7 +129,7 @@ def download_video(video_url, site, video_id, title):
     
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-        print(f"Download completed, moving to {video_dir}/")
+        log(f"Download completed, moving to {video_dir}/")
         
         # Create final video directory
         video_dir.mkdir(parents=True, exist_ok=True)
@@ -144,7 +144,7 @@ def download_video(video_url, site, video_id, title):
             # Clean up temp directory
             shutil.rmtree(temp_dir)
             
-            print(f"Successfully downloaded video to {video_dir}/")
+            log(f"Successfully downloaded video to {video_dir}/")
             return True
             
         except Exception as e:
@@ -182,8 +182,8 @@ def main():
         try:
             result = subprocess.run(['yt-dlp', '--list-extractors'], 
                                   capture_output=True, text=True, check=True)
-            print("Supported sites/extractors:")
-            print(result.stdout)
+            log("Supported sites/extractors:")
+            log(result.stdout)
         except subprocess.CalledProcessError as e:
             print_error(f"Error listing extractors: {e}")
         return
@@ -191,9 +191,9 @@ def main():
     try:
         # Extract site and video info
         site, video_id, title = extract_site_and_id(args.url)
-        print(f"Site: {site}")
-        print(f"Video ID: {video_id}")
-        print(f"Title: {title}")
+        log(f"Site: {site}")
+        log(f"Video ID: {video_id}")
+        log(f"Title: {title}")
         
         # Download video
         success = download_video(args.url, site, video_id, title)
@@ -201,10 +201,10 @@ def main():
         if success:
             video_folder = f"videos/{site}_{video_id}"
             result = {"success": True, "video_folder": video_folder}
-            print(json.dumps(result))
+            print_summary(json.dumps(result))
         else:
             result = {"success": False, "video_folder": None}
-            print(json.dumps(result))
+            print_summary(json.dumps(result))
             sys.exit(1)
             
     except Exception as e:

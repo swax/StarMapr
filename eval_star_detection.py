@@ -8,7 +8,7 @@ from pathlib import Path
 import cv2
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
-from utils import get_celebrity_folder_path, get_celebrity_folder_name, get_image_files, get_average_embedding_path, load_pickle, get_env_float, print_error, print_summary, calculate_face_similarity
+from utils import get_celebrity_folder_path, get_celebrity_folder_name, get_image_files, get_average_embedding_path, load_pickle, get_env_float, print_error, print_summary, calculate_face_similarity, log
 from utils_deepface import get_face_embeddings
 
 # Load environment variables
@@ -19,7 +19,7 @@ def load_embedding(embedding_path):
     embedding = load_pickle(embedding_path)
     if embedding is None:
         raise ValueError(f"Error loading embedding file: {embedding_path}")
-    print(f"Loaded embedding with shape: {embedding.shape}")
+    log(f"Loaded embedding with shape: {embedding.shape}")
     return embedding
 
 def detect_and_compare_faces(image_path, reference_embedding, threshold=0.6):
@@ -94,16 +94,16 @@ def process_images(images_folder, embedding_path, threshold=0.6, output_folder="
     image_files = get_image_files(images_folder, exclude_subdirs=True)
     
     if not image_files:
-        print(f"No image files found in {images_folder}")
+        log(f"No image files found in {images_folder}")
         return
     
-    print(f"Processing {len(image_files)} images...")
+    log(f"Processing {len(image_files)} images...")
     
     total_detections = 0
     processed_images = 0
     
     for img_file in image_files:
-        print(f"Processing: {img_file.name}")
+        log(f"Processing: {img_file.name}")
         
         matches = detect_and_compare_faces(img_file, reference_embedding, threshold)
         
@@ -117,19 +117,19 @@ def process_images(images_folder, embedding_path, threshold=0.6, output_folder="
                 
                 # Extract and save face crop
                 if extract_face_crop(img_file, face_region, output_file_path):
-                    print(f"  → Detected face with similarity {similarity:.3f} → {output_filename}")
+                    log(f"  → Detected face with similarity {similarity:.3f} → {output_filename}")
                     total_detections += 1
                 else:
-                    print(f"  → Failed to extract face crop")
+                    log(f"  → Failed to extract face crop")
         else:
-            print(f"  → No matching faces found")
+            log(f"  → No matching faces found")
     
     # Summary
-    print(f"\nDetection Summary:")
-    print(f"Images processed: {len(image_files)}")
-    print(f"Images with detections: {processed_images}")
-    print(f"Total faces detected: {total_detections}")
-    print(f"Output folder: {output_path}")
+    log(f"\nDetection Summary:")
+    log(f"Images processed: {len(image_files)}")
+    log(f"Images with detections: {processed_images}")
+    log(f"Total faces detected: {total_detections}")
+    log(f"Output folder: {output_path}")
     
     if total_detections == 0:
         print_error("No faces matching the reference were detected across all images.")
@@ -162,8 +162,8 @@ def main():
         if not os.path.exists(embedding_file):
             raise FileNotFoundError(f"Embedding file not found: {embedding_file}")
         
-        print(f"Using testing folder: {images_folder}")
-        print(f"Using embedding file: {embedding_file}")
+        log(f"Using testing folder: {images_folder}")
+        log(f"Using embedding file: {embedding_file}")
         
         process_images(images_folder, embedding_file, args.threshold, args.output)
         

@@ -27,9 +27,6 @@ from utils import (
 # Load environment variables
 load_dotenv()
 
-# Global verbose flag
-VERBOSE = False
-
 
 def print_header(text):
     """Print a header in green color."""
@@ -81,19 +78,7 @@ def run_subprocess_command(command_list, description, capture_output=False):
     """
     try:
         print(f"Running: {description}")
-        if VERBOSE:
-            result = subprocess.run(command_list, check=True, capture_output=capture_output, text=True)
-        else:
-            result = subprocess.run(command_list, check=True, capture_output=True, text=True)
-            # Only print colored output lines (lines containing ANSI color codes)
-            if result.stdout:
-                for line in result.stdout.split('\n'):
-                    if '\033[' in line:  # ANSI escape sequence for colors
-                        print(line)
-            if result.stderr:
-                for line in result.stderr.split('\n'):
-                    if '\033[' in line:
-                        print(line)
+        result = subprocess.run(command_list, check=True, capture_output=capture_output, text=True)
         
         stdout = result.stdout if capture_output else ""
         stderr = result.stderr if capture_output else ""
@@ -152,8 +137,6 @@ def run_celebrity_training(celebrity_name, show_name):
     print_header(f"\n=== TRAINING: {celebrity_name} ===")
     
     command = ['python3', 'run_celebrity_training.py', celebrity_name, show_name]
-    if VERBOSE:
-        command.append('--verbose')
     
     success, _, _ = run_subprocess_command(command, f"Training {celebrity_name}")
     
@@ -324,7 +307,6 @@ def run_operations_pipeline_with_adaptive_frames(video_folder, trained_celebriti
 
 def main():
     """Main function to run headshot detection pipeline."""
-    global VERBOSE
     start_time = time.time()
     
     parser = argparse.ArgumentParser(
@@ -346,7 +328,9 @@ Examples:
                        help='Show all output from subprocess commands')
     
     args = parser.parse_args()
-    VERBOSE = args.verbose
+
+    if args.verbose:
+        os.environ['STARMAPR_LOG_VERBOSE'] = 'true'
     
     # Parse celebrity names
     celebrities = parse_celebrities(args.celebrities, args.celebrity_list)

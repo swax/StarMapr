@@ -234,6 +234,18 @@ def print_dry_run_summary(would_count, action_description):
     print(f"DRY RUN: Would {action_description} {would_count} items")
 
 
+def log(message = ""):
+    """
+    Log function to replace standard print statements.
+    Only prints if STARMAPR_LOG_VERBOSE environment variable is set.
+    
+    Args:
+        message (str): Message to log
+    """
+    if os.getenv('STARMAPR_LOG_VERBOSE'):
+        print(message)
+
+
 def save_pickle(data, file_path):
     """
     Save data to pickle file with error handling.
@@ -403,9 +415,9 @@ def move_file_with_pkl(source_path, destination_folder, dry_run=False):
             destination_folder.mkdir(parents=True, exist_ok=True)
             destination = destination_folder / source_path.name
             shutil.move(str(source_path), str(destination))
-            print(f"  ✓ Moved: {source_path.name}")
+            log(f"  ✓ Moved: {source_path.name}")
         else:
-            print(f"  → Would move: {source_path.name}")
+            log(f"  → Would move: {source_path.name}")
         moved_count += 1
         attempted_count += 1
     except Exception as e:
@@ -419,9 +431,9 @@ def move_file_with_pkl(source_path, destination_folder, dry_run=False):
             if not dry_run:
                 pkl_destination = destination_folder / pkl_path.name
                 shutil.move(str(pkl_path), str(pkl_destination))
-                print(f"  ✓ Moved: {pkl_path.name}")
+                log(f"  ✓ Moved: {pkl_path.name}")
             else:
-                print(f"  → Would move: {pkl_path.name}")
+                log(f"  → Would move: {pkl_path.name}")
             moved_count += 1
             attempted_count += 1
         except Exception as e:

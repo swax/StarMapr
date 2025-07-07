@@ -2,7 +2,7 @@
 
 import argparse
 from pathlib import Path
-from utils import get_image_files, print_dry_run_header, print_error, print_summary
+from utils import get_image_files, print_dry_run_header, print_error, print_summary, log
 from utils_deepface import get_face_embeddings
 
 
@@ -38,15 +38,15 @@ def main():
     # Sort by filename to process in order
     image_files.sort()
     
-    print(f"Found {len(image_files)} frame images")
-    print(f"Face data will be saved to: {frames_dir}")
+    log(f"Found {len(image_files)} frame images")
+    log(f"Face data will be saved to: {frames_dir}")
     
     if args.dry_run:
         print_dry_run_header("no files will be created")
         for img_file in image_files:
             pkl_path = img_file.with_suffix('.pkl')
             status = "EXISTS" if pkl_path.exists() else "WOULD CREATE"
-            print(f"  {img_file.name} -> {pkl_path.name} [{status}]")
+            log(f"  {img_file.name} -> {pkl_path.name} [{status}]")
         return 0
     
     # Process frames
@@ -59,11 +59,11 @@ def main():
         
         # Check if face data already exists (caching is now handled in the utility function)
         if pkl_path.exists():
-            print(f"Skipping {img_file.name} - face data already exists")
+            log(f"Skipping {img_file.name} - face data already exists")
             skipped_count += 1
             continue
         
-        print(f"Processing {img_file.name}...")
+        log(f"Processing {img_file.name}...")
         
         try:
             # Detect faces (automatically handles caching)
@@ -72,15 +72,15 @@ def main():
             face_count = len(faces_data)
             total_faces += face_count
             processed_count += 1
-            print(f"  → Detected {face_count} faces -> {pkl_path.name}")
+            log(f"  → Detected {face_count} faces -> {pkl_path.name}")
                 
         except Exception as e:
             print_error(f"Error processing {img_file.name}: {str(e)}")
     
-    print(f"\nSummary:")
-    print(f"  Frames processed: {processed_count}")
-    print(f"  Frames skipped: {skipped_count}")
-    print(f"  Total faces detected: {total_faces}")
+    log(f"\nSummary:")
+    log(f"  Frames processed: {processed_count}")
+    log(f"  Frames skipped: {skipped_count}")
+    log(f"  Total faces detected: {total_faces}")
     
     if processed_count > 0:
         print_summary(f"Face detection completed! Processed {processed_count} frames and detected {total_faces} faces.")

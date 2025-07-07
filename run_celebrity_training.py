@@ -28,9 +28,6 @@ from utils import (
 # Load environment variables
 load_dotenv()
 
-# Global verbose flag
-VERBOSE = False
-
 def print_header(text):
     """Print a header in blue color."""
     blue = '\033[94m'
@@ -122,20 +119,7 @@ def run_subprocess_command(command_list, description):
     try:
         print(f"Running: {description}")
         # Don't capture output - let it stream to console in real-time so errors are visible
-        if VERBOSE:
-            result = subprocess.run(command_list, check=True)
-        else:
-            result = subprocess.run(command_list, check=True, capture_output=True, text=True)
-            # Only print colored output lines (lines containing ANSI color codes)
-            if result.stdout:
-                for line in result.stdout.split('\n'):
-                    if '\033[' in line:  # ANSI escape sequence for colors
-                        print(line)
-            if result.stderr:
-                for line in result.stderr.split('\n'):
-                    if '\033[' in line:
-                        print(line)
-
+        result = subprocess.run(command_list, check=True)
         return True
     except subprocess.CalledProcessError as e:
         print_error(f"Failed: {description}")
@@ -284,7 +268,6 @@ def check_existing_model(celebrity_name):
 
 def main():
     """Main function to run the comprehensive training pipeline."""
-    global VERBOSE
     start_time = time.time()
     
     parser = argparse.ArgumentParser(description='Run comprehensive celebrity training pipeline')
@@ -295,7 +278,9 @@ def main():
                        help='Show all output from subprocess commands')
     
     args = parser.parse_args()
-    VERBOSE = args.verbose
+
+    if args.verbose:
+        os.environ['STARMAPR_LOG_VERBOSE'] = 'true'
 
     # Check if model already exists (unless using --retrain flag)
     if not args.retrain and check_existing_model(args.celebrity_name):

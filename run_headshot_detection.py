@@ -292,15 +292,18 @@ def run_operations_pipeline_with_adaptive_frames(video_folder, trained_celebriti
                 results[celebrity_name] = 0
                 print_error(f"Failed to extract headshots for {celebrity_name}")
         
-        # If we found headshots or reached max multiplier, stop
-        if total_headshots_found > 0 or multiplier >= max_multiplier:
-            if total_headshots_found > 0:
-                print(f"✓ Found {total_headshots_found} total headshots with {current_frame_count} frames")
+        # Check if all celebrities have at least 1 headshot
+        celebrities_with_headshots = sum(1 for count in results.values() if count > 0)
+        total_trained_celebrities = len(trained_celebrities)
+        
+        if celebrities_with_headshots == total_trained_celebrities or multiplier >= max_multiplier:
+            if celebrities_with_headshots == total_trained_celebrities:
+                print(f"✓ Found headshots for all {total_trained_celebrities} celebrities with {current_frame_count} frames")
             else:
-                print(f"No headshots found even with {current_frame_count} frames")
+                print(f"Found headshots for {celebrities_with_headshots}/{total_trained_celebrities} celebrities even with {current_frame_count} frames")
             break
         else:
-            print(f"No headshots found with {current_frame_count} frames, trying {default_frame_count * (multiplier + 1)} frames...")
+            print(f"Found headshots for {celebrities_with_headshots}/{total_trained_celebrities} celebrities with {current_frame_count} frames, trying {default_frame_count * (multiplier + 1)} frames...")
     
     return results
 

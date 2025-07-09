@@ -115,7 +115,7 @@ def extract_video_folder_from_output(stdout, stderr):
     except (json.JSONDecodeError, KeyError, AttributeError):
         # Fallback: try the old regex approach for backward compatibility
         combined_output = stdout + stderr
-        pattern = r'videos/[a-zA-Z0-9_]+_[a-zA-Z0-9_-]+/?'
+        pattern = r'05_videos/[a-zA-Z0-9_]+_[a-zA-Z0-9_-]+/?'
         matches = re.findall(pattern, combined_output)
         if matches:
             return matches[0].rstrip('/')

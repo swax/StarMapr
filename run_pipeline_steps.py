@@ -301,7 +301,7 @@ def main():
                 if video_folder_path:
                     default_prompt = f"\nEnter path to video folder (default: {video_folder_path}): "
                 else:
-                    default_prompt = "\nEnter path to video folder (e.g., videos/youtube_ABC123/): "
+                    default_prompt = "\nEnter path to video folder (e.g., 05_videos/youtube_ABC123/): "
                 
                 video_folder = input(default_prompt).strip()
                 if not video_folder and video_folder_path:
@@ -326,7 +326,7 @@ def main():
                 if video_folder_path:
                     default_prompt = f"\nEnter path to video folder (default: {video_folder_path}): "
                 else:
-                    default_prompt = "\nEnter path to video folder (e.g., videos/youtube_ABC123/): "
+                    default_prompt = "\nEnter path to video folder (e.g., 05_videos/youtube_ABC123/): "
                 
                 video_folder = input(default_prompt).strip()
                 if not video_folder and video_folder_path:
@@ -340,7 +340,7 @@ def main():
                 if video_folder_path:
                     default_prompt = f"\nEnter path to video folder (default: {video_folder_path}): "
                 else:
-                    default_prompt = f"\nEnter path to video folder (e.g., videos/youtube_ABC123/): "
+                    default_prompt = f"\nEnter path to video folder (e.g., 05_videos/youtube_ABC123/): "
                 
                 video_folder = input(default_prompt).strip()
                 if not video_folder and video_folder_path:

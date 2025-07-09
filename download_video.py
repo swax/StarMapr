@@ -3,7 +3,7 @@
 Generic Video Downloader
 
 Downloads videos from various sites (YouTube, Vimeo, TikTok, etc.) using yt-dlp
-and saves them to videos/[site]_[video_id]/ folder.
+and saves them to 05_videos/[site]_[video_id]/ folder.
 
 Requires yt-dlp: pip install yt-dlp
 
@@ -92,8 +92,8 @@ def sanitize_filename(filename):
 
 
 def download_video(video_url, site, video_id, title):
-    """Download video to videos/[site]_[video_id]/ folder."""
-    videos_dir = Path("videos")
+    """Download video to 05_videos/[site]_[video_id]/ folder."""
+    videos_dir = Path("05_videos")
     folder_name = f"{site}_{video_id}"
     video_dir = videos_dir / folder_name
     
@@ -108,7 +108,7 @@ def download_video(video_url, site, video_id, title):
         return False
     
     # Create temp directory
-    temp_dir = Path("temp") / folder_name
+    temp_dir = videos_dir / "temp" / folder_name
     temp_dir.mkdir(parents=True, exist_ok=True)
     
     log(f"Downloading {site} video '{title}' to temp folder...")
@@ -164,7 +164,7 @@ def download_video(video_url, site, video_id, title):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Download video from various sites to videos/[site]_[video_id]/ folder')
+    parser = argparse.ArgumentParser(description='Download video from various sites to 05_videos/[site]_[video_id]/ folder')
     parser.add_argument('url', help='Video URL from supported site')
     parser.add_argument('--list-extractors', action='store_true',
                        help='List all supported sites/extractors')
@@ -199,7 +199,7 @@ def main():
         success = download_video(args.url, site, video_id, title)
         
         if success:
-            video_folder = f"videos/{site}_{video_id}"
+            video_folder = f"05_videos/{site}_{video_id}"
             result = {"success": True, "video_folder": video_folder}
             print_summary(json.dumps(result))
         else:

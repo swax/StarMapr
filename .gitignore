@@ -9,13 +9,12 @@ __pycache__/
 *.pkl
 
 # Resource folders
-mocks/
-models/
-search_cache/
-temp/
-testing/
-training/
-videos/
+00_mocks/
+01_search_cache/
+02_training/
+03_testing/
+04_models/
+05_videos/
 
 # Temporary files
 *.tmp

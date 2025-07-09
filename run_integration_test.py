@@ -27,20 +27,20 @@ def verify_file_counts():
     
     # Expected file counts based on Thomas Lennon reference
     expected_counts = {
-        'training/mock_celebrity': 33,
-        'training/mock_celebrity/outliers': 10,
-        'training/mock_celebrity/duplicates': 4,
-        'training/mock_celebrity/bad_error': 22,
-        'testing/mock_celebrity': 14,
-        'testing/mock_celebrity/detected_headshots': 5,
-        'testing/mock_celebrity/duplicates': 2,
-        'testing/mock_celebrity/bad_error': 18,
-        'testing/mock_celebrity/bad_faces': 42,
-        'testing/mock_celebrity/bad_unsupported': 3,
-        'videos/mock_video': 4,
-        'videos/mock_video/headshots': 0,
-        'videos/mock_video/headshots/mock_celebrity': 5,
-        'videos/mock_video/frames': 100
+        '02_training/mock_celebrity': 33,
+        '02_training/mock_celebrity/outliers': 10,
+        '02_training/mock_celebrity/duplicates': 4,
+        '02_training/mock_celebrity/bad_error': 22,
+        '03_testing/mock_celebrity': 14,
+        '03_testing/mock_celebrity/detected_headshots': 5,
+        '03_testing/mock_celebrity/duplicates': 2,
+        '03_testing/mock_celebrity/bad_error': 18,
+        '03_testing/mock_celebrity/bad_faces': 42,
+        '03_testing/mock_celebrity/bad_unsupported': 3,
+        '05_videos/mock_video': 4,
+        '05_videos/mock_video/headshots': 0,
+        '05_videos/mock_video/headshots/mock_celebrity': 5,
+        '05_videos/mock_video/frames': 100
     }
     
     all_passed = True
@@ -63,10 +63,18 @@ def verify_file_counts():
         else:
             print(f"✅ {folder_path} correct")
     
-    if all_passed:
-        print("✅ All file counts verified successfully")
+    # Validate that the model file exists in 04_models
+    pkl_path = get_average_embedding_path('mock_celebrity', 'models')
+    if pkl_path.exists():
+        print(f"✅ Model file found: {pkl_path}")
     else:
-        print_error("❌ Some file counts did not match expectations")
+        print_error(f"❌ Model file missing: {pkl_path}")
+        all_passed = False
+    
+    if all_passed:
+        print("✅ All file counts and model file verified successfully")
+    else:
+        print_error("❌ Some file counts or model file did not match expectations")
     
     return all_passed
 
@@ -75,10 +83,10 @@ def cleanup_mock_folders():
     print_header("CLEANING UP MOCK FOLDERS")
 
     folders_to_remove = [
-        'search_cache/mock_celebrity',
-        'training/mock_celebrity',
-        'testing/mock_celebrity',
-        'videos/mock_video',
+        '01_search_cache/mock_celebrity',
+        '02_training/mock_celebrity',
+        '03_testing/mock_celebrity',
+        '05_videos/mock_video',
     ]
     
     for folder_path in folders_to_remove:
@@ -101,7 +109,7 @@ def seed_mock_data():
     """Copy mock data from mocks/ folder to base folder structure."""
     print_header("SEEDING MOCK DATA")
     
-    mocks_folder = Path('mocks')
+    mocks_folder = Path('00_mocks')
     if not mocks_folder.exists():
         print_error("❌ mocks/ folder not found")
         return False

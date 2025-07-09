@@ -90,7 +90,7 @@ The system consists of 17 components organized in three execution tiers:
 ### OPERATIONS PIPELINE (Steps 11-14)
 
 11. **download_video.py** - Downloads videos using yt-dlp
-    - Supports YouTube, Vimeo, TikTok, saves to `videos/[site]_[id]/`
+    - Supports YouTube, Vimeo, TikTok, saves to `05_videos/[site]_[id]/`
 
 12. **extract_video_frames.py** - Extracts frames using binary search
     - Saves to `frames/` subfolder with zero-padded naming
@@ -110,10 +110,13 @@ The system consists of 17 components organized in three execution tiers:
 
 ## Data Structure
 
-- `training/[celebrity]/` - Training images + `[celebrity]_average_embedding.pkl`
-- `testing/[celebrity]/` - Test images + `detected_headshots/` subfolder  
-- `models/[celebrity]/` - Final accepted models
-- `videos/[site]_[id]/` - Video file + `frames/` + `headshots/` subfolders
+- `00_mocks/` - Mock test data for integration testing
+- `01_search_cache/` - Cached Google image search results
+- `02_training/[celebrity]/` - Training images + `[celebrity]_average_embedding.pkl`
+- `03_testing/[celebrity]/` - Test images + `detected_headshots/` subfolder  
+- `04_models/[celebrity]/` - Final accepted models
+- `05_videos/[site]_[id]/` - Video file + `frames/` + `headshots/` subfolders
+- `05_videos/temp/` - Temporary download directory
 
 ## Usage
 
@@ -158,9 +161,9 @@ python3 eval_star_detection.py "Name"
 
 # Operations pipeline (steps 11-14)
 python3 download_video.py "https://youtube.com/watch?v=VIDEO_ID"
-python3 extract_video_frames.py videos/youtube_ABC123/
-python3 extract_frame_faces.py videos/youtube_ABC123/
-python3 extract_video_headshots.py "Name" videos/youtube_ABC123/
+python3 extract_video_frames.py 05_videos/youtube_ABC123/
+python3 extract_frame_faces.py 05_videos/youtube_ABC123/
+python3 extract_video_headshots.py "Name" 05_videos/youtube_ABC123/
 ```
 
 ## Dependencies

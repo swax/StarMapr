@@ -23,10 +23,11 @@ def get_celebrity_folder_path(celebrity_name, mode='training'):
         mode (str): Either 'training' or 'testing'
         
     Returns:
-        str: Formatted folder path (e.g., 'training/bill_murray/')
+        str: Formatted folder path (e.g., '02_training/bill_murray/')
     """
     celebrity_folder = celebrity_name.lower().replace(' ', '_')
-    return f'{mode}/{celebrity_folder}/'
+    mode_prefix = '02_' if mode == 'training' else '03_'
+    return f'{mode_prefix}{mode}/{celebrity_folder}/'
 
 
 def get_celebrity_folder_name(celebrity_name):
@@ -72,7 +73,7 @@ def get_average_embedding_path(celebrity_name, location='training'):
     if location == 'training':
         base_path = Path(get_celebrity_folder_path(celebrity_name, 'training'))
     elif location == 'models':
-        base_path = Path("models")
+        base_path = Path("04_models")
     else:
         raise ValueError(f"Invalid location: {location}. Must be 'training' or 'models'")
     
@@ -91,9 +92,9 @@ def add_training_testing_args(parser):
     """
     mode_group = parser.add_mutually_exclusive_group(required=True)
     mode_group.add_argument('--training', metavar='CELEBRITY_NAME',
-                           help='Process training/CELEBRITY_NAME/ folder')
+                           help='Process 02_training/CELEBRITY_NAME/ folder')
     mode_group.add_argument('--testing', metavar='CELEBRITY_NAME', 
-                           help='Process testing/CELEBRITY_NAME/ folder')
+                           help='Process 03_testing/CELEBRITY_NAME/ folder')
     return parser
 
 

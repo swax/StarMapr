@@ -121,17 +121,17 @@ def find_duplicate_groups(image_files, similarity_threshold=5):
     
     return duplicate_groups
 
-def remove_duplicate_images(celebrity_folder_path, similarity_threshold=5, dry_run=False):
+def remove_duplicate_images(actor_folder_path, similarity_threshold=5, dry_run=False):
     """
-    Remove near-duplicate images from celebrity folder, keeping the oldest one in each group.
+    Remove near-duplicate images from actor folder, keeping the oldest one in each group.
     Keeping the oldest is important as it may have a corresponding pkl file that we don't want to abandon.
     
     Args:
-        celebrity_folder_path (str): Path to celebrity folder containing training or testing images
+        actor_folder_path (str): Path to actor folder containing training or testing images
         similarity_threshold (int): Maximum Hamming distance for considering images duplicates
         dry_run (bool): If True, only report what would be moved without actually moving files
     """
-    folder_path = Path(celebrity_folder_path)
+    folder_path = Path(actor_folder_path)
     
     if not folder_path.exists():
         print_error(f"Folder not found: {folder_path}")
@@ -214,7 +214,7 @@ def remove_duplicate_images(celebrity_folder_path, similarity_threshold=5, dry_r
         print_dry_run_summary(len(images_to_move), "move duplicate images")
 
 def main():
-    parser = argparse.ArgumentParser(description='Remove near-duplicate images from celebrity folder')
+    parser = argparse.ArgumentParser(description='Remove near-duplicate images from actor folder')
     
     # Add standard training/testing arguments
     add_training_testing_args(parser)
@@ -232,11 +232,11 @@ def main():
         print_error("Threshold must be between 0 and 64")
         sys.exit(1)
     
-    # Determine celebrity folder path based on mode
-    mode, celebrity_name, celebrity_folder_path = get_mode_and_path_from_args(args)
+    # Determine actor folder path based on mode
+    mode, actor_name, actor_folder_path = get_mode_and_path_from_args(args)
     
     try:
-        remove_duplicate_images(celebrity_folder_path, args.threshold, args.dry_run)
+        remove_duplicate_images(actor_folder_path, args.threshold, args.dry_run)
         
     except Exception as e:
         print_error(f"Error: {e}")

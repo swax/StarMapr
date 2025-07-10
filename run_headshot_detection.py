@@ -2,13 +2,13 @@
 """
 StarMapr Headshot Detection Script
 
-Automated script that takes a video URL and a list of celebrities, runs celebrity 
+Automated script that takes a video URL and a list of actors, runs actor 
 training for each, then downloads the video and extracts headshots for all successfully 
-trained celebrities. Uses adaptive frame extraction if no headshots are initially found.
+trained actors. Uses adaptive frame extraction if no headshots are initially found.
 
 Usage:
     python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" "Bill Murray" "Tina Fey" "Amy Poehler"
-    python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --celebrities "Bill Murray,Tina Fey,Amy Poehler"
+    python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --actors "Bill Murray,Tina Fey,Amy Poehler"
 """
 
 import os
@@ -20,7 +20,7 @@ import time
 from pathlib import Path
 from dotenv import load_dotenv
 from utils import (
-    get_celebrity_folder_name, get_env_int,
+    get_actor_folder_name, get_env_int,
     print_error
 )
 
@@ -34,34 +34,34 @@ def print_header(text):
     reset = '\033[0m'
     print(f"{green}{text}{reset}")
 
-def parse_celebrities(celebrity_args, celebrity_list_arg):
+def parse_actors(actor_args, actor_list_arg):
     """
-    Parse celebrity names from either individual arguments or comma-separated list.
+    Parse actor names from either individual arguments or comma-separated list.
     
     Args:
-        celebrity_args (list): Individual celebrity names as arguments
-        celebrity_list_arg (str): Comma-separated celebrity names
+        actor_args (list): Individual actor names as arguments
+        actor_list_arg (str): Comma-separated actor names
         
     Returns:
-        list: List of celebrity names
+        list: List of actor names
     """
-    celebrities = []
+    actors = []
     
-    if celebrity_list_arg:
-        celebrities.extend([name.strip() for name in celebrity_list_arg.split(',')])
+    if actor_list_arg:
+        actors.extend([name.strip() for name in actor_list_arg.split(',')])
     
-    if celebrity_args:
-        celebrities.extend(celebrity_args)
+    if actor_args:
+        actors.extend(actor_args)
     
     # Remove duplicates while preserving order
     seen = set()
-    unique_celebrities = []
-    for celeb in celebrities:
-        if celeb not in seen:
-            seen.add(celeb)
-            unique_celebrities.append(celeb)
+    unique_actors = []
+    for actor in actors:
+        if actor not in seen:
+            seen.add(actor)
+            unique_actors.append(actor)
     
-    return unique_celebrities
+    return unique_actors
 
 
 def run_subprocess_command(command_list, description, capture_output=False):
@@ -123,27 +123,27 @@ def extract_video_folder_from_output(stdout, stderr):
     return None
 
 
-def run_celebrity_training(celebrity_name, show_name):
+def run_actor_training(actor_name, show_name):
     """
-    Run celebrity training pipeline for a single celebrity.
+    Run actor training pipeline for a single actor.
     
     Args:
-        celebrity_name (str): Name of the celebrity
+        actor_name (str): Name of the actor
         show_name (str): Show name (required)
         
     Returns:
         bool: True if training successful, False otherwise
     """
-    print_header(f"\n=== TRAINING: {celebrity_name} ===")
+    print_header(f"\n=== TRAINING: {actor_name} ===")
     
-    command = ['python3', 'run_celebrity_training.py', celebrity_name, show_name]
+    command = ['python3', 'run_actor_training.py', actor_name, show_name]
     
-    success, _, _ = run_subprocess_command(command, f"Training {celebrity_name}")
+    success, _, _ = run_subprocess_command(command, f"Training {actor_name}")
     
     if success:
-        print(f"✓ Training completed for {celebrity_name}")
+        print(f"✓ Training completed for {actor_name}")
     else:
-        print_error(f"✗ Training failed for {celebrity_name}")
+        print_error(f"✗ Training failed for {actor_name}")
     
     return success
 
@@ -214,26 +214,26 @@ def extract_faces_from_frames(video_folder):
     return success
 
 
-def extract_celebrity_headshots(celebrity_name, video_folder):
+def extract_actor_headshots(actor_name, video_folder):
     """
-    Extract headshots for a specific celebrity from video.
+    Extract headshots for a specific actor from video.
     
     Args:
-        celebrity_name (str): Name of the celebrity
+        actor_name (str): Name of the actor
         video_folder (str): Path to video folder
         
     Returns:
         tuple: (success: bool, headshot_count: int)
     """
-    print(f"Extracting headshots for {celebrity_name}...")
+    print(f"Extracting headshots for {actor_name}...")
     
-    command = ['python3', 'extract_video_headshots.py', celebrity_name, video_folder]
-    success, _, _ = run_subprocess_command(command, f"Extracting {celebrity_name} headshots")
+    command = ['python3', 'extract_video_headshots.py', actor_name, video_folder]
+    success, _, _ = run_subprocess_command(command, f"Extracting {actor_name} headshots")
     
     if success:
-        # Count headshots in the celebrity-specific folder
-        celeb_name_clean = celebrity_name.lower().replace(' ', '_')
-        headshots_folder = Path(video_folder) / 'headshots' / celeb_name_clean
+        # Count headshots in the actor-specific folder
+        actor_name_clean = actor_name.lower().replace(' ', '_')
+        headshots_folder = Path(video_folder) / 'headshots' / actor_name_clean
         if headshots_folder.exists():
             headshot_files = list(headshots_folder.glob('*.jpg')) + list(headshots_folder.glob('*.png'))
             return True, len(headshot_files)
@@ -241,16 +241,16 @@ def extract_celebrity_headshots(celebrity_name, video_folder):
     return False, 0
 
 
-def run_operations_pipeline_with_adaptive_frames(video_folder, trained_celebrities):
+def run_operations_pipeline_with_adaptive_frames(video_folder, trained_actors):
     """
     Run the operations pipeline with adaptive frame extraction.
     
     Args:
         video_folder (str): Path to video folder
-        trained_celebrities (list): List of successfully trained celebrity names
+        trained_actors (list): List of successfully trained actor names
         
     Returns:
-        dict: Dictionary mapping celebrity names to headshot counts
+        dict: Dictionary mapping actor names to headshot counts
     """
     print_header(f"\n=== OPERATIONS PIPELINE ===")
     
@@ -277,33 +277,33 @@ def run_operations_pipeline_with_adaptive_frames(video_folder, trained_celebriti
             print_error("Failed to extract faces from frames, aborting operations pipeline")
             break
         
-        # Extract headshots for each trained celebrity
+        # Extract headshots for each trained actor
         total_headshots_found = 0
-        for celebrity_name in trained_celebrities:
-            success, headshot_count = extract_celebrity_headshots(celebrity_name, video_folder)
+        for actor_name in trained_actors:
+            success, headshot_count = extract_actor_headshots(actor_name, video_folder)
             if success:
-                results[celebrity_name] = headshot_count
+                results[actor_name] = headshot_count
                 total_headshots_found += headshot_count
                 if headshot_count > 0:
-                    print(f"✓ Found {headshot_count} headshots for {celebrity_name}")
+                    print(f"✓ Found {headshot_count} headshots for {actor_name}")
                 else:
-                    print(f"No headshots found for {celebrity_name}")
+                    print(f"No headshots found for {actor_name}")
             else:
-                results[celebrity_name] = 0
-                print_error(f"Failed to extract headshots for {celebrity_name}")
+                results[actor_name] = 0
+                print_error(f"Failed to extract headshots for {actor_name}")
         
-        # Check if all celebrities have at least 1 headshot
-        celebrities_with_headshots = sum(1 for count in results.values() if count > 0)
-        total_trained_celebrities = len(trained_celebrities)
+        # Check if all actors have at least 1 headshot
+        actors_with_headshots = sum(1 for count in results.values() if count > 0)
+        total_trained_actors = len(trained_actors)
         
-        if celebrities_with_headshots == total_trained_celebrities or multiplier >= max_multiplier:
-            if celebrities_with_headshots == total_trained_celebrities:
-                print(f"✓ Found headshots for all {total_trained_celebrities} celebrities with {current_frame_count} frames")
+        if actors_with_headshots == total_trained_actors or multiplier >= max_multiplier:
+            if actors_with_headshots == total_trained_actors:
+                print(f"✓ Found headshots for all {total_trained_actors} actors with {current_frame_count} frames")
             else:
-                print(f"Found headshots for {celebrities_with_headshots}/{total_trained_celebrities} celebrities even with {current_frame_count} frames")
+                print(f"Found headshots for {actors_with_headshots}/{total_trained_actors} actors even with {current_frame_count} frames")
             break
         else:
-            print(f"Found headshots for {celebrities_with_headshots}/{total_trained_celebrities} celebrities with {current_frame_count} frames, trying {default_frame_count * (multiplier + 1)} frames...")
+            print(f"Found headshots for {actors_with_headshots}/{total_trained_actors} actors with {current_frame_count} frames, trying {default_frame_count * (multiplier + 1)} frames...")
     
     return results
 
@@ -313,20 +313,20 @@ def main():
     start_time = time.time()
     
     parser = argparse.ArgumentParser(
-        description='Run headshot detection pipeline for video and celebrities',
+        description='Run headshot detection pipeline for video and actors',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s "https://youtube.com/watch?v=ABC123" --show "SNL" --celebrities "Bill Murray,Tina Fey,Amy Poehler"
+  %(prog)s "https://youtube.com/watch?v=ABC123" --show "SNL" --actors "Bill Murray,Tina Fey,Amy Poehler"
         """
     )
     
     parser.add_argument('video_url', help='URL of the video to download and process')
-    parser.add_argument('celebrities', nargs='*', help='Celebrity names (space-separated)')
-    parser.add_argument('--celebrities', dest='celebrity_list', 
-                       help='Celebrity names (comma-separated)')
+    parser.add_argument('actors', nargs='*', help='Actor names (space-separated)')
+    parser.add_argument('--actors', dest='actor_list', 
+                       help='Actor names (comma-separated)')
     parser.add_argument('--show', required=True,
-                       help='Show/movie name for celebrity training (required)')
+                       help='Show/movie name for actor training (required)')
     parser.add_argument('--verbose', '-v', action='store_true',
                        help='Show all output from subprocess commands')
     
@@ -335,36 +335,36 @@ Examples:
     if args.verbose:
         os.environ['STARMAPR_LOG_VERBOSE'] = 'true'
     
-    # Parse celebrity names
-    celebrities = parse_celebrities(args.celebrities, args.celebrity_list)
+    # Parse actor names
+    actors = parse_actors(args.actors, args.actor_list)
     
-    if not celebrities:
-        print_error("No celebrities specified. Use either positional arguments or --celebrities flag.")
+    if not actors:
+        print_error("No actors specified. Use either positional arguments or --actors flag.")
         sys.exit(1)
     
     print_header(f"=== HEADSHOT DETECTION PIPELINE ===")
     print(f"Video URL: {args.video_url}")
-    print(f"Celebrities: {', '.join(celebrities)}")
+    print(f"Actors: {', '.join(actors)}")
     print(f"Show: {args.show}")
     
-    # Step 1: Run celebrity training for each celebrity
-    trained_celebrities = []
-    failed_celebrities = []
+    # Step 1: Run actor training for each actor
+    trained_actors = []
+    failed_actors = []
     
-    for celebrity_name in celebrities:
-        if run_celebrity_training(celebrity_name, args.show):
-            trained_celebrities.append(celebrity_name)
+    for actor_name in actors:
+        if run_actor_training(actor_name, args.show):
+            trained_actors.append(actor_name)
         else:
-            failed_celebrities.append(celebrity_name)
+            failed_actors.append(actor_name)
     
-    if not trained_celebrities:
-        print_error("No celebrities were successfully trained. Aborting pipeline.")
+    if not trained_actors:
+        print_error("No actors were successfully trained. Aborting pipeline.")
         sys.exit(1)
     
     print_header(f"\nTraining Results:")
-    print(f"✓ Successfully trained: {', '.join(trained_celebrities)}")
-    if failed_celebrities:
-        print(f"✗ Failed to train: {', '.join(failed_celebrities)}")
+    print(f"✓ Successfully trained: {', '.join(trained_actors)}")
+    if failed_actors:
+        print(f"✗ Failed to train: {', '.join(failed_actors)}")
     
     # Step 2: Download video
     video_folder = download_video(args.video_url)
@@ -373,7 +373,7 @@ Examples:
         sys.exit(1)
     
     # Step 3: Run operations pipeline with adaptive frame extraction
-    headshot_results = run_operations_pipeline_with_adaptive_frames(video_folder, trained_celebrities)
+    headshot_results = run_operations_pipeline_with_adaptive_frames(video_folder, trained_actors)
     
     # Calculate elapsed time
     elapsed_time = time.time() - start_time
@@ -385,22 +385,22 @@ Examples:
     print(f"Total execution time: {elapsed_minutes:.1f} minutes ({elapsed_time:.1f} seconds)")
     
     total_headshots = 0
-    for celebrity_name in trained_celebrities:
-        headshot_count = headshot_results.get(celebrity_name, 0)
+    for actor_name in trained_actors:
+        headshot_count = headshot_results.get(actor_name, 0)
         total_headshots += headshot_count
         if headshot_count > 0:
-            print(f"✓ {celebrity_name}: {headshot_count} headshots")
+            print(f"✓ {actor_name}: {headshot_count} headshots")
         else:
-            print_error(f"✗ {celebrity_name}: No headshots found")
+            print_error(f"✗ {actor_name}: No headshots found")
     
-    if failed_celebrities:
-        print_error(f"Training failed: {', '.join(failed_celebrities)}")
+    if failed_actors:
+        print_error(f"Training failed: {', '.join(failed_actors)}")
     
     if total_headshots > 0:
-        print(f"🎉 SUCCESS! Found {total_headshots} total headshots across all celebrities")
+        print(f"🎉 SUCCESS! Found {total_headshots} total headshots across all actors")
         sys.exit(0)
     else:
-        print_error(f"❌ No headshots found for any celebrity")
+        print_error(f"❌ No headshots found for any actor")
         sys.exit(1)
 
 

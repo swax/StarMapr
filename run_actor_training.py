@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-StarMapr Comprehensive Celebrity Training Script
+StarMapr Comprehensive Actor Training Script
 
-Automated script that runs the complete training and testing pipeline for a celebrity.
+Automated script that runs the complete training and testing pipeline for a actor.
 Iteratively downloads and processes images until minimum thresholds are met.
 
 Training: Downloads up to 5 pages until 15+ quality training images
 Testing: Downloads up to 5 pages until 4+ headshots are detected
 
 Usage:
-    python3 train_celebrity_comprehensive.py "Celebrity Name" "Show Name"
+    python3 train_actor_comprehensive.py "Actor Name" "Show Name"
 """
 
 import os
@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 from dotenv import load_dotenv
 from utils import (
-    get_celebrity_folder_path, get_celebrity_folder_name, get_image_files, get_env_int,
+    get_actor_folder_path, get_actor_folder_name, get_image_files, get_env_int,
     get_average_embedding_path, print_error, ensure_folder_exists
 )
 
@@ -34,17 +34,17 @@ def print_header(text):
     reset = '\033[0m'
     print(f"{blue}{text}{reset}")
 
-def count_detected_headshots(celebrity_name):
+def count_detected_headshots(actor_name):
     """
-    Count the number of detected headshots for a celebrity.
+    Count the number of detected headshots for a actor.
     
     Args:
-        celebrity_name (str): Name of the celebrity
+        actor_name (str): Name of the actor
         
     Returns:
         int: Number of detected headshots
     """
-    testing_folder = get_celebrity_folder_path(celebrity_name, 'testing')
+    testing_folder = get_actor_folder_path(actor_name, 'testing')
     headshots_folder = Path(testing_folder) / 'detected_headshots'
     
     if not headshots_folder.exists():
@@ -59,20 +59,20 @@ def fatal_error(message):
     sys.exit(1)
 
 
-def copy_model_to_models_dir(celebrity_name):
+def copy_model_to_models_dir(actor_name):
     """
     Copy the average embedding file from training directory to models directory.
     
     Args:
-        celebrity_name (str): Name of the celebrity
+        actor_name (str): Name of the actor
         
     Returns:
         bool: True if successful, False if failed
     """
     try:
         # Get paths using utility functions
-        source_path = get_average_embedding_path(celebrity_name, 'training')
-        dest_path = get_average_embedding_path(celebrity_name, 'models')
+        source_path = get_average_embedding_path(actor_name, 'training')
+        dest_path = get_average_embedding_path(actor_name, 'models')
         
         # Create models directory if it doesn't exist
         dest_path.parent.mkdir(exist_ok=True)
@@ -88,21 +88,21 @@ def copy_model_to_models_dir(celebrity_name):
         return False
 
 
-def delete_existing_folders(celebrity_name):
+def delete_existing_folders(actor_name):
     """Start fresh in case the last run failed and training is in an incomplete state."""
-    training_folder = get_celebrity_folder_path(celebrity_name, 'training')
-    testing_folder = get_celebrity_folder_path(celebrity_name, 'testing')
+    training_folder = get_actor_folder_path(actor_name, 'training')
+    testing_folder = get_actor_folder_path(actor_name, 'testing')
     
     folders_exist = os.path.exists(training_folder) or os.path.exists(testing_folder)
     if not folders_exist:
-        print(f"No existing folders found for '{celebrity_name}', proceeding with training.")
+        print(f"No existing folders found for '{actor_name}', proceeding with training.")
         return
     
     for folder in [training_folder, testing_folder]:
         if os.path.exists(folder):
             shutil.rmtree(folder)
     
-    print(f"✓ Deleted existing folders for '{celebrity_name}'")
+    print(f"✓ Deleted existing folders for '{actor_name}'")
 
 
 def run_subprocess_command(command_list, description):
@@ -126,12 +126,12 @@ def run_subprocess_command(command_list, description):
         return False
 
 
-def run_training_pipeline(celebrity_name, show_name, max_pages, min_images):
+def run_training_pipeline(actor_name, show_name, max_pages, min_images):
     """
     Run the training pipeline until minimum images achieved or max pages reached.
     
     Args:
-        celebrity_name (str): Name of the celebrity
+        actor_name (str): Name of the actor
         show_name (str): Name of the show
         max_pages (int): Maximum pages to download
         min_images (int): Minimum training images required
@@ -139,9 +139,9 @@ def run_training_pipeline(celebrity_name, show_name, max_pages, min_images):
     Returns:
         tuple: (success: bool, final_image_count: int)
     """
-    print_header(f"\n=== TRAINING PIPELINE for '{celebrity_name}' ===")
+    print_header(f"\n=== TRAINING PIPELINE for '{actor_name}' ===")
     
-    training_folder = get_celebrity_folder_path(celebrity_name, 'training')
+    training_folder = get_actor_folder_path(actor_name, 'training')
     ensure_folder_exists(training_folder)
     
     for page in range(1, max_pages + 1):
@@ -149,24 +149,24 @@ def run_training_pipeline(celebrity_name, show_name, max_pages, min_images):
         
         # Step 1: Download training images
         download_cmd = [
-            'python3', 'download_celebrity_images.py', celebrity_name,
+            'python3', 'download_actor_images.py', actor_name,
             '--training', '--show', show_name, '--page', str(page)
         ]
         if not run_subprocess_command(download_cmd, f"Downloading training images (page {page})"):
             fatal_error(f"Failed to download training images for page {page}")
         
         # Step 2: Remove duplicates
-        dedup_cmd = ['python3', 'remove_dupe_training_images.py', '--training', celebrity_name]
+        dedup_cmd = ['python3', 'remove_dupe_training_images.py', '--training', actor_name]
         if not run_subprocess_command(dedup_cmd, "Removing duplicate images"):
             fatal_error("Failed to remove duplicate images")
         
         # Step 3: Remove bad images (not exactly 1 face)
-        bad_cmd = ['python3', 'remove_bad_training_images.py', '--training', celebrity_name]
+        bad_cmd = ['python3', 'remove_bad_training_images.py', '--training', actor_name]
         if not run_subprocess_command(bad_cmd, "Removing bad training images"):
             fatal_error("Failed to remove bad training images")
         
         # Step 4: Remove face outliers
-        outlier_cmd = ['python3', 'remove_face_outliers.py', '--training', celebrity_name]
+        outlier_cmd = ['python3', 'remove_face_outliers.py', '--training', actor_name]
         if not run_subprocess_command(outlier_cmd, "Removing face outliers"):
             fatal_error("Failed to remove face outliers")
         
@@ -185,19 +185,19 @@ def run_training_pipeline(celebrity_name, show_name, max_pages, min_images):
             print(f"Reached max pages ({max_pages}), proceeding with {image_count} images")
     
     # Step 5: Generate embeddings
-    embedding_cmd = ['python3', 'compute_average_embeddings.py', celebrity_name]
+    embedding_cmd = ['python3', 'compute_average_embeddings.py', actor_name]
     embeddings_success = run_subprocess_command(embedding_cmd, "Computing average embeddings")
     
     final_count = len(get_image_files(training_folder))
     return embeddings_success and final_count > 0, final_count
 
 
-def run_testing_pipeline(celebrity_name, show_name, max_pages, min_headshots):
+def run_testing_pipeline(actor_name, show_name, max_pages, min_headshots):
     """
     Run the testing pipeline until minimum headshots detected or max pages reached.
     
     Args:
-        celebrity_name (str): Name of the celebrity
+        actor_name (str): Name of the actor
         show_name (str): Name of the show
         max_pages (int): Maximum pages to download
         min_headshots (int): Minimum headshots required for success
@@ -205,9 +205,9 @@ def run_testing_pipeline(celebrity_name, show_name, max_pages, min_headshots):
     Returns:
         tuple: (success: bool, final_headshot_count: int)
     """
-    print_header(f"\n=== TESTING PIPELINE for '{celebrity_name}' ===")
+    print_header(f"\n=== TESTING PIPELINE for '{actor_name}' ===")
     
-    testing_folder = get_celebrity_folder_path(celebrity_name, 'testing')
+    testing_folder = get_actor_folder_path(actor_name, 'testing')
     ensure_folder_exists(testing_folder)
     
     for page in range(1, max_pages + 1):
@@ -215,29 +215,29 @@ def run_testing_pipeline(celebrity_name, show_name, max_pages, min_headshots):
         
         # Step 1: Download testing images
         download_cmd = [
-            'python3', 'download_celebrity_images.py', celebrity_name,
+            'python3', 'download_actor_images.py', actor_name,
             '--testing', '--show', show_name, '--page', str(page)
         ]
         if not run_subprocess_command(download_cmd, f"Downloading testing images (page {page})"):
             fatal_error(f"Failed to download testing images for page {page}")
         
         # Step 2: Remove duplicates
-        dedup_cmd = ['python3', 'remove_dupe_training_images.py', '--testing', celebrity_name]
+        dedup_cmd = ['python3', 'remove_dupe_training_images.py', '--testing', actor_name]
         if not run_subprocess_command(dedup_cmd, "Removing duplicate images"):
             fatal_error("Failed to remove duplicate images")
         
         # Step 3: Remove bad images (not 4-10 faces)
-        bad_cmd = ['python3', 'remove_bad_training_images.py', '--testing', celebrity_name]
+        bad_cmd = ['python3', 'remove_bad_training_images.py', '--testing', actor_name]
         if not run_subprocess_command(bad_cmd, "Removing bad testing images"):
             fatal_error("Failed to remove bad testing images")
         
         # Step 4: Run face detection
-        detect_cmd = ['python3', 'eval_star_detection.py', celebrity_name]
+        detect_cmd = ['python3', 'eval_star_detection.py', actor_name]
         if not run_subprocess_command(detect_cmd, "Running face detection"):
             fatal_error("Failed to run face detection")
         
         # Count detected headshots
-        headshot_count = count_detected_headshots(celebrity_name)
+        headshot_count = count_detected_headshots(actor_name)
         print_header(f"Detected headshots after page {page}: {headshot_count}")
         
         if headshot_count >= min_headshots:
@@ -248,21 +248,21 @@ def run_testing_pipeline(celebrity_name, show_name, max_pages, min_headshots):
         else:
             print(f"Reached max pages ({max_pages}), final headshots: {headshot_count}")
     
-    final_headshots = count_detected_headshots(celebrity_name)
+    final_headshots = count_detected_headshots(actor_name)
     return final_headshots >= min_headshots, final_headshots
 
 
-def check_existing_model(celebrity_name):
+def check_existing_model(actor_name):
     """
-    Check if a model already exists for the celebrity.
+    Check if a model already exists for the actor.
     
     Args:
-        celebrity_name (str): Name of the celebrity
+        actor_name (str): Name of the actor
         
     Returns:
         bool: True if model exists, False otherwise
     """
-    model_path = get_average_embedding_path(celebrity_name, 'models')
+    model_path = get_average_embedding_path(actor_name, 'models')
     return model_path.exists()
 
 
@@ -270,10 +270,10 @@ def main():
     """Main function to run the comprehensive training pipeline."""
     start_time = time.time()
     
-    parser = argparse.ArgumentParser(description='Run comprehensive celebrity training pipeline')
-    parser.add_argument('celebrity_name', help='Name of the celebrity (e.g., "Bill Murray")')
+    parser = argparse.ArgumentParser(description='Run comprehensive actor training pipeline')
+    parser.add_argument('actor_name', help='Name of the actor (e.g., "Bill Murray")')
     parser.add_argument('show_name', help='Name of the show/movie (e.g., "SNL")')
-    parser.add_argument('--retrain', action='store_true', help='Delete existing celebrity folders before starting')
+    parser.add_argument('--retrain', action='store_true', help='Delete existing actor folders before starting')
     parser.add_argument('--verbose', '-v', action='store_true',
                        help='Show all output from subprocess commands')
     
@@ -283,26 +283,26 @@ def main():
         os.environ['STARMAPR_LOG_VERBOSE'] = 'true'
 
     # Check if model already exists (unless using --retrain flag)
-    if not args.retrain and check_existing_model(args.celebrity_name):
-        model_path = get_average_embedding_path(args.celebrity_name, 'models')
+    if not args.retrain and check_existing_model(args.actor_name):
+        model_path = get_average_embedding_path(args.actor_name, 'models')
         print(f"✓ Model already exists: {model_path}")
-        print(f"Skipping training for '{args.celebrity_name}' (use --retrain to retrain)")
+        print(f"Skipping training for '{args.actor_name}' (use --retrain to retrain)")
         sys.exit(0)
     
     # Clean any previous failed runs
-    delete_existing_folders(args.celebrity_name)
+    delete_existing_folders(args.actor_name)
     
     # Get configuration from environment
     min_training_images = get_env_int('TRAINING_MIN_IMAGES', 15)
     min_testing_headshots = get_env_int('TESTING_MIN_HEADSHOTS', 4)
     max_pages = get_env_int('MAX_DOWNLOAD_PAGES', 5)
     
-    print_header(f"=== COMPREHENSIVE TRAINING: {args.celebrity_name} ({args.show_name}) ===")
+    print_header(f"=== COMPREHENSIVE TRAINING: {args.actor_name} ({args.show_name}) ===")
     print(f"Configuration: {min_training_images} training images, {min_testing_headshots} headshots, max {max_pages} pages")
     
     # Run training pipeline
     training_success, training_count = run_training_pipeline(
-        args.celebrity_name, args.show_name, max_pages, min_training_images
+        args.actor_name, args.show_name, max_pages, min_training_images
     )
     
     if not training_success:
@@ -312,7 +312,7 @@ def main():
     
     # Run testing pipeline
     testing_success, headshot_count = run_testing_pipeline(
-        args.celebrity_name, args.show_name, max_pages, min_testing_headshots
+        args.actor_name, args.show_name, max_pages, min_testing_headshots
     )
     
     # Calculate elapsed time
@@ -320,7 +320,7 @@ def main():
     elapsed_minutes = elapsed_time / 60
     
     # Final results
-    print_header(f"\n=== FINAL RESULTS for '{args.celebrity_name}' ===")
+    print_header(f"\n=== FINAL RESULTS for '{args.actor_name}' ===")
     print(f"Training images: {training_count}")
     print(f"Detected headshots: {headshot_count}")
     print(f"Total execution time: {elapsed_minutes:.1f} minutes ({elapsed_time:.1f} seconds)")
@@ -329,7 +329,7 @@ def main():
         print(f"🎉 SUCCESS! Found {headshot_count} headshots (>= {min_testing_headshots} required)")
         
         # Copy model file to models directory
-        if copy_model_to_models_dir(args.celebrity_name):
+        if copy_model_to_models_dir(args.actor_name):
             print("✓ Model successfully copied to models directory")
         else:
             print_error("⚠️ Warning: Failed to copy model file, but training was successful")

@@ -1,10 +1,10 @@
 # StarMapr
 
-A Python application for celebrity face recognition and detection using DeepFace with the ArcFace model. This tool was created to complement the [Sketch Comedy Database (SCDB)](https://github.com/swax/SCDB) project by automating the process of scanning comedy sketches for actors and extracting headshots for the [SketchTV](https://www.sketchtv.lol/) website.
+A Python application for actor face recognition and detection using DeepFace with the ArcFace model. This tool was created to complement the [Sketch Comedy Database (SCDB)](https://github.com/swax/SCDB) project by automating the process of scanning comedy sketches for actors and extracting headshots for the [SketchTV](https://www.sketchtv.lol/) website.
 
 ## Purpose
 
-StarMapr enables automated identification and extraction of celebrity faces from video frames or images, making it easier to:
+StarMapr enables automated identification and extraction of actor faces from video frames or images, making it easier to:
 - Identify actors appearing in comedy sketches
 - Extract clean headshots for database profiles
 - Build comprehensive cast information for sketch comedy shows
@@ -12,9 +12,9 @@ StarMapr enables automated identification and extraction of celebrity faces from
 
 ## Features
 
-- **Celebrity Image Collection**: Download training images from Google Image Search
+- **Actor Image Collection**: Download training images from Google Image Search
 - **Data Cleaning**: Remove duplicates and low-quality images automatically
-- **Face Consistency Validation**: Remove outlier faces that don't match the target celebrity
+- **Face Consistency Validation**: Remove outlier faces that don't match the target actor
 - **Face Embedding Generation**: Create reference embeddings using state-of-the-art ArcFace model
 - **Face Detection & Matching**: Identify matching faces in test images with confidence scores
 - **Headshot Extraction**: Automatically crop and save detected faces
@@ -93,15 +93,15 @@ StarMapr follows a hierarchical architecture with three execution levels:
 ```
 run_integration_test.py             # Integration test root
 └── run_headshot_detection.py       # ★ PRIMARY ENTRY POINT
-    ├── run_celebrity_training.py   # ★ MID-LEVEL automation
+    ├── run_actor_training.py   # ★ MID-LEVEL automation
     |   |   # TESTING
-    │   ├── download_celebrity_images.py
+    │   ├── download_actor_images.py
     │   ├── remove_dupe_training_images.py
     │   ├── remove_bad_training_images.py
     │   ├── remove_face_outliers.py -- testing
     │   ├── compute_average_embeddings.py
     |   |   # TRAINING
-    │   ├── download_celebrity_images.py
+    │   ├── download_actor_images.py
     │   ├── remove_dupe_training_images.py
     │   ├── remove_bad_training_images.py
     │   └── eval_star_detection.py
@@ -118,16 +118,16 @@ run_integration_test.py             # Integration test root
 Complete end-to-end workflow from video URL to extracted headshots:
 ```bash
 python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" "Bill Murray" "Tina Fey"
-python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --celebrities "Bill Murray,Tina Fey,Amy Poehler"
+python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --actors "Bill Murray,Tina Fey,Amy Poehler"
 ```
-**TOP-LEVEL SCRIPT**: This is the main entry point that orchestrates the entire process. It automatically trains celebrities, downloads video, and extracts headshots.
+**TOP-LEVEL SCRIPT**: This is the main entry point that orchestrates the entire process. It automatically trains actors, downloads video, and extracts headshots.
 
-### Individual Celebrity Training
-For training a single celebrity without video processing:
+### Individual Actor Training
+For training a single actor without video processing:
 ```bash
-python3 run_celebrity_training.py "Celebrity Name" "Show Name"
+python3 run_actor_training.py "Actor Name" "Show Name"
 ```
-**MID-LEVEL SCRIPT**: Called automatically by `run_headshot_detection.py`, but can be run standalone for celebrity training.
+**MID-LEVEL SCRIPT**: Called automatically by `run_headshot_detection.py`, but can be run standalone for actor training.
 
 ### Manual Pipeline Control  
 For debugging, testing, or manual step-by-step control:
@@ -141,7 +141,7 @@ python3 run_pipeline_steps.py
 #### Training Pipeline
 ```bash
 # 1. Download training images (solo portraits)
-python3 download_celebrity_images.py "Bill Murray" --training --show "SNL"
+python3 download_actor_images.py "Bill Murray" --training --show "SNL"
 
 # 2. Remove duplicate images
 python3 remove_dupe_training_images.py --training "Bill Murray"
@@ -159,7 +159,7 @@ python3 compute_average_embeddings.py "Bill Murray"
 #### Testing Pipeline
 ```bash
 # 6. Download testing images (group photos)
-python3 download_celebrity_images.py "Bill Murray" --testing --show "SNL"
+python3 download_actor_images.py "Bill Murray" --testing --show "SNL"
 
 # 7. Remove duplicate images
 python3 remove_dupe_training_images.py --testing "Bill Murray"
@@ -182,7 +182,7 @@ python3 extract_video_frames.py videos/youtube_VIDEO_ID/ 50
 # 3. Extract face data from all frames (script uses frames/ subfolder automatically)
 python3 extract_frame_faces.py videos/youtube_VIDEO_ID/
 
-# 4. Extract celebrity headshots from video frames
+# 4. Extract actor headshots from video frames
 python3 extract_video_headshots.py "Bill Murray" videos/youtube_VIDEO_ID/
 ```
 
@@ -190,28 +190,28 @@ python3 extract_video_headshots.py "Bill Murray" videos/youtube_VIDEO_ID/
 
 1. **Integration Test Layer**: `run_integration_test.py` provides end-to-end validation
 2. **Application Layer**: `run_headshot_detection.py` orchestrates the complete workflow
-3. **Training Layer**: `run_celebrity_training.py` handles celebrity model creation
+3. **Training Layer**: `run_actor_training.py` handles actor model creation
 4. **Pipeline Layer**: Individual scripts handle specific data processing tasks
 
 ## Project Structure
 
 ```
 StarMapr/
-├── training/                      # Celebrity training images
-│   └── [celebrity_name]/          # Individual celebrity folders
+├── training/                      # Actor training images
+│   └── [actor_name]/          # Individual actor folders
 ├── testing/                       # Test images to process
 │   └── detected_headshots/        # Extracted face crops
 ├── videos/                        # Downloaded videos and extracted frames
 │   └── [site]_[video_id]/         # Individual video folders with frames/
 ├── run_headshot_detection.py      # ★ PRIMARY ENTRY POINT - End-to-end workflow
-├── run_celebrity_training.py      # ★ MID-LEVEL - Celebrity training automation
+├── run_actor_training.py      # ★ MID-LEVEL - Actor training automation
 ├── run_pipeline_steps.py          # ★ LOW-LEVEL - Manual pipeline control
 ├── run_integration_test.py         # Integration test script with mock data
-├── download_celebrity_images.py   # Google Image Search downloader
+├── download_actor_images.py   # Google Image Search downloader
 ├── download_video.py              # Video downloader for multiple platforms
 ├── extract_video_frames.py        # Video frame extraction using binary search
 ├── extract_frame_faces.py         # Face detection in video frames
-├── extract_video_headshots.py     # Celebrity headshot extraction from video frames
+├── extract_video_headshots.py     # Actor headshot extraction from video frames
 ├── remove_dupe_training_images.py # Duplicate removal tool
 ├── remove_bad_training_images.py  # Image quality cleaner
 ├── remove_face_outliers.py        # Face consistency validator
@@ -228,13 +228,13 @@ StarMapr/
 
 #### Top-Level Orchestration (`run_headshot_detection.py`)
 - **PRIMARY ENTRY POINT** for end-to-end video processing
-- Takes video URL and list of celebrities as input
-- Automatically calls `run_celebrity_training.py` for each celebrity
+- Takes video URL and list of actors as input
+- Automatically calls `run_actor_training.py` for each actor
 - Downloads video and orchestrates video operations pipeline
-- Extracts headshots for all successfully trained celebrities
+- Extracts headshots for all successfully trained actors
 
-#### Mid-Level Automation (`run_celebrity_training.py`)
-- Automated celebrity training pipeline for individual celebrities
+#### Mid-Level Automation (`run_actor_training.py`)
+- Automated actor training pipeline for individual actors
 - Called by `run_headshot_detection.py` but can run standalone
 - Iteratively processes images until quality thresholds are met
 - Handles both training and testing phases automatically
@@ -247,12 +247,12 @@ StarMapr/
 
 #### Integration Testing (`run_integration_test.py`)
 - Complete end-to-end integration test using mock data
-- Tests entire pipeline with hardcoded mock celebrity and video
+- Tests entire pipeline with hardcoded mock actor and video
 - Validates file counts and processing results
 - Requires extracting `mocks.zip` to base directory first
 
-### Image Collection (`download_celebrity_images.py`)
-- Downloads celebrity photos from Google Image Search
+### Image Collection (`download_actor_images.py`)
+- Downloads actor photos from Google Image Search
 - 20 images per page, each page uses different keywords
 - Training: different keywords for more face variety
 - Testing: keywords targeting group photos
@@ -280,7 +280,7 @@ StarMapr/
 - Extracts representative frames using binary search pattern for optimal coverage
 - Detects faces in extracted frames with bounding boxes and embeddings
 - Saves face metadata for each frame to enable temporal analysis
-- Extracts celebrity headshots from video frames using similarity matching
+- Extracts actor headshots from video frames using similarity matching
 
 ## Configuration
 
@@ -325,10 +325,10 @@ If the correct headshots are not being found for a video, follow these steps to 
 
 1. **Check Training Data Quality**
    - Ensure outliers have been pruned effectively from training images
-   - Verify that remaining training images are actually of the target celebrity
+   - Verify that remaining training images are actually of the target actor
    - Use `remove_face_outliers.py` with adjusted threshold if needed:
      ```bash
-     python3 remove_face_outliers.py --training "Celebrity Name" --threshold 0.05
+     python3 remove_face_outliers.py --training "Actor Name" --threshold 0.05
      ```
 
 2. **Adjust Outlier Detection Threshold**
@@ -339,26 +339,26 @@ If the correct headshots are not being found for a video, follow these steps to 
 3. **Regenerate Average Embeddings**
    - After cleaning training data, regenerate the reference embeddings:
      ```bash
-     python3 compute_average_embeddings.py "Celebrity Name"
+     python3 compute_average_embeddings.py "Actor Name"
      ```
 
 4. **Test Detection Accuracy**
    - Run testing pipeline with new average embeddings to verify improved accuracy:
      ```bash
-     python3 eval_star_detection.py "Celebrity Name"
+     python3 eval_star_detection.py "Actor Name"
      ```
 
 5. **Retry Video Headshot Extraction**
    - Extract headshots from video using the improved reference embeddings:
      ```bash
-     python3 extract_video_headshots.py "Celebrity Name" videos/youtube_VIDEO_ID/
+     python3 extract_video_headshots.py "Actor Name" videos/youtube_VIDEO_ID/
      ```
 
 6. **Increase Training/Testing Data**
    - If insufficient data was found, download additional pages:
      ```bash
-     python3 download_celebrity_images.py "Celebrity Name" --training --show "Show Name" --page 2
-     python3 download_celebrity_images.py "Celebrity Name" --testing --show "Show Name" --page 3
+     python3 download_actor_images.py "Actor Name" --training --show "Show Name" --page 2
+     python3 download_actor_images.py "Actor Name" --testing --show "Show Name" --page 3
      ```
    - Each page downloads 20 more images using different keywords for variety
 

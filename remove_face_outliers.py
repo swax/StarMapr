@@ -15,19 +15,19 @@ from utils_deepface import get_single_face_embedding
 load_dotenv()
 
 
-def find_face_outliers(celebrity_folder_path, similarity_threshold=0.1, dry_run=False):
+def find_face_outliers(actor_folder_path, similarity_threshold=0.1, dry_run=False):
     """
-    Find and remove face outliers from celebrity training images.
+    Find and remove face outliers from actor training images.
     
     Compares all faces against each other using cosine similarity and identifies
     faces that are significantly different from the majority group.
     
     Args:
-        celebrity_folder_path (str): Path to celebrity folder containing training images
+        actor_folder_path (str): Path to actor folder containing training images
         similarity_threshold (float): Minimum similarity to be considered same person (0.0-1.0)
         dry_run (bool): If True, only report what would be moved without actually moving files
     """
-    folder_path = Path(celebrity_folder_path)
+    folder_path = Path(actor_folder_path)
     
     if not folder_path.exists():
         raise FileNotFoundError(f"Folder not found: {folder_path}")
@@ -154,7 +154,7 @@ def find_face_outliers(celebrity_folder_path, similarity_threshold=0.1, dry_run=
         print_summary(f"DRY RUN: Face outlier analysis completed. Would move {len(outliers)} outlier images.")
 
 def main():
-    parser = argparse.ArgumentParser(description='Remove face outliers from celebrity training images')
+    parser = argparse.ArgumentParser(description='Remove face outliers from actor training images')
     
     # Add standard training/testing arguments
     add_training_testing_args(parser)
@@ -173,11 +173,11 @@ def main():
         print_error("Threshold must be between 0.0 and 1.0")
         sys.exit(1)
     
-    # Determine celebrity folder path based on arguments
-    mode, celebrity_name, celebrity_folder_path = get_mode_and_path_from_args(args)
+    # Determine actor folder path based on arguments
+    mode, actor_name, actor_folder_path = get_mode_and_path_from_args(args)
     
     try:
-        find_face_outliers(celebrity_folder_path, args.threshold, args.dry_run)
+        find_face_outliers(actor_folder_path, args.threshold, args.dry_run)
         
     except Exception as e:
         print_error(str(e))

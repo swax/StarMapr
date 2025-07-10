@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Celebrity Image Downloader for StarMapr
+Actor Image Downloader for StarMapr
 
-Downloads celebrity images from Google Image Search to build training datasets.
+Downloads actor images from Google Image Search to build training datasets.
 Integrates with the existing training/ folder structure.
 """
 
@@ -13,7 +13,7 @@ import uuid
 import shutil
 from google_images_search import GoogleImagesSearch
 from dotenv import load_dotenv
-from utils import get_celebrity_folder_name, get_celebrity_folder_path, get_env_int, ensure_folder_exists, print_error, print_summary, log
+from utils import get_actor_folder_name, get_actor_folder_path, get_env_int, ensure_folder_exists, print_error, print_summary, log
 
 # Load environment variables from .env file
 load_dotenv()
@@ -55,15 +55,15 @@ def copy_images_from_cache_to_destination(cache_folder, destination_folder):
     return copied_count
 
 
-def download_celebrity_images(celebrity_name, mode='training', show=None, page=1, api_key=None, search_engine_id=None):
+def download_actor_images(actor_name, mode='training', show=None, page=1, api_key=None, search_engine_id=None):
     """
-    Download celebrity images from Google Image Search
+    Download actor images from Google Image Search
     
     Downloads 20 images using different search queries for each page.
     Each page uses a different search term to get varied results.
     
     Args:
-        celebrity_name (str): Name of the celebrity to search for
+        actor_name (str): Name of the actor to search for
         mode (str): 'training' for solo portraits or 'testing' for group photos
         show (str): Show name to include in search for targeted results
         page (int): Page number (1-5) - each uses different search terms
@@ -91,8 +91,8 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
         print_error(f"Error initializing Google Images Search: {e}")
         return False
     
-    # Create celebrity directory based on mode
-    download_path = get_celebrity_folder_path(celebrity_name, mode)
+    # Create actor directory based on mode
+    download_path = get_actor_folder_path(actor_name, mode)
     ensure_folder_exists(download_path)
     
     #*** Actually paging Google Search results doesn't work at all, the start parameter is ignored.
@@ -100,19 +100,19 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
     # Define search terms for different pages
     if mode == 'training':
         search_terms = [
-            f'{celebrity_name} {show}',    # Page 1: name + show
-            celebrity_name,                # Page 2: just the name
-            f'{celebrity_name} face',      # Page 3: name + face
-            f'{celebrity_name} headshot',  # Page 4: name + headshot
-            f'{celebrity_name} portrait'   # Page 5: name + portrait
+            f'{actor_name} {show}',    # Page 1: name + show
+            actor_name,                # Page 2: just the name
+            f'{actor_name} face',      # Page 3: name + face
+            f'{actor_name} headshot',  # Page 4: name + headshot
+            f'{actor_name} portrait'   # Page 5: name + portrait
         ]
     else:  # testing mode
         search_terms = [
-            f'{celebrity_name} group',         # Page 1: name + group
-            f'{celebrity_name} cast',          # Page 2: name + cast
-            f'{celebrity_name} team',          # Page 3: name + team
-            f'{celebrity_name} with friends',  # Page 4: name + with friends
-            f'{celebrity_name} ensemble'       # Page 5: name + ensemble
+            f'{actor_name} group',         # Page 1: name + group
+            f'{actor_name} cast',          # Page 2: name + cast
+            f'{actor_name} team',          # Page 3: name + team
+            f'{actor_name} with friends',  # Page 4: name + with friends
+            f'{actor_name} ensemble'       # Page 5: name + ensemble
         ]
     
     # Get search query for this page
@@ -123,9 +123,9 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
     query = search_terms[page - 1]
 
     # Generate cache key and check for cached images
-    celebrity_folder = get_celebrity_folder_name(celebrity_name)
+    actor_folder = get_actor_folder_name(actor_name)
     cache_key = query.lower().replace(' ', '_')
-    cache_folder = f'01_search_cache/{celebrity_folder}/{mode}/{cache_key}/'
+    cache_folder = f'01_search_cache/{actor_folder}/{mode}/{cache_key}/'
 
     # Check if cache folder exists and has images
     if os.path.exists(cache_folder):
@@ -138,18 +138,18 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
             # Use common function to copy cached files to destination
             copied_count = copy_images_from_cache_to_destination(cache_folder, download_path)
             
-            print_summary(f"Successfully copied {copied_count} cached images for '{celebrity_name}' - Images saved to: {download_path}")
+            print_summary(f"Successfully copied {copied_count} cached images for '{actor_name}' - Images saved to: {download_path}")
             return True
 
-    # If celebrity name starts with 'mock_' return an error here as it should not get to this point
-    if celebrity_name.lower().startswith('mock_'):
-        print_error("Mock celebrity data not found")
+    # If actor name starts with 'mock_' return an error here as it should not get to this point
+    if actor_name.lower().startswith('mock_'):
+        print_error("Mock actor data not found")
         return False
 
     # Needs to be increments of 10, google queries in blocks of 10
     images_to_download = 20
     
-    log(f"Downloading page {page} images for '{celebrity_name}' using query: '{query}' (20 total)...")
+    log(f"Downloading page {page} images for '{actor_name}' using query: '{query}' (20 total)...")
     
     # Ensure cache folder exists and download directly to cache
     ensure_folder_exists(cache_folder)
@@ -180,7 +180,7 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
         log(f"Copying images from cache to: {download_path}")
         copied_count = copy_images_from_cache_to_destination(cache_folder, download_path)
 
-        print_summary(f"Successfully downloaded {len(newly_downloaded_files)} new images for '{celebrity_name}' - Images saved to: {download_path}")
+        print_summary(f"Successfully downloaded {len(newly_downloaded_files)} new images for '{actor_name}' - Images saved to: {download_path}")
         
         return True
         
@@ -191,11 +191,11 @@ def download_celebrity_images(celebrity_name, mode='training', show=None, page=1
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Download celebrity images from Google Image Search for StarMapr'
+        description='Download actor images from Google Image Search for StarMapr'
     )
     
-    parser.add_argument('celebrity_name', 
-                       help='Name of the celebrity (e.g., "Bill Murray")')
+    parser.add_argument('actor_name', 
+                       help='Name of the actor (e.g., "Bill Murray")')
     
     
     # Mutually exclusive group for mode selection
@@ -232,8 +232,8 @@ def main():
     mode = 'training' if args.training else 'testing'
     
     # Download images
-    success = download_celebrity_images(
-        celebrity_name=args.celebrity_name,
+    success = download_actor_images(
+        actor_name=args.actor_name,
         mode=mode,
         show=args.show,
         page=args.page,

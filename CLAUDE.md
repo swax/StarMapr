@@ -183,7 +183,7 @@ pip install deepface numpy opencv-python scikit-learn google-images-search pytho
 ### Environment Variables (.env)
 - **GOOGLE_API_KEY**: your_api_key_here (Google Custom Search API key)
 - **GOOGLE_SEARCH_ENGINE_ID**: your_search_engine_id_here (Google Custom Search Engine ID)
-- **MAX_DOWNLOAD_PAGES**: 5 (maximum pages to download by google image search)
+- **MAX_DOWNLOAD_PAGES**: 10 (maximum pages to download by google image search)
 - **TRAINING_MIN_IMAGES**: 15 (number of good images to find for training)
 - **TRAINING_DUPLICATE_THRESHOLD**: 5 (0-64, lower = more strict)
 - **TRAINING_OUTLIER_THRESHOLD**: 0.2 (0.0-1.0, lower = more strict)

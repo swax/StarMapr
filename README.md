@@ -50,7 +50,7 @@ GOOGLE_API_KEY=your_api_key_here
 GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
 
 # The max number of pages that can be downloaded by google image search for training/testing purposes
-MAX_DOWNLOAD_PAGES=5
+MAX_DOWNLOAD_PAGES=10
 
 # The number of good images to find to do training with
 TRAINING_MIN_IMAGES=15
@@ -287,7 +287,7 @@ StarMapr/
 All default values are configurable through environment variables in the `.env` file:
 
 - **Google API credentials**: Required for image downloading (`GOOGLE_API_KEY`, `GOOGLE_SEARCH_ENGINE_ID`)
-- **Maximum download pages**: 5 pages (`MAX_DOWNLOAD_PAGES`)
+- **Maximum download pages**: 10 pages (`MAX_DOWNLOAD_PAGES`)
 - **Training minimum images**: 15 images (`TRAINING_MIN_IMAGES`)
 - **Training duplicate threshold**: 5 Hamming distance, 0-64 scale (`TRAINING_DUPLICATE_THRESHOLD`)
 - **Training outlier threshold**: 0.2 cosine similarity, 0.0-1.0 scale (`TRAINING_OUTLIER_THRESHOLD`)

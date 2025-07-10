@@ -18,6 +18,9 @@ from utils import get_actor_folder_name, get_actor_folder_path, get_env_int, ens
 # Load environment variables from .env file
 load_dotenv()
 
+# Get max pages from environment
+MAX_PAGES = get_env_int('MAX_DOWNLOAD_PAGES', 10)
+
 
 def copy_images_from_cache_to_destination(cache_folder, destination_folder):
     """
@@ -56,7 +59,7 @@ def copy_images_from_cache_to_destination(cache_folder, destination_folder):
 
 
 def download_actor_images(actor_name, mode='training', show=None, page=1, api_key=None, search_engine_id=None):
-    """
+    f"""
     Download actor images from Google Image Search
     
     Downloads 20 images using different search queries for each page.
@@ -66,7 +69,7 @@ def download_actor_images(actor_name, mode='training', show=None, page=1, api_ke
         actor_name (str): Name of the actor to search for
         mode (str): 'training' for solo portraits or 'testing' for group photos
         show (str): Show name to include in search for targeted results
-        page (int): Page number (1-5) - each uses different search terms
+        page (int): Page number (1-{MAX_PAGES}) - each uses different search terms
         api_key (str): Google Custom Search API key
         search_engine_id (str): Google Custom Search Engine ID
     """
@@ -104,7 +107,12 @@ def download_actor_images(actor_name, mode='training', show=None, page=1, api_ke
             actor_name,                # Page 2: just the name
             f'{actor_name} face',      # Page 3: name + face
             f'{actor_name} headshot',  # Page 4: name + headshot
-            f'{actor_name} portrait'   # Page 5: name + portrait
+            f'{actor_name} portrait',  # Page 5: name + portrait
+            f'{actor_name} photo',     # Page 6: name + photo
+            f'{actor_name} actor',     # Page 7: name + actor
+            f'{actor_name} closeup',   # Page 8: name + closeup
+            f'{actor_name} profile',   # Page 9: name + profile
+            f'{actor_name} studio'     # Page 10: name + studio
         ]
     else:  # testing mode
         search_terms = [
@@ -112,7 +120,12 @@ def download_actor_images(actor_name, mode='training', show=None, page=1, api_ke
             f'{actor_name} cast',          # Page 2: name + cast
             f'{actor_name} team',          # Page 3: name + team
             f'{actor_name} with friends',  # Page 4: name + with friends
-            f'{actor_name} ensemble'       # Page 5: name + ensemble
+            f'{actor_name} ensemble',      # Page 5: name + ensemble
+            f'{actor_name} crowd',         # Page 6: name + crowd
+            f'{actor_name} party',         # Page 7: name + party
+            f'{actor_name} event',         # Page 8: name + event
+            f'{actor_name} premiere',      # Page 9: name + premiere
+            f'{actor_name} interview'      # Page 10: name + interview
         ]
     
     # Get search query for this page
@@ -215,7 +228,7 @@ def main():
                        help='Show name to include in search. Downloads 10 general + 10 show-specific images (20 total)')
     
     parser.add_argument('--page', type=int, default=1,
-                       help='Page number (1-5, default: 1). Each page uses different search terms to download 20 images.')
+                       help=f'Page number (1-{MAX_PAGES}, default: 1). Each page uses different search terms to download 20 images.')
     
     args = parser.parse_args()
     
@@ -224,8 +237,8 @@ def main():
         print_error("Page number must be positive")
         sys.exit(1)
     
-    if args.page > 5:
-        print_error("Page number must be 1-5. Each page uses different search terms.")
+    if args.page > MAX_PAGES:
+        print_error(f"Page number must be 1-{MAX_PAGES}. Each page uses different search terms.")
         sys.exit(1)
     
     # Determine mode from arguments

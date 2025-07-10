@@ -295,7 +295,7 @@ def main():
     # Get configuration from environment
     min_training_images = get_env_int('TRAINING_MIN_IMAGES', 15)
     min_testing_headshots = get_env_int('TESTING_MIN_HEADSHOTS', 4)
-    max_pages = get_env_int('MAX_DOWNLOAD_PAGES', 5)
+    max_pages = get_env_int('MAX_DOWNLOAD_PAGES', 10)
     
     print_header(f"=== COMPREHENSIVE TRAINING: {args.actor_name} ({args.show_name}) ===")
     print(f"Configuration: {min_training_images} training images, {min_testing_headshots} headshots, max {max_pages} pages")

@@ -2,8 +2,8 @@
 """
 StarMapr Pipeline Runner
 
-Interactive script to run the complete celebrity face recognition pipeline.
-Provides a numbered menu of pipeline steps for a given celebrity.
+Interactive script to run the complete actor face recognition pipeline.
+Provides a numbered menu of pipeline steps for a given actor.
 """
 
 import os
@@ -11,7 +11,7 @@ import sys
 import subprocess
 from pathlib import Path
 from dotenv import load_dotenv
-from utils import get_celebrity_folder_name, get_average_embedding_path
+from utils import get_actor_folder_name, get_average_embedding_path
 
 # Load environment variables
 load_dotenv()
@@ -20,18 +20,18 @@ load_dotenv()
 TOTAL_PIPELINE_STEPS = 15
 
 
-def get_celebrity_name():
+def get_actor_name():
     """
-    Get celebrity name from user input.
+    Get actor name from user input.
     
     Returns:
-        str: Celebrity name entered by user
+        str: Actor name entered by user
     """
     while True:
-        name = input("\nEnter celebrity name (e.g., 'Bill Murray'): ").strip()
+        name = input("\nEnter actor name (e.g., 'Bill Murray'): ").strip()
         if name:
             return name
-        print("Please enter a valid celebrity name.")
+        print("Please enter a valid actor name.")
 
 
 def get_show_name():
@@ -65,16 +65,16 @@ def get_page_number():
             print("Please enter a valid page number.")
 
 
-def display_menu(celebrity_name):
+def display_menu(actor_name):
     """
     Display the pipeline menu options.
     
     Args:
-        celebrity_name (str): Name of the celebrity
+        actor_name (str): Name of the actor
     """
-    celebrity_folder = get_celebrity_folder_name(celebrity_name)
+    actor_folder = get_actor_folder_name(actor_name)
     
-    print(f"\n=== StarMapr Pipeline for '{celebrity_name}' ===")
+    print(f"\n=== StarMapr Pipeline for '{actor_name}' ===")
     print("Select a step to run:")
     print()
     print("TRAINING PIPELINE:")
@@ -95,18 +95,18 @@ def display_menu(celebrity_name):
     print("11. Download video from URL")
     print("12. Extract frames from video")
     print("13. Extract faces from video frames")
-    print("14. Extract celebrity headshots from video")
+    print("14. Extract actor headshots from video")
     print()
     print(f"{TOTAL_PIPELINE_STEPS}. Exit")
     print()
 
 
-def copy_model_to_models_dir(celebrity_name):
+def copy_model_to_models_dir(actor_name):
     """
     Copy the average embedding file from training directory to models directory.
     
     Args:
-        celebrity_name (str): Name of the celebrity
+        actor_name (str): Name of the actor
         
     Returns:
         bool: True if successful, False if failed
@@ -115,8 +115,8 @@ def copy_model_to_models_dir(celebrity_name):
         import shutil
         
         # Get paths using utility functions
-        source_path = get_average_embedding_path(celebrity_name, 'training')
-        dest_path = get_average_embedding_path(celebrity_name, 'models')
+        source_path = get_average_embedding_path(actor_name, 'training')
+        dest_path = get_average_embedding_path(actor_name, 'models')
         
         # Check if source exists
         if not source_path.exists():
@@ -188,10 +188,10 @@ def main():
     """
     print("Welcome to StarMapr Pipeline Runner!")
     
-    # Get celebrity name and optional show
-    celebrity_name = get_celebrity_name()
+    # Get actor name and optional show
+    actor_name = get_actor_name()
     show_name = get_show_name()
-    celebrity_folder = get_celebrity_folder_name(celebrity_name)
+    actor_folder = get_actor_folder_name(actor_name)
     
     # Track page numbers for download steps
     # Track video folder path for video processing steps
@@ -200,7 +200,7 @@ def main():
     last_step = None
     
     while True:
-        display_menu(celebrity_name)
+        display_menu(actor_name)
         
         try:
             if last_step and last_step < TOTAL_PIPELINE_STEPS:
@@ -218,52 +218,52 @@ def main():
             if choice == '1':
                 # Download training images
                 training_page = get_page_number()
-                command = ['python3', 'download_celebrity_images.py', celebrity_name, '--training', '--show', show_name]
+                command = ['python3', 'download_actor_images.py', actor_name, '--training', '--show', show_name]
                 if training_page != 1:
                     command.extend(['--page', str(training_page)])
                 success, _ = run_command(command, "Download training images")
                 
             elif choice == '2':
                 # Remove duplicate training images
-                command = ['python3', 'remove_dupe_training_images.py', '--training', celebrity_name]
+                command = ['python3', 'remove_dupe_training_images.py', '--training', actor_name]
                 success, _ = run_command(command, "Remove duplicate training images")
                 
             elif choice == '3':
                 # Remove bad training images
-                command = ['python3', 'remove_bad_training_images.py', '--training', celebrity_name]
+                command = ['python3', 'remove_bad_training_images.py', '--training', actor_name]
                 success, _ = run_command(command, "Remove bad training images")
                 
             elif choice == '4':
                 # Remove outlier faces
-                command = ['python3', 'remove_face_outliers.py', '--training', celebrity_name]
+                command = ['python3', 'remove_face_outliers.py', '--training', actor_name]
                 success, _ = run_command(command, "Remove outlier faces")
                 
             elif choice == '5':
                 # Compute average embeddings
-                command = ['python3', 'compute_average_embeddings.py', celebrity_name]
+                command = ['python3', 'compute_average_embeddings.py', actor_name]
                 success, _ = run_command(command, "Compute average embeddings")
                 
             elif choice == '6':
                 # Download testing images
                 testing_page = get_page_number()
-                command = ['python3', 'download_celebrity_images.py', celebrity_name, '--testing', '--show', show_name]
+                command = ['python3', 'download_actor_images.py', actor_name, '--testing', '--show', show_name]
                 if testing_page != 1:
                     command.extend(['--page', str(testing_page)])
                 success, _ = run_command(command, "Download testing images")
                 
             elif choice == '7':
                 # Remove duplicate testing images
-                command = ['python3', 'remove_dupe_training_images.py', '--testing', celebrity_name]
+                command = ['python3', 'remove_dupe_training_images.py', '--testing', actor_name]
                 success, _ = run_command(command, "Remove duplicate testing images")
                 
             elif choice == '8':
                 # Remove bad testing images
-                command = ['python3', 'remove_bad_training_images.py', '--testing', celebrity_name]
+                command = ['python3', 'remove_bad_training_images.py', '--testing', actor_name]
                 success, _ = run_command(command, "Remove bad testing images")
                 
             elif choice == '9':
                 # Detect faces
-                command = ['python3', 'eval_star_detection.py', celebrity_name]
+                command = ['python3', 'eval_star_detection.py', actor_name]
                 success, _ = run_command(command, "Detect faces in test images")
                 
             elif choice == '10':
@@ -271,7 +271,7 @@ def main():
                 print(f"\n{'='*60}")
                 print("Accepting model: Copy average embedding to models directory")
                 print(f"{'='*60}")
-                if copy_model_to_models_dir(celebrity_name):
+                if copy_model_to_models_dir(actor_name):
                     print(f"\n✓ Model acceptance completed successfully!")
                     last_step = 10
                 else:
@@ -336,7 +336,7 @@ def main():
                 success, _ = run_command(command, "Extract faces from video frames")
                 
             elif choice == '14':
-                # Extract celebrity headshots from video
+                # Extract actor headshots from video
                 if video_folder_path:
                     default_prompt = f"\nEnter path to video folder (default: {video_folder_path}): "
                 else:
@@ -346,8 +346,8 @@ def main():
                 if not video_folder and video_folder_path:
                     video_folder = video_folder_path
                 
-                command = ['python3', 'extract_video_headshots.py', celebrity_name, video_folder]
-                success, _ = run_command(command, f"Extract {celebrity_name} headshots from video")
+                command = ['python3', 'extract_video_headshots.py', actor_name, video_folder]
+                success, _ = run_command(command, f"Extract {actor_name} headshots from video")
                 
             elif choice == str(TOTAL_PIPELINE_STEPS):
                 print("\nExiting StarMapr Pipeline Runner. Goodbye!")

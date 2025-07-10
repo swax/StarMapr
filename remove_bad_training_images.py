@@ -50,16 +50,16 @@ def move_files_to_folder(files_to_move, destination_folder, folder_name, dry_run
     
     return moved_count, attempted_count
 
-def remove_bad_images(celebrity_folder_path, mode='training', dry_run=False):
+def remove_bad_images(actor_folder_path, mode='training', dry_run=False):
     """
-    Move images from celebrity folder that don't meet face count requirements to categorized subfolders.
+    Move images from actor folder that don't meet face count requirements to categorized subfolders.
     
     Args:
-        celebrity_folder_path (str): Path to celebrity folder containing training or testing images
+        actor_folder_path (str): Path to actor folder containing training or testing images
         mode (str): 'training' expects exactly 1 face, 'testing' expects 4-10 faces
         dry_run (bool): If True, only report what would be moved without actually moving files
     """
-    folder_path = Path(celebrity_folder_path)
+    folder_path = Path(actor_folder_path)
     
     if not folder_path.exists():
         print_error(f"Folder not found: {folder_path}")
@@ -187,11 +187,11 @@ def main():
     
     args = parser.parse_args()
     
-    # Determine celebrity folder path and mode based on arguments
-    mode, celebrity_name, celebrity_folder_path = get_mode_and_path_from_args(args)
+    # Determine actor folder path and mode based on arguments
+    mode, actor_name, actor_folder_path = get_mode_and_path_from_args(args)
     
     try:
-        remove_bad_images(celebrity_folder_path, mode, args.dry_run)
+        remove_bad_images(actor_folder_path, mode, args.dry_run)
         
     except Exception as e:
         print_error(f"Error: {e}")

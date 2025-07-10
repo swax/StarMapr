@@ -3,7 +3,7 @@
 Integration Test Script for StarMapr Headshot Detection
 
 This script tests the complete headshot detection pipeline using hardcoded mock values.
-It calls run_headshot_detection.py with MOCK_VIDEO and MOCK_CELEBRITY as magic strings
+It calls run_headshot_detection.py with MOCK_VIDEO and MOCK_ACTOR as magic strings
 that other scripts can detect and handle specially for testing.
 """
 
@@ -22,24 +22,24 @@ def print_header(text):
     print(f"{yellow}{text}{reset}")
 
 def verify_file_counts():
-    """Verify that the mock_celebrity folders have the expected number of files."""
+    """Verify that the mock_actor folders have the expected number of files."""
     print_header("VERIFYING FILE COUNTS")
     
     # Expected file counts based on Thomas Lennon reference
     expected_counts = {
-        '02_training/mock_celebrity': 33,
-        '02_training/mock_celebrity/outliers': 10,
-        '02_training/mock_celebrity/duplicates': 4,
-        '02_training/mock_celebrity/bad_error': 22,
-        '03_testing/mock_celebrity': 14,
-        '03_testing/mock_celebrity/detected_headshots': 5,
-        '03_testing/mock_celebrity/duplicates': 2,
-        '03_testing/mock_celebrity/bad_error': 18,
-        '03_testing/mock_celebrity/bad_faces': 42,
-        '03_testing/mock_celebrity/bad_unsupported': 3,
+        '02_training/mock_actor': 33,
+        '02_training/mock_actor/outliers': 10,
+        '02_training/mock_actor/duplicates': 4,
+        '02_training/mock_actor/bad_error': 22,
+        '03_testing/mock_actor': 14,
+        '03_testing/mock_actor/detected_headshots': 5,
+        '03_testing/mock_actor/duplicates': 2,
+        '03_testing/mock_actor/bad_error': 18,
+        '03_testing/mock_actor/bad_faces': 42,
+        '03_testing/mock_actor/bad_unsupported': 3,
         '05_videos/mock_video': 4,
         '05_videos/mock_video/headshots': 0,
-        '05_videos/mock_video/headshots/mock_celebrity': 5,
+        '05_videos/mock_video/headshots/mock_actor': 5,
         '05_videos/mock_video/frames': 100
     }
     
@@ -64,7 +64,7 @@ def verify_file_counts():
             print(f"✅ {folder_path} correct")
     
     # Validate that the model file exists in 04_models
-    pkl_path = get_average_embedding_path('mock_celebrity', 'models')
+    pkl_path = get_average_embedding_path('mock_actor', 'models')
     if pkl_path.exists():
         print(f"✅ Model file found: {pkl_path}")
     else:
@@ -83,9 +83,9 @@ def cleanup_mock_folders():
     print_header("CLEANING UP MOCK FOLDERS")
 
     folders_to_remove = [
-        '01_search_cache/mock_celebrity',
-        '02_training/mock_celebrity',
-        '03_testing/mock_celebrity',
+        '01_search_cache/mock_actor',
+        '02_training/mock_actor',
+        '03_testing/mock_actor',
         '05_videos/mock_video',
     ]
     
@@ -97,8 +97,8 @@ def cleanup_mock_folders():
         else:
             print(f"Not found (skipping): {folder_path}")
     
-    # Remove mock celebrity pkl file from models folder
-    pkl_path = get_average_embedding_path('mock_celebrity', 'models')
+    # Remove mock actor pkl file from models folder
+    pkl_path = get_average_embedding_path('mock_actor', 'models')
     if pkl_path.exists():
         print(f"Removing: {pkl_path}")
         pkl_path.unlink()
@@ -148,7 +148,7 @@ def run_integration_test(verbose=False):
         'run_headshot_detection.py',
         'MOCK_VIDEO',
         '--show', 'MOCK_SHOW',
-        '--celebrities', 'MOCK_CELEBRITY'
+        '--actors', 'MOCK_ACTOR'
     ]
     
     if verbose:

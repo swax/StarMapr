@@ -14,64 +14,64 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
 
-def get_celebrity_folder_path(celebrity_name, mode='training'):
+def get_actor_folder_path(actor_name, mode='training'):
     """
-    Convert celebrity name to folder path with consistent naming convention.
+    Convert actor name to folder path with consistent naming convention.
     
     Args:
-        celebrity_name (str): The celebrity name
+        actor_name (str): The actor name
         mode (str): Either 'training' or 'testing'
         
     Returns:
         str: Formatted folder path (e.g., '02_training/bill_murray/')
     """
-    celebrity_folder = celebrity_name.lower().replace(' ', '_')
+    actor_folder = actor_name.lower().replace(' ', '_')
     mode_prefix = '02_' if mode == 'training' else '03_'
-    return f'{mode_prefix}{mode}/{celebrity_folder}/'
+    return f'{mode_prefix}{mode}/{actor_folder}/'
 
 
-def get_celebrity_folder_name(celebrity_name):
+def get_actor_folder_name(actor_name):
     """
-    Get just the folder name part from celebrity name.
+    Get just the folder name part from actor name.
     
     Args:
-        celebrity_name (str): The celebrity name
+        actor_name (str): The actor name
         
     Returns:
         str: Formatted folder name (e.g., 'bill_murray')
     """
-    return celebrity_name.lower().replace(' ', '_')
+    return actor_name.lower().replace(' ', '_')
 
 
-def get_average_embedding_filename(celebrity_name):
+def get_average_embedding_filename(actor_name):
     """
     Generate the standard filename for average embedding files.
     
     Args:
-        celebrity_name (str): The celebrity name
+        actor_name (str): The actor name
         
     Returns:
         str: Formatted filename (e.g., 'bill_murray_average_embedding.pkl')
     """
-    celebrity_folder = get_celebrity_folder_name(celebrity_name)
-    return f"{celebrity_folder}_average_embedding.pkl"
+    actor_folder = get_actor_folder_name(actor_name)
+    return f"{actor_folder}_average_embedding.pkl"
 
 
-def get_average_embedding_path(celebrity_name, location='training'):
+def get_average_embedding_path(actor_name, location='training'):
     """
     Generate the full path to the average embedding file.
     
     Args:
-        celebrity_name (str): The celebrity name
+        actor_name (str): The actor name
         location (str): Either 'training' for training folder or 'models' for models folder
         
     Returns:
         Path: Full path to the average embedding file
     """
-    filename = get_average_embedding_filename(celebrity_name)
+    filename = get_average_embedding_filename(actor_name)
     
     if location == 'training':
-        base_path = Path(get_celebrity_folder_path(celebrity_name, 'training'))
+        base_path = Path(get_actor_folder_path(actor_name, 'training'))
     elif location == 'models':
         base_path = Path("04_models")
     else:
@@ -91,32 +91,32 @@ def add_training_testing_args(parser):
         argparse.ArgumentParser: The modified parser
     """
     mode_group = parser.add_mutually_exclusive_group(required=True)
-    mode_group.add_argument('--training', metavar='CELEBRITY_NAME',
-                           help='Process 02_training/CELEBRITY_NAME/ folder')
-    mode_group.add_argument('--testing', metavar='CELEBRITY_NAME', 
-                           help='Process 03_testing/CELEBRITY_NAME/ folder')
+    mode_group.add_argument('--training', metavar='ACTOR_NAME',
+                           help='Process 02_training/ACTOR_NAME/ folder')
+    mode_group.add_argument('--testing', metavar='ACTOR_NAME', 
+                           help='Process 03_testing/ACTOR_NAME/ folder')
     return parser
 
 
 def get_mode_and_path_from_args(args):
     """
-    Extract mode and celebrity folder path from parsed arguments.
+    Extract mode and actor folder path from parsed arguments.
     
     Args:
         args: Parsed arguments from argparse
         
     Returns:
-        tuple: (mode, celebrity_name, folder_path)
+        tuple: (mode, actor_name, folder_path)
     """
     if args.training:
-        celebrity_name = args.training
+        actor_name = args.training
         mode = 'training'
     else:
-        celebrity_name = args.testing
+        actor_name = args.testing
         mode = 'testing'
     
-    folder_path = get_celebrity_folder_path(celebrity_name, mode)
-    return mode, celebrity_name, folder_path
+    folder_path = get_actor_folder_path(actor_name, mode)
+    return mode, actor_name, folder_path
 
 
 def get_image_files(folder_path, exclude_subdirs=True):

@@ -10,23 +10,23 @@ import shutil
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
-from utils import get_celebrity_folder_name, get_average_embedding_path, load_pickle, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity, get_headshot_crop_coordinates, log
+from utils import get_actor_folder_name, get_average_embedding_path, load_pickle, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity, get_headshot_crop_coordinates, log
 
 # Load environment variables
 load_dotenv()
 
-def load_celebrity_embedding(celebrity_name):
-    """Load the precomputed average embedding for a celebrity."""
-    embedding_path = get_average_embedding_path(celebrity_name, 'models')
+def load_actor_embedding(actor_name):
+    """Load the precomputed average embedding for a actor."""
+    embedding_path = get_average_embedding_path(actor_name, 'models')
     
     if not embedding_path.exists():
-        raise FileNotFoundError(f"Celebrity embedding file not found: {embedding_path}")
+        raise FileNotFoundError(f"Actor embedding file not found: {embedding_path}")
     
     embedding = load_pickle(embedding_path)
     if embedding is None:
-        raise ValueError(f"Error loading celebrity embedding from: {embedding_path}")
+        raise ValueError(f"Error loading actor embedding from: {embedding_path}")
     
-    log(f"Loaded celebrity embedding for '{celebrity_name}' with shape: {embedding.shape}")
+    log(f"Loaded actor embedding for '{actor_name}' with shape: {embedding.shape}")
     return embedding
 
 def load_frame_face_data(pkl_path):
@@ -124,7 +124,7 @@ def extract_face_crop(frames_dir, frame_file, face_data, output_path):
         print_error(f"Error extracting face crop: {e}")
         return False
 
-def extract_top_headshots(celebrity_name, video_folder_path, threshold=0.6, dry_run=False):
+def extract_top_headshots(actor_name, video_folder_path, threshold=0.6, dry_run=False):
     """
     Extract top 5 most similar headshots from video frames.
     """
@@ -137,24 +137,24 @@ def extract_top_headshots(celebrity_name, video_folder_path, threshold=0.6, dry_
     if not frames_dir.exists():
         raise FileNotFoundError(f"Frames directory not found: {frames_dir}")
     
-    # Create celebrity-specific headshots output directory
-    celeb_name_clean = celebrity_name.lower().replace(' ', '_')
-    headshots_dir = video_folder / "headshots" / celeb_name_clean
+    # Create actor-specific headshots output directory
+    actor_name_clean = actor_name.lower().replace(' ', '_')
+    headshots_dir = video_folder / "headshots" / actor_name_clean
     
     if not dry_run:
-        # Remove existing celebrity headshots folder and recreate it
+        # Remove existing actor headshots folder and recreate it
         if headshots_dir.exists():
             shutil.rmtree(headshots_dir)
         headshots_dir.mkdir(parents=True, exist_ok=True)
     
-    # Load celebrity reference embedding
-    reference_embedding = load_celebrity_embedding(celebrity_name)
+    # Load actor reference embedding
+    reference_embedding = load_actor_embedding(actor_name)
     
     # Find all matching faces
     matches = calculate_face_similarities(frames_dir, reference_embedding, threshold)
     
     if not matches:
-        print_error(f"No faces found matching '{celebrity_name}' above threshold {threshold}")
+        print_error(f"No faces found matching '{actor_name}' above threshold {threshold}")
         return
     
     # Sort by similarity score (highest first) and take top 5
@@ -168,7 +168,7 @@ def extract_top_headshots(celebrity_name, video_folder_path, threshold=0.6, dry_
         width, height = bbox['w'], bbox['h']
         
         # Create output filename with width x height
-        output_filename = f"{celeb_name_clean}_{similarity:.3f}_{width}x{height}.jpg"
+        output_filename = f"{actor_name_clean}_{similarity:.3f}_{width}x{height}.jpg"
         output_path = headshots_dir / output_filename
         
         log(f"  {i}. {output_filename} (similarity: {similarity:.3f})")
@@ -184,13 +184,13 @@ def extract_top_headshots(celebrity_name, video_folder_path, threshold=0.6, dry_
             print_error("Failed to extract face crop")
     
     if not dry_run:
-        print_summary(f"Successfully extracted {len(top_matches)} headshots for {celebrity_name} to {headshots_dir}")
+        print_summary(f"Successfully extracted {len(top_matches)} headshots for {actor_name} to {headshots_dir}")
     else:
-        print_summary(f"DRY RUN: Would extract {len(top_matches)} headshots for {celebrity_name}")
+        print_summary(f"DRY RUN: Would extract {len(top_matches)} headshots for {actor_name}")
 
 def main():
-    parser = argparse.ArgumentParser(description='Extract top 5 most similar celebrity headshots from video frames')
-    parser.add_argument('celebrity_name', help='Celebrity name (e.g., "Bill Murray")')
+    parser = argparse.ArgumentParser(description='Extract top 5 most similar actor headshots from video frames')
+    parser.add_argument('actor_name', help='Actor name (e.g., "Bill Murray")')
     parser.add_argument('video_folder_path', help='Path to video folder containing frames/ subdirectory')
     # Get default threshold from environment variable
     default_threshold = get_env_float('OPERATIONS_HEADSHOT_MATCH_THRESHOLD', 0.6)
@@ -202,7 +202,7 @@ def main():
     args = parser.parse_args()
     
     try:
-        log(f"Extracting headshots for: {args.celebrity_name}")
+        log(f"Extracting headshots for: {args.actor_name}")
         log(f"Video folder: {args.video_folder_path}")
         log(f"Similarity threshold: {args.threshold}")
         
@@ -211,7 +211,7 @@ def main():
             log("")
         
         extract_top_headshots(
-            args.celebrity_name,
+            args.actor_name,
             args.video_folder_path,
             args.threshold,
             args.dry_run

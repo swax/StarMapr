@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-StarMapr is a Python application for celebrity face recognition and detection using DeepFace with the ArcFace model.
+StarMapr is a Python application for actor face recognition and detection using DeepFace with the ArcFace model.
 
 ## Core Architecture
 
 The system follows a **three-tier hierarchical architecture**:
 
 **Top Level**: `run_headshot_detection.py` - Complete end-to-end workflow
-**Mid Level**: `run_celebrity_training.py` - Automated celebrity training + testing
+**Mid Level**: `run_actor_training.py` - Automated actor training + testing
 **Low Level**: `run_pipeline_steps.py` - Manual step-by-step execution
 
 **Pipeline Flow**: Training → Testing → Operations
@@ -21,8 +21,8 @@ The system follows a **three-tier hierarchical architecture**:
 ```
 run_integration_test.py             # Integration test root
 └── run_headshot_detection.py       # ★ PRIMARY ENTRY POINT
-    ├── run_celebrity_training.py   # ★ MID-LEVEL automation
-    │   ├── download_celebrity_images.py
+    ├── run_actor_training.py   # ★ MID-LEVEL automation
+    │   ├── download_actor_images.py
     │   ├── remove_dupe_training_images.py
     │   ├── remove_bad_training_images.py
     │   ├── remove_face_outliers.py
@@ -39,14 +39,14 @@ The system consists of 17 components organized in three execution tiers:
 ### Top-Level Orchestration (Complete Workflow)
 
 1. **run_headshot_detection.py** - **PRIMARY ENTRY POINT**
-   - Takes video URL and celebrities as input
-   - Calls `run_celebrity_training.py` for each celebrity
+   - Takes video URL and actors as input
+   - Calls `run_actor_training.py` for each actor
    - Executes full operations pipeline (download → frames → faces → headshots)
    - Uses adaptive frame extraction if no headshots found
 
 ### Mid-Level Automation (Training + Testing)
 
-2. **run_celebrity_training.py** - Automated celebrity training + testing
+2. **run_actor_training.py** - Automated actor training + testing
    - Runs complete training pipeline (steps 1-5)
    - Runs complete testing pipeline (steps 6-10)
    - Iteratively downloads until thresholds met (15+ training, 4+ detected headshots)
@@ -59,7 +59,7 @@ The system consists of 17 components organized in three execution tiers:
 
 ### TRAINING PIPELINE (Steps 1-5)
 
-1. **download_celebrity_images.py** - Downloads from Google Image Search
+1. **download_actor_images.py** - Downloads from Google Image Search
    - 20 images per page, each page uses different keywords
    - Training: different keywords for more face variety
    - Testing: keywords targeting group photos
@@ -74,12 +74,12 @@ The system consists of 17 components organized in three execution tiers:
 4. **remove_face_outliers.py** - Removes inconsistent faces
    - Cosine similarity comparison, moves outliers to subfolder
 
-5. **compute_average_embeddings.py** - Creates celebrity embeddings
+5. **compute_average_embeddings.py** - Creates actor embeddings
    - Generates and averages ArcFace embeddings, saves as .pkl
 
 ### TESTING PIPELINE (Steps 6-10)
 
-6. **download_celebrity_images.py** - Downloads test images (same as step 1)
+6. **download_actor_images.py** - Downloads test images (same as step 1)
 7. **remove_dupe_training_images.py** - Removes test duplicates (same as step 2)
 8. **remove_bad_training_images.py** - Test face validation (keeps 3-10 people for group testing)
 9. **eval_star_detection.py** - Detects matching faces in test images
@@ -98,7 +98,7 @@ The system consists of 17 components organized in three execution tiers:
 13. **extract_frame_faces.py** - Detects faces in frames
     - Creates .pkl files with face data alongside each frame
 
-14. **extract_video_headshots.py** - Extracts celebrity headshots
+14. **extract_video_headshots.py** - Extracts actor headshots
     - Matches against reference embeddings, saves top 5 matches
 
 ### UTILITY MODULES
@@ -112,9 +112,9 @@ The system consists of 17 components organized in three execution tiers:
 
 - `00_mocks/` - Mock test data for integration testing
 - `01_search_cache/` - Cached Google image search results
-- `02_training/[celebrity]/` - Training images + `[celebrity]_average_embedding.pkl`
-- `03_testing/[celebrity]/` - Test images + `detected_headshots/` subfolder  
-- `04_models/[celebrity]/` - Final accepted models
+- `02_training/[actor]/` - Training images + `[actor]_average_embedding.pkl`
+- `03_testing/[actor]/` - Test images + `detected_headshots/` subfolder  
+- `04_models/[actor]/` - Final accepted models
 - `05_videos/[site]_[id]/` - Video file + `frames/` + `headshots/` subfolders
 - `05_videos/temp/` - Temporary download directory
 
@@ -127,7 +127,7 @@ python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show 
 
 ### Mid-Level Training
 ```bash
-python3 run_celebrity_training.py "Celebrity Name" "Show Name"
+python3 run_actor_training.py "Actor Name" "Show Name"
 ```
 
 ### Manual Control
@@ -147,14 +147,14 @@ python3 run_integration_test.py
 ### Manual Commands
 ```bash
 # Training pipeline (steps 1-5)
-python3 download_celebrity_images.py "Name" --training --show "Show" --page 1
+python3 download_actor_images.py "Name" --training --show "Show" --page 1
 python3 remove_dupe_training_images.py --training "Name"
 python3 remove_bad_training_images.py --training "Name"
 python3 remove_face_outliers.py --training "Name"
 python3 compute_average_embeddings.py "Name"
 
 # Testing pipeline (steps 6-10)
-python3 download_celebrity_images.py "Name" --testing --show "Show"
+python3 download_actor_images.py "Name" --testing --show "Show"
 python3 remove_dupe_training_images.py --testing "Name"
 python3 remove_bad_training_images.py --testing "Name"
 python3 eval_star_detection.py "Name"

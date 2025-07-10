@@ -5,7 +5,7 @@ import argparse
 import numpy as np
 import pickle
 from pathlib import Path
-from utils import get_celebrity_folder_path, get_celebrity_folder_name, get_image_files, get_average_embedding_path, save_pickle, print_error, print_summary, log
+from utils import get_actor_folder_path, get_actor_folder_name, get_image_files, get_average_embedding_path, save_pickle, print_error, print_summary, log
 from utils_deepface import get_face_embeddings
 
 def compute_average_embeddings(folder_path):
@@ -13,7 +13,7 @@ def compute_average_embeddings(folder_path):
     Compute average embeddings for all images in a folder using DeepFace with ArcFace.
     
     Args:
-        folder_path (str): Path to folder containing celebrity images
+        folder_path (str): Path to folder containing actor images
         
     Returns:
         tuple: (average_embedding, successful_count) - Average embedding vector and count of successful embeddings
@@ -60,17 +60,17 @@ def save_embedding(embedding, output_path):
         raise Exception(f"Failed to save embedding to {output_path}")
 
 def main():
-    parser = argparse.ArgumentParser(description='Compute average embeddings for celebrity images using ArcFace')
-    parser.add_argument('celebrity_name', help='Celebrity name (will use training/celebrity_name/ folder)')
+    parser = argparse.ArgumentParser(description='Compute average embeddings for actor images using ArcFace')
+    parser.add_argument('actor_name', help='Actor name (will use training/actor_name/ folder)')
     parser.add_argument('--output', '-o', help='Output file path for the average embedding', 
                        default=None)
     
     args = parser.parse_args()
     
     try:
-        # Convert celebrity name to folder path
-        celebrity_folder = get_celebrity_folder_name(args.celebrity_name)
-        folder_path = Path(get_celebrity_folder_path(args.celebrity_name, 'training'))
+        # Convert actor name to folder path
+        actor_folder = get_actor_folder_name(args.actor_name)
+        folder_path = Path(get_actor_folder_path(args.actor_name, 'training'))
         
         if not folder_path.exists():
             raise FileNotFoundError(f"Training folder not found: {folder_path}")
@@ -80,13 +80,13 @@ def main():
         
         # Generate output filename if not provided
         if args.output is None:
-            args.output = get_average_embedding_path(args.celebrity_name, 'training')
+            args.output = get_average_embedding_path(args.actor_name, 'training')
         
         # Save the embedding
         save_embedding(avg_embedding, args.output)
         
         log(f"Average embedding shape: {avg_embedding.shape}")
-        print_summary(f"Successfully computed average embedding for {args.celebrity_name} from {successful_count} images.")
+        print_summary(f"Successfully computed average embedding for {args.actor_name} from {successful_count} images.")
         
     except Exception as e:
         print_error(str(e))

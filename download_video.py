@@ -124,6 +124,7 @@ def download_video(video_url, site, video_id, title):
         '--write-info-json',  # Save metadata
         '--write-thumbnail',  # Save thumbnail
         '--write-description',  # Save description if available
+        ' --write-comments',  # Save comments if available
         video_url
     ]
     

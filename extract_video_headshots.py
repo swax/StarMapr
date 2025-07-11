@@ -164,11 +164,11 @@ def extract_top_headshots(actor_name, video_folder_path, threshold=0.6, dry_run=
     log(f"\nTop {len(top_matches)} matches:")
     
     for i, (similarity, frame_file, face_data, pkl_path) in enumerate(top_matches, 1):
-        bbox = face_data['bounding_box']
-        width, height = bbox['w'], bbox['h']
+        # Extract frame number from filename (e.g., "00000001.jpg" -> "00000001")
+        frame_position = Path(frame_file).stem
         
-        # Create output filename with width x height
-        output_filename = f"{actor_name_clean}_{similarity:.3f}_{width}x{height}.jpg"
+        # Create output filename with frame number
+        output_filename = f"{actor_name_clean}_match_{similarity:.3f}_position_{frame_position}.jpg"
         output_path = headshots_dir / output_filename
         
         log(f"  {i}. {output_filename} (similarity: {similarity:.3f})")

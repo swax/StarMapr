@@ -116,7 +116,7 @@ def main():
         log(f"Found video file: {video_file}")
     except Exception as e:
         print_error(str(e))
-        return 1
+        sys.exit(1)
     
     # Create frames directory in same folder
     folder_path = Path(args.folder_path)
@@ -128,7 +128,7 @@ def main():
         log(f"Video has {total_frames} total frames")
     except Exception as e:
         print_error(f"Error reading video: {str(e)}")
-        return 1
+        sys.exit(1)
     
     # Generate frame indices using binary search pattern
     frame_indices = generate_binary_search_indices(total_frames, args.num_frames)
@@ -138,7 +138,7 @@ def main():
     
     if args.dry_run:
         print_dry_run_header("no files will be created")
-        return 0
+        sys.exit(0)
     
     # Create frames directory
     frames_dir.mkdir(exist_ok=True)
@@ -148,24 +148,27 @@ def main():
     skipped_count = 0
     
     for frame_idx in frame_indices:
+        # Normalize frame index to 0-9999 range so that we can preference frames near the middle of the sketch (5000)
+        position = int(frame_idx * 9999 / total_frames)
+
         # Name file with actual frame number, zero-padded
-        frame_filename = f"{frame_idx:08d}.jpg"
+        frame_filename = f"{position:04d}.jpg"
         frame_path = frames_dir / frame_filename
         
         # Skip if frame already exists
         if frame_path.exists():
-            log(f"Skipping frame {frame_idx} - already exists: {frame_path}")
+            log(f"Skipping frame position {position} - already exists: {frame_path}")
             skipped_count += 1
             continue
         
         try:
             # Extract frame
             extract_frame(str(video_file), frame_idx, str(frame_path))
-            log(f"Extracted frame {frame_idx} -> {frame_path}")
+            log(f"Extracted frame position {position} -> {frame_path}")
             extracted_count += 1
                 
         except Exception as e:
-            print_error(f"Error extracting frame {frame_idx}: {str(e)}")
+            print_error(f"Error extracting frame position {position}: {str(e)}")
     
     log(f"\nSummary:")
     log(f"  Frames extracted: {extracted_count}")
@@ -179,4 +182,4 @@ def main():
         print_error("No frames were extracted.")
 
 if __name__ == "__main__":
-    exit(main())
+    main()

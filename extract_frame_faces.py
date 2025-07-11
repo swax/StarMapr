@@ -20,20 +20,20 @@ def main():
     # Validate video folder
     if not video_folder.exists():
         print_error(f"Video folder not found: {video_folder}")
-        return 1
+        sys.exit(1)
     
     # Validate frames directory
     if not frames_dir.exists():
         print_error(f"Frames directory not found: {frames_dir}")
         print_error("Make sure you've extracted frames first using extract_video_frames.py")
-        return 1
+        sys.exit(1)
     
     # Get all image files
     image_files = get_image_files(frames_dir, exclude_subdirs=True)
     
     if not image_files:
         print_error(f"No image files found in {frames_dir}")
-        return 1
+        sys.exit(1)
     
     # Sort by filename to process in order
     image_files.sort()
@@ -47,7 +47,7 @@ def main():
             pkl_path = img_file.with_suffix('.pkl')
             status = "EXISTS" if pkl_path.exists() else "WOULD CREATE"
             log(f"  {img_file.name} -> {pkl_path.name} [{status}]")
-        return 0
+        sys.exit(0)
     
     # Process frames
     processed_count = 0
@@ -90,4 +90,4 @@ def main():
         print_error("No frames were processed.")
 
 if __name__ == "__main__":
-    exit(main())
+    main()

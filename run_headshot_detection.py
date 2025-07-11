@@ -400,7 +400,6 @@ Examples:
         print(f"🎉 SUCCESS! Found {total_headshots} total headshots across all actors")
         sys.exit(0)
     else:
-        print_error(f"❌ No headshots found for any actor")
         sys.exit(1)
 
 

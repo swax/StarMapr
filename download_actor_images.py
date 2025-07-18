@@ -138,7 +138,7 @@ def download_actor_images(actor_name, mode='training', show=None, page=1, api_ke
     # Generate cache key and check for cached images
     actor_folder = get_actor_folder_name(actor_name)
     cache_key = query.lower().replace(' ', '_')
-    cache_folder = f'01_search_cache/{actor_folder}/{mode}/{cache_key}/'
+    cache_folder = f'01_images/{actor_folder}/{mode}/{cache_key}/'
 
     # Check if cache folder exists and has images
     if os.path.exists(cache_folder):

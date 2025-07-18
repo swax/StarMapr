@@ -133,7 +133,7 @@ def get_face_embeddings(image_path, headshotable_only=False):
         
     except Exception as e:
         print_error(f"Error processing {image_path.name}: {e}")
-        return []
+        return None
 
 
 def get_single_face_embedding(image_path):

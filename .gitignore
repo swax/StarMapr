@@ -10,7 +10,7 @@ __pycache__/
 
 # Resource folders
 00_mocks/
-01_search_cache/
+01_images/
 02_training/
 03_testing/
 04_models/

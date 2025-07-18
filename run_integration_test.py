@@ -30,12 +30,11 @@ def verify_file_counts():
         '02_training/mock_actor': 33,
         '02_training/mock_actor/outliers': 10,
         '02_training/mock_actor/duplicates': 4,
-        '02_training/mock_actor/bad_error': 22,
+        '02_training/mock_actor/bad_face_count': 22,
         '03_testing/mock_actor': 14,
         '03_testing/mock_actor/detected_headshots': 5,
         '03_testing/mock_actor/duplicates': 2,
-        '03_testing/mock_actor/bad_error': 18,
-        '03_testing/mock_actor/bad_faces': 42,
+        '03_testing/mock_actor/bad_face_count': 60,
         '03_testing/mock_actor/bad_unsupported': 3,
         '05_videos/mock_video': 4,
         '05_videos/mock_video/headshots': 0,
@@ -83,7 +82,7 @@ def cleanup_mock_folders():
     print_header("CLEANING UP MOCK FOLDERS")
 
     folders_to_remove = [
-        '01_search_cache/mock_actor',
+        '01_images/mock_actor',
         '02_training/mock_actor',
         '03_testing/mock_actor',
         '05_videos/mock_video',

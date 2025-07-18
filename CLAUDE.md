@@ -111,7 +111,7 @@ The system consists of 17 components organized in three execution tiers:
 ## Data Structure
 
 - `00_mocks/` - Mock test data for integration testing
-- `01_search_cache/` - Cached Google image search results
+- `01_images/` - Cached Google image search results and manually added images to train on
 - `02_training/[actor]/` - Training images + `[actor]_average_embedding.pkl`
 - `03_testing/[actor]/` - Test images + `detected_headshots/` subfolder  
 - `04_models/[actor]/` - Final accepted models

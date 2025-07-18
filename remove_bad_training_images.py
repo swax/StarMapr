@@ -21,7 +21,9 @@ def count_faces_in_image(image_path):
         int: Number of faces detected, -1 if error occurred
     """
     face_analysis = get_face_embeddings(image_path)
-    return len(face_analysis) if face_analysis else -1
+    if face_analysis is None:
+        return -1  # Error occurred
+    return len(face_analysis)  # 0 or more faces detected
 
 def move_files_to_folder(files_to_move, destination_folder, folder_name, dry_run=False):
     """
@@ -66,7 +68,7 @@ def remove_bad_images(actor_folder_path, mode='training', dry_run=False):
         return
     
     # Create categorized folders for different types of bad images
-    bad_faces_folder = folder_path / "bad_faces"
+    bad_face_count_folder = folder_path / "bad_face_count"
     unsupported_folder = folder_path / "bad_unsupported"
     error_folder = folder_path / "bad_error"
     
@@ -116,9 +118,9 @@ def remove_bad_images(actor_folder_path, mode='training', dry_run=False):
                 images_with_good_faces.append(img_file)
             else:
                 if face_count == 0:
-                    log(f"  → MOVE TO BAD_FACES: No faces detected")
+                    log(f"  → MOVE TO BAD_FACE_COUNT: No faces detected")
                 else:
-                    log(f"  → MOVE TO BAD_FACES: {face_count} faces detected (expected exactly 1)")
+                    log(f"  → MOVE TO BAD_FACE_COUNT: {face_count} faces detected (expected exactly 1)")
                 images_to_move.append(img_file)
         else:  # testing mode
             if min_faces <= face_count <= max_faces:
@@ -126,11 +128,11 @@ def remove_bad_images(actor_folder_path, mode='training', dry_run=False):
                 images_with_good_faces.append(img_file)
             else:
                 if face_count == 0:
-                    log(f"  → MOVE TO BAD_FACES: No faces detected")
+                    log(f"  → MOVE TO BAD_FACE_COUNT: No faces detected")
                 elif face_count < min_faces:
-                    log(f"  → MOVE TO BAD_FACES: {face_count} faces detected (need at least {min_faces})")
+                    log(f"  → MOVE TO BAD_FACE_COUNT: {face_count} faces detected (need at least {min_faces})")
                 else:
-                    log(f"  → MOVE TO BAD_FACES: {face_count} faces detected (maximum {max_faces} allowed)")
+                    log(f"  → MOVE TO BAD_FACE_COUNT: {face_count} faces detected (maximum {max_faces} allowed)")
                 images_to_move.append(img_file)
     
     # Handle unsupported files
@@ -144,7 +146,7 @@ def remove_bad_images(actor_folder_path, mode='training', dry_run=False):
     log(f"Total files found: {len(all_files)}")
     log(f"Supported images analyzed: {len(image_files)}")
     log(f"Images with {face_description} (keeping): {len(images_with_good_faces)}")
-    log(f"Images to move to bad_faces folder (wrong face count): {len(images_to_move)}")
+    log(f"Images to move to bad_face_count folder (wrong face count): {len(images_to_move)}")
     log(f"Unsupported files to move to unsupported folder: {len(unsupported_to_move)}")
     log(f"Images with processing errors to move to error folder: {len(images_with_errors)}")
     
@@ -153,7 +155,7 @@ def remove_bad_images(actor_folder_path, mode='training', dry_run=False):
     total_attempted_count = 0
     
     # Move bad face images
-    moved_count, attempted_count = move_files_to_folder(images_to_move, bad_faces_folder, "bad_faces", dry_run)
+    moved_count, attempted_count = move_files_to_folder(images_to_move, bad_face_count_folder, "bad_face_count", dry_run)
     total_moved_count += moved_count
     total_attempted_count += attempted_count
     

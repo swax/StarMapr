@@ -160,7 +160,7 @@ def run_training_pipeline(actor_name, show_name, max_pages, min_images):
         if not run_subprocess_command(dedup_cmd, "Removing duplicate images"):
             fatal_error("Failed to remove duplicate images")
         
-        # Step 3: Remove bad images (not exactly 1 face)
+        # Step 3: Remove bad face counts (not exactly 1 face)
         bad_cmd = ['python3', 'remove_bad_training_images.py', '--training', actor_name]
         if not run_subprocess_command(bad_cmd, "Removing bad training images"):
             fatal_error("Failed to remove bad training images")
@@ -226,7 +226,7 @@ def run_testing_pipeline(actor_name, show_name, max_pages, min_headshots):
         if not run_subprocess_command(dedup_cmd, "Removing duplicate images"):
             fatal_error("Failed to remove duplicate images")
         
-        # Step 3: Remove bad images (not 4-10 faces)
+        # Step 3: Remove bad face counts (not 4-10 faces)
         bad_cmd = ['python3', 'remove_bad_training_images.py', '--testing', actor_name]
         if not run_subprocess_command(bad_cmd, "Removing bad testing images"):
             fatal_error("Failed to remove bad testing images")

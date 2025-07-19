@@ -41,6 +41,11 @@ def copy_images_from_cache_to_destination(cache_folder, destination_folder):
     copied_count = 0
     for filename in cached_files:
         source_path = os.path.join(cache_folder, filename)
+        
+        # Skip directories
+        if os.path.isdir(source_path):
+            continue
+            
         # Get file extension
         ext = os.path.splitext(filename)[1].lower()
         # Create new GUID-based filename (first 8 characters)
@@ -140,6 +145,24 @@ def download_actor_images(actor_name, mode='training', show=None, page=1, api_ke
     cache_key = query.lower().replace(' ', '_')
     cache_folder = f'01_images/{actor_folder}/{mode}/{cache_key}/'
 
+    # Special case for page 1: copy manually added images from 01_images/{actor_folder}/{mode}/
+    manual_images_copied = 0
+    if page == 1:
+        manual_images_folder = f'01_images/{actor_folder}/{mode}/'
+        if os.path.exists(manual_images_folder):
+            # Get all files (not directories) from the manual images folder
+            all_items = os.listdir(manual_images_folder)
+            manual_files = [f for f in all_items if os.path.isfile(os.path.join(manual_images_folder, f))]
+            
+            if manual_files:
+                log(f"Found {len(manual_files)} manually added images in: {manual_images_folder}")
+                log(f"Copying manually added images to: {download_path}")
+                
+                # Copy manual images to destination using existing function
+                manual_images_copied = copy_images_from_cache_to_destination(manual_images_folder, download_path)
+                
+                log(f"Successfully copied {manual_images_copied} manually added images")
+
     # Check if cache folder exists and has images
     if os.path.exists(cache_folder):
         cached_files = os.listdir(cache_folder)
@@ -151,7 +174,11 @@ def download_actor_images(actor_name, mode='training', show=None, page=1, api_ke
             # Use common function to copy cached files to destination
             copied_count = copy_images_from_cache_to_destination(cache_folder, download_path)
             
-            print_summary(f"Successfully copied {copied_count} cached images for '{actor_name}' - Images saved to: {download_path}")
+            total_copied = manual_images_copied + copied_count
+            if manual_images_copied > 0:
+                print_summary(f"Successfully copied {total_copied} images for '{actor_name}' ({manual_images_copied} manual + {copied_count} cached) - Images saved to: {download_path}")
+            else:
+                print_summary(f"Successfully copied {copied_count} cached images for '{actor_name}' - Images saved to: {download_path}")
             return True
 
     # If actor name starts with 'mock_' return an error here as it should not get to this point
@@ -193,7 +220,11 @@ def download_actor_images(actor_name, mode='training', show=None, page=1, api_ke
         log(f"Copying images from cache to: {download_path}")
         copied_count = copy_images_from_cache_to_destination(cache_folder, download_path)
 
-        print_summary(f"Successfully downloaded {len(newly_downloaded_files)} new images for '{actor_name}' - Images saved to: {download_path}")
+        total_copied = manual_images_copied + copied_count
+        if manual_images_copied > 0:
+            print_summary(f"Successfully processed {total_copied} images for '{actor_name}' ({manual_images_copied} manual + {len(newly_downloaded_files)} downloaded) - Images saved to: {download_path}")
+        else:
+            print_summary(f"Successfully downloaded {len(newly_downloaded_files)} new images for '{actor_name}' - Images saved to: {download_path}")
         
         return True
         

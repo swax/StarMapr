@@ -109,7 +109,8 @@ run_integration_test.py             # Integration test root
     ├── download_video.py
     ├── extract_video_frames.py
     ├── extract_frame_faces.py
-    └── extract_video_headshots.py
+    ├── extract_video_headshots.py
+    └── extract_video_thumbnail.py
 ```
 
 ## Quick Start
@@ -184,6 +185,9 @@ python3 extract_frame_faces.py videos/youtube_VIDEO_ID/
 
 # 4. Extract actor headshots from video frames
 python3 extract_video_headshots.py "Bill Murray" videos/youtube_VIDEO_ID/
+
+# 5. Create video thumbnails (selects frames with most actors)
+python3 extract_video_thumbnail.py videos/youtube_VIDEO_ID/
 ```
 
 ### Architecture Flow
@@ -212,6 +216,7 @@ StarMapr/
 ├── extract_video_frames.py        # Video frame extraction using binary search
 ├── extract_frame_faces.py         # Face detection in video frames
 ├── extract_video_headshots.py     # Actor headshot extraction from video frames
+├── extract_video_thumbnail.py     # Video thumbnail creation from best frames
 ├── remove_dupe_training_images.py # Duplicate removal tool
 ├── remove_bad_training_images.py  # Image quality cleaner
 ├── remove_face_outliers.py        # Face consistency validator
@@ -275,12 +280,13 @@ StarMapr/
 - Extracts and saves face crops with similarity scores
 - Configurable similarity thresholds
 
-### Video Processing (`download_video.py`, `extract_video_frames.py`, `extract_frame_faces.py`, `extract_video_headshots.py`)
+### Video Processing (`download_video.py`, `extract_video_frames.py`, `extract_frame_faces.py`, `extract_video_headshots.py`, `extract_video_thumbnail.py`)
 - Downloads videos from YouTube, Vimeo, TikTok, and other platforms using yt-dlp
 - Extracts representative frames using binary search pattern for optimal coverage
 - Detects faces in extracted frames with bounding boxes and embeddings
 - Saves face metadata for each frame to enable temporal analysis
 - Extracts actor headshots from video frames using similarity matching
+- Creates video thumbnails by selecting frames with most identifiable actors using weighted scoring
 
 ## Configuration
 

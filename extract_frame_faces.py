@@ -67,14 +67,19 @@ def main():
         
         try:
             # Detect faces (automatically handles caching)
-            faces_data = get_face_embeddings(img_file, headshotable_only=True)
-            if faces_data is None:
-                faces_data = []
+            all_faces_data = get_face_embeddings(img_file)
+            if all_faces_data is None:
+                all_faces_data = []
             
-            face_count = len(faces_data)
-            total_faces += face_count
+            # Count headshotable faces
+            headshotable_faces = [face for face in all_faces_data if face.get('isHeadshotable', True)]
+            
+            total_face_count = len(all_faces_data)
+            headshotable_count = len(headshotable_faces)
+            
+            total_faces += total_face_count
             processed_count += 1
-            log(f"  → Detected {face_count} faces -> {pkl_path.name}")
+            log(f"  → Detected {headshotable_count}/{total_face_count} headshotable faces -> {pkl_path.name}")
                 
         except Exception as e:
             print_error(f"Error processing {img_file.name}: {str(e)}")

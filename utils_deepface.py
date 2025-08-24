@@ -36,8 +36,14 @@ def get_face_embeddings(image_path, headshotable_only=False):
             with open(pkl_path, 'rb') as f:
                 cached_data = pickle.load(f)
             
-            # Return the faces data from the cached structure
-            return cached_data.get('faces', [])
+            # Get all cached faces
+            all_faces = cached_data.get('faces', [])
+            
+            # Filter by headshotable property if requested
+            if headshotable_only:
+                return [face for face in all_faces if face.get('isHeadshotable', True)]
+            
+            return all_faces
         except Exception as e:
             print_error(f"Error loading cached face data {pkl_path.name}: {e}")
             # Fall through to regenerate
@@ -45,7 +51,17 @@ def get_face_embeddings(image_path, headshotable_only=False):
     # Generate face embeddings
     try:
         # Delay the import to avoid the mess of unavoidable CUDA warnings that come with it
-        from deepface import DeepFace
+        import os
+        import contextlib
+
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # 0=all, 1=info, 2=warning, 3=error
+        os.environ['CUDA_VISIBLE_DEVICES'] = ''  # Hide GPU from TensorFlow
+
+        # Suppress stderr during import
+        with open(os.devnull, 'w') as devnull:
+            with contextlib.redirect_stderr(devnull):
+                from deepface import DeepFace
+
         face_analysis = DeepFace.represent(
             str(image_path), 
             model_name='ArcFace',
@@ -78,15 +94,11 @@ def get_face_embeddings(image_path, headshotable_only=False):
             face_width = face_region['w']
             face_height = face_region['h']
             
-            # Skip faces smaller than minimum size
-            if face_width < min_face_size or face_height < min_face_size:
-                continue
-            
             # Skip faces that are nearly the same size as the image (within 3px) Sometimes it thinks the whole image is a face
             if (abs(face_width - image_width) <= 3 and abs(face_height - image_height) <= 3):
                 continue
             
-            # Skip faces that would be clipped when cropped as headshots (if headshotable_only is True)
+            # Determine if face is headshotable
             bbox = {
                 'x': face_region['x'],
                 'y': face_region['y'],
@@ -94,10 +106,17 @@ def get_face_embeddings(image_path, headshotable_only=False):
                 'h': face_height
             }
 
-            if headshotable_only and image_width > 0 and image_height > 0:
+            is_headshotable = True
+            
+            # Check size requirements
+            if face_width < min_face_size or face_height < min_face_size:
+                is_headshotable = False
+            
+            # Check if face would be clipped when cropped as headshot
+            if is_headshotable and image_width > 0 and image_height > 0:
                 crop_coords = get_headshot_crop_coordinates(bbox, image_width, image_height)
                 if crop_coords['clipped']:
-                    continue
+                    is_headshotable = False
             
             # Extract and save face crop: Used to debug face detection issues
             #if image is not None:
@@ -113,7 +132,8 @@ def get_face_embeddings(image_path, headshotable_only=False):
             faces_data.append({
                 'face_id': len(faces_data) + 1,
                 'bounding_box': bbox,
-                'embedding': face_data['embedding']
+                'embedding': face_data['embedding'],
+                'isHeadshotable': is_headshotable
             })
         
         # Cache the structured data
@@ -128,6 +148,10 @@ def get_face_embeddings(image_path, headshotable_only=False):
                 pickle.dump(frame_data, f)
         except Exception as e:
             print_error(f"Error caching face data to {pkl_path.name}: {e}")
+        
+        # Apply headshotable filter if requested
+        if headshotable_only:
+            return [face for face in faces_data if face.get('isHeadshotable', True)]
         
         return faces_data
         

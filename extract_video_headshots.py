@@ -65,7 +65,7 @@ def calculate_face_similarities(frames_dir, reference_embedding, threshold=0.6):
             continue
         
         frame_file = frame_data.get('frame_file', pkl_path.stem + '.jpg')
-        faces = frame_data.get('faces', [])
+        faces = [face for face in frame_data.get('faces', []) if face.get('isHeadshotable', True)]
         total_faces_scanned += len(faces)
         
         for face in faces:

@@ -31,10 +31,11 @@ run_integration_test.py             # Integration test root
     ├── download_video.py
     ├── extract_video_frames.py
     ├── extract_frame_faces.py
-    └── extract_video_headshots.py
+    ├── extract_video_headshots.py
+    └── extract_video_thumbnail.py
 ```
 
-The system consists of 17 components organized in three execution tiers:
+The system consists of 19 components organized in three execution tiers:
 
 ### Top-Level Orchestration (Complete Workflow)
 
@@ -87,7 +88,7 @@ The system consists of 17 components organized in three execution tiers:
 
 10. **Accept Model** - Copies embedding to models directory
 
-### OPERATIONS PIPELINE (Steps 11-14)
+### OPERATIONS PIPELINE (Steps 11-15)
 
 11. **download_video.py** - Downloads videos using yt-dlp
     - Supports YouTube, Vimeo, TikTok, saves to `05_videos/[site]_[id]/`
@@ -101,12 +102,17 @@ The system consists of 17 components organized in three execution tiers:
 14. **extract_video_headshots.py** - Extracts actor headshots
     - Matches against reference embeddings, saves top 5 matches
 
+15. **extract_video_thumbnail.py** - Creates video thumbnails
+    - Selects frames with most identifiable actors using weighted scoring
+    - Generates top 3 thumbnails (thumbnail1.jpg, thumbnail2.jpg, thumbnail3.jpg)
+    - Falls back to middle frame if no actors detected
+
 ### UTILITY MODULES
 
-15. **utils.py** - Common functions (path conversion, argument parsing, file operations)
-16. **utils_deepface.py** - DeepFace utilities with caching
-17. **print_pkl.py** - Pickle file inspector
-18. **run_integration_test.py** - Integration test script with mock data
+16. **utils.py** - Common functions (path conversion, argument parsing, file operations)
+17. **utils_deepface.py** - DeepFace utilities with caching
+18. **print_pkl.py** - Pickle file inspector
+19. **run_integration_test.py** - Integration test script with mock data
 
 ## Data Structure
 
@@ -122,7 +128,7 @@ The system consists of 17 components organized in three execution tiers:
 
 ### Primary Entry Point
 ```bash
-python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" "Bill Murray" "Tina Fey"
+python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --actors "Bill Murray, Tina Fey"
 ```
 
 ### Mid-Level Training
@@ -159,11 +165,12 @@ python3 remove_dupe_training_images.py --testing "Name"
 python3 remove_bad_training_images.py --testing "Name"
 python3 eval_star_detection.py "Name"
 
-# Operations pipeline (steps 11-14)
+# Operations pipeline (steps 11-15)
 python3 download_video.py "https://youtube.com/watch?v=VIDEO_ID"
 python3 extract_video_frames.py 05_videos/youtube_ABC123/
 python3 extract_frame_faces.py 05_videos/youtube_ABC123/
 python3 extract_video_headshots.py "Name" 05_videos/youtube_ABC123/
+python3 extract_video_thumbnail.py 05_videos/youtube_ABC123/
 ```
 
 ## Dependencies
@@ -175,7 +182,7 @@ pip install deepface numpy opencv-python scikit-learn google-images-search pytho
 
 **Training (Steps 1-5)**: Download → Remove Dupes → Remove Bad → Remove Outliers → Generate Embeddings
 **Testing (Steps 6-10)**: Download → Remove Dupes → Remove Bad → Detect Faces → Accept Model  
-**Operations (Steps 11-14)**: Download Video → Extract Frames → Extract Faces → Extract Headshots
+**Operations (Steps 11-15)**: Download Video → Extract Frames → Extract Faces → Extract Headshots → Extract Thumbnails
 
 
 ## Configuration

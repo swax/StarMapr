@@ -64,7 +64,7 @@ def parse_actors(actor_args, actor_list_arg):
     return unique_actors
 
 
-def run_subprocess_command(command_list, description, capture_output=False):
+def run_subprocess_command(command_list, description):
     """
     Run a subprocess command with error handling.
     
@@ -78,18 +78,15 @@ def run_subprocess_command(command_list, description, capture_output=False):
     """
     try:
         print(f"Running: {description}")
-        result = subprocess.run(command_list, check=True, capture_output=capture_output, text=True)
+        # Don't show real time output because there are unavoidable cuda errors that get piped to the console, filling the context
+        result = subprocess.run(command_list, check=True, capture_output=True, text=True)
         
-        stdout = result.stdout if capture_output else ""
-        stderr = result.stderr if capture_output else ""
-        return True, stdout, stderr
+        return True, result.stdout, result.stderr
     except subprocess.CalledProcessError as e:
         print_error(f"Failed: {description}")
-        stdout = e.stdout if capture_output and e.stdout else ""
-        stderr = e.stderr if capture_output and e.stderr else ""
-        if stderr:
-            print_error(stderr.strip())
-        return False, stdout, stderr
+        if e.stderr:
+            print_error(e.stderr.strip())
+        return False, e.stdout, e.stderr
 
 
 def extract_video_folder_from_output(stdout, stderr):
@@ -162,7 +159,7 @@ def download_video(video_url):
     print(f"URL: {video_url}")
     
     command = ['python3', 'download_video.py', video_url]
-    success, stdout, stderr = run_subprocess_command(command, "Downloading video", capture_output=True)
+    success, stdout, stderr = run_subprocess_command(command, "Downloading video")
     
     if success:
         video_folder = extract_video_folder_from_output(stdout, stderr)

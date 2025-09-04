@@ -118,8 +118,9 @@ def run_subprocess_command(command_list, description):
     """
     try:
         print(f"Running: {description}")
-        # Don't capture output - let it stream to console in real-time so errors are visible
-        result = subprocess.run(command_list, check=True)
+        # Don't live stream the output because it shows unavoidable cuda errors that fills the context
+        result = subprocess.run(command_list, check=True, capture_output=True, text=True)
+        print(result.stdout)
         return True
     except subprocess.CalledProcessError as e:
         print_error(f"Failed: {description}")

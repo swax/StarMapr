@@ -51,16 +51,7 @@ def get_face_embeddings(image_path, headshotable_only=False):
     # Generate face embeddings
     try:
         # Delay the import to avoid the mess of unavoidable CUDA warnings that come with it
-        import os
-        import contextlib
-
-        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # 0=all, 1=info, 2=warning, 3=error
-        os.environ['CUDA_VISIBLE_DEVICES'] = ''  # Hide GPU from TensorFlow
-
-        # Suppress stderr during import
-        with open(os.devnull, 'w') as devnull:
-            with contextlib.redirect_stderr(devnull):
-                from deepface import DeepFace
+        from deepface import DeepFace
 
         face_analysis = DeepFace.represent(
             str(image_path), 

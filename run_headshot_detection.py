@@ -20,8 +20,7 @@ import time
 from pathlib import Path
 from dotenv import load_dotenv
 from utils import (
-    get_actor_folder_name, get_env_int,
-    print_error
+    log, get_actor_folder_name, get_env_int, print_error
 )
 
 # Load environment variables
@@ -81,11 +80,17 @@ def run_subprocess_command(command_list, description):
         # Don't show real time output because there are unavoidable cuda errors that get piped to the console, filling the context
         result = subprocess.run(command_list, check=True, capture_output=True, text=True)
         
+        # Show output from successful commands
+        if result.stdout:
+            log(result.stdout.strip())
+        
         return True, result.stdout, result.stderr
     except subprocess.CalledProcessError as e:
         print_error(f"Failed: {description}")
         if e.stderr:
             print_error(e.stderr.strip())
+        elif e.stdout:
+            print_error(e.stdout.strip())
         return False, e.stdout, e.stderr
 
 

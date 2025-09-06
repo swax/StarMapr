@@ -58,6 +58,7 @@ def extract_site_and_id(url):
         return site, video_id, title
         
     except (subprocess.CalledProcessError, json.JSONDecodeError, IndexError) as e:
+        print_error(f"Warning: Could not extract video info with yt-dlp: {e}")
         # Fallback: try to parse URL manually
         parsed = urlparse(url)
         domain = parsed.netloc.lower()

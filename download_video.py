@@ -33,7 +33,7 @@ def extract_site_and_id(url):
     """Extract site name and video ID from URL."""
     try:
         # Use yt-dlp to extract info without downloading
-        cmd = ['yt-dlp', '--dump-json', '--no-download', url]
+        cmd = ['venv/bin/yt-dlp', '--dump-json', '--no-download', url]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         info = json.loads(result.stdout.split('\n')[0])
         
@@ -81,7 +81,7 @@ def extract_site_and_id(url):
 def check_ytdlp():
     """Check if yt-dlp is installed."""
     try:
-        subprocess.run(['yt-dlp', '--version'], capture_output=True, check=True)
+        subprocess.run(['venv/bin/yt-dlp', '--version'], capture_output=True, check=True)
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
@@ -119,7 +119,7 @@ def download_video(video_url, site, video_id, title):
     
     # yt-dlp command to download video to temp folder
     cmd = [
-        'yt-dlp',
+        'venv/bin/yt-dlp',
         '-o', str(temp_dir / f'{safe_title}.%(ext)s'),
         '--format', 'bestvideo[height<=720][vcodec!^=av01]',  # Download best quality up to 720p, excluding AV1 codec
         '--write-info-json',  # Save metadata
@@ -181,7 +181,7 @@ def main():
     # List extractors if requested
     if args.list_extractors:
         try:
-            result = subprocess.run(['yt-dlp', '--list-extractors'], 
+            result = subprocess.run(['venv/bin/yt-dlp', '--list-extractors'],
                                   capture_output=True, text=True, check=True)
             log("Supported sites/extractors:")
             log(result.stdout)

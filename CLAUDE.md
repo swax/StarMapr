@@ -128,17 +128,17 @@ The system consists of 19 components organized in three execution tiers:
 
 ### Primary Entry Point
 ```bash
-python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --actors "Bill Murray, Tina Fey"
+venv/bin/python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --actors "Bill Murray, Tina Fey"
 ```
 
 ### Mid-Level Training
 ```bash
-python3 run_actor_training.py "Actor Name" "Show Name"
+venv/bin/python3 run_actor_training.py "Actor Name" "Show Name"
 ```
 
 ### Manual Control
 ```bash
-python3 run_pipeline_steps.py
+venv/bin/python3 run_pipeline_steps.py
 ```
 
 ### Integration Testing
@@ -147,36 +147,54 @@ python3 run_pipeline_steps.py
 unzip mocks.zip
 
 # Run integration test
-python3 run_integration_test.py
+venv/bin/python3 run_integration_test.py
 ```
 
 ### Manual Commands
 ```bash
 # Training pipeline (steps 1-5)
-python3 download_actor_images.py "Name" --training --show "Show" --page 1
-python3 remove_dupe_training_images.py --training "Name"
-python3 remove_bad_training_images.py --training "Name"
-python3 remove_face_outliers.py --training "Name"
-python3 compute_average_embeddings.py "Name"
+venv/bin/python3 download_actor_images.py "Name" --training --show "Show" --page 1
+venv/bin/python3 remove_dupe_training_images.py --training "Name"
+venv/bin/python3 remove_bad_training_images.py --training "Name"
+venv/bin/python3 remove_face_outliers.py --training "Name"
+venv/bin/python3 compute_average_embeddings.py "Name"
 
 # Testing pipeline (steps 6-10)
-python3 download_actor_images.py "Name" --testing --show "Show"
-python3 remove_dupe_training_images.py --testing "Name"
-python3 remove_bad_training_images.py --testing "Name"
-python3 eval_star_detection.py "Name"
+venv/bin/python3 download_actor_images.py "Name" --testing --show "Show"
+venv/bin/python3 remove_dupe_training_images.py --testing "Name"
+venv/bin/python3 remove_bad_training_images.py --testing "Name"
+venv/bin/python3 eval_star_detection.py "Name"
 
 # Operations pipeline (steps 11-15)
-python3 download_video.py "https://youtube.com/watch?v=VIDEO_ID"
-python3 extract_video_frames.py 05_videos/youtube_ABC123/
-python3 extract_frame_faces.py 05_videos/youtube_ABC123/
-python3 extract_video_headshots.py "Name" 05_videos/youtube_ABC123/
-python3 extract_video_thumbnail.py 05_videos/youtube_ABC123/
+venv/bin/python3 download_video.py "https://youtube.com/watch?v=VIDEO_ID"
+venv/bin/python3 extract_video_frames.py 05_videos/youtube_ABC123/
+venv/bin/python3 extract_frame_faces.py 05_videos/youtube_ABC123/
+venv/bin/python3 extract_video_headshots.py "Name" 05_videos/youtube_ABC123/
+venv/bin/python3 extract_video_thumbnail.py 05_videos/youtube_ABC123/
 ```
 
 ## Dependencies
+
+Create virtual environment:
 ```bash
-pip install deepface numpy opencv-python scikit-learn google-images-search python-dotenv yt-dlp
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
+
+Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+Update dependencies (uses pip-tools):
+```bash
+pip-compile --upgrade requirements.in
+pip install -r requirements.txt
+```
+
+Core dependencies are listed in `requirements.in`, with exact versions locked in `requirements.txt`.
+
+**Important**: All scripts must be run with `venv/bin/python3` instead of `python3`. External applications should use the full path: `/path/to/StarMapr/venv/bin/python3 script.py`
 
 ## Pipeline Stages
 

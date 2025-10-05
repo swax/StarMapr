@@ -218,52 +218,52 @@ def main():
             if choice == '1':
                 # Download training images
                 training_page = get_page_number()
-                command = ['python3', 'download_actor_images.py', actor_name, '--training', '--show', show_name]
+                command = ['venv/bin/python3', 'download_actor_images.py', actor_name, '--training', '--show', show_name]
                 if training_page != 1:
                     command.extend(['--page', str(training_page)])
                 success, _ = run_command(command, "Download training images")
                 
             elif choice == '2':
                 # Remove duplicate training images
-                command = ['python3', 'remove_dupe_training_images.py', '--training', actor_name]
+                command = ['venv/bin/python3', 'remove_dupe_training_images.py', '--training', actor_name]
                 success, _ = run_command(command, "Remove duplicate training images")
                 
             elif choice == '3':
                 # Remove bad training images
-                command = ['python3', 'remove_bad_training_images.py', '--training', actor_name]
+                command = ['venv/bin/python3', 'remove_bad_training_images.py', '--training', actor_name]
                 success, _ = run_command(command, "Remove bad training images")
                 
             elif choice == '4':
                 # Remove outlier faces
-                command = ['python3', 'remove_face_outliers.py', '--training', actor_name]
+                command = ['venv/bin/python3', 'remove_face_outliers.py', '--training', actor_name]
                 success, _ = run_command(command, "Remove outlier faces")
                 
             elif choice == '5':
                 # Compute average embeddings
-                command = ['python3', 'compute_average_embeddings.py', actor_name]
+                command = ['venv/bin/python3', 'compute_average_embeddings.py', actor_name]
                 success, _ = run_command(command, "Compute average embeddings")
                 
             elif choice == '6':
                 # Download testing images
                 testing_page = get_page_number()
-                command = ['python3', 'download_actor_images.py', actor_name, '--testing', '--show', show_name]
+                command = ['venv/bin/python3', 'download_actor_images.py', actor_name, '--testing', '--show', show_name]
                 if testing_page != 1:
                     command.extend(['--page', str(testing_page)])
                 success, _ = run_command(command, "Download testing images")
                 
             elif choice == '7':
                 # Remove duplicate testing images
-                command = ['python3', 'remove_dupe_training_images.py', '--testing', actor_name]
+                command = ['venv/bin/python3', 'remove_dupe_training_images.py', '--testing', actor_name]
                 success, _ = run_command(command, "Remove duplicate testing images")
                 
             elif choice == '8':
                 # Remove bad testing images
-                command = ['python3', 'remove_bad_training_images.py', '--testing', actor_name]
+                command = ['venv/bin/python3', 'remove_bad_training_images.py', '--testing', actor_name]
                 success, _ = run_command(command, "Remove bad testing images")
                 
             elif choice == '9':
                 # Detect faces
-                command = ['python3', 'eval_star_detection.py', actor_name]
+                command = ['venv/bin/python3', 'eval_star_detection.py', actor_name]
                 success, _ = run_command(command, "Detect faces in test images")
                 
             elif choice == '10':
@@ -283,7 +283,7 @@ def main():
                 if not video_url:
                     print("No URL provided.")
                     continue
-                command = ['python3', 'download_video.py', video_url]
+                command = ['venv/bin/python3', 'download_video.py', video_url]
                 success, last_line = run_command(command, "Download video from URL")
                 # Parse JSON output to get video folder path
                 if success and last_line:
@@ -316,9 +316,9 @@ def main():
                 frame_count = input(f"Number of frames to extract (default {default_frame_count}): ").strip()
                 if not frame_count:
                     # Use environment default by not passing frame count (let script handle it)
-                    command = ['python3', 'extract_video_frames.py', video_folder]
+                    command = ['venv/bin/python3', 'extract_video_frames.py', video_folder]
                 else:
-                    command = ['python3', 'extract_video_frames.py', video_folder, frame_count]
+                    command = ['venv/bin/python3', 'extract_video_frames.py', video_folder, frame_count]
                 success, _ = run_command(command, "Extract frames from video")
                 
             elif choice == '13':
@@ -332,7 +332,7 @@ def main():
                 if not video_folder and video_folder_path:
                     video_folder = video_folder_path
                 
-                command = ['python3', 'extract_frame_faces.py', video_folder]
+                command = ['venv/bin/python3', 'extract_frame_faces.py', video_folder]
                 success, _ = run_command(command, "Extract faces from video frames")
                 
             elif choice == '14':
@@ -346,7 +346,7 @@ def main():
                 if not video_folder and video_folder_path:
                     video_folder = video_folder_path
                 
-                command = ['python3', 'extract_video_headshots.py', actor_name, video_folder]
+                command = ['venv/bin/python3', 'extract_video_headshots.py', actor_name, video_folder]
                 success, _ = run_command(command, f"Extract {actor_name} headshots from video")
                 
             elif choice == str(TOTAL_PIPELINE_STEPS):

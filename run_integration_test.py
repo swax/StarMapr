@@ -143,7 +143,7 @@ def run_integration_test(verbose=False):
     
     # Hardcoded mock values - these are magic strings that scripts will look for
     command = [
-        'python3', 
+        'venv/bin/python3', 
         'run_headshot_detection.py',
         'MOCK_VIDEO',
         '--show', 'MOCK_SHOW',

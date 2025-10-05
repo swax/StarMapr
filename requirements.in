@@ -1,0 +1,8 @@
+deepface
+numpy
+opencv-python
+scikit-learn
+google-images-search
+python-dotenv
+yt-dlp
+tf-keras

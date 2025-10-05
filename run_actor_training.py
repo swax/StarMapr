@@ -150,24 +150,24 @@ def run_training_pipeline(actor_name, show_name, max_pages, min_images):
         
         # Step 1: Download training images
         download_cmd = [
-            'python3', 'download_actor_images.py', actor_name,
+            'venv/bin/python3', 'download_actor_images.py', actor_name,
             '--training', '--show', show_name, '--page', str(page)
         ]
         if not run_subprocess_command(download_cmd, f"Downloading training images (page {page})"):
             fatal_error(f"Failed to download training images for page {page}")
         
         # Step 2: Remove duplicates
-        dedup_cmd = ['python3', 'remove_dupe_training_images.py', '--training', actor_name]
+        dedup_cmd = ['venv/bin/python3', 'remove_dupe_training_images.py', '--training', actor_name]
         if not run_subprocess_command(dedup_cmd, "Removing duplicate images"):
             fatal_error("Failed to remove duplicate images")
         
         # Step 3: Remove bad face counts (not exactly 1 face)
-        bad_cmd = ['python3', 'remove_bad_training_images.py', '--training', actor_name]
+        bad_cmd = ['venv/bin/python3', 'remove_bad_training_images.py', '--training', actor_name]
         if not run_subprocess_command(bad_cmd, "Removing bad training images"):
             fatal_error("Failed to remove bad training images")
         
         # Step 4: Remove face outliers
-        outlier_cmd = ['python3', 'remove_face_outliers.py', '--training', actor_name]
+        outlier_cmd = ['venv/bin/python3', 'remove_face_outliers.py', '--training', actor_name]
         if not run_subprocess_command(outlier_cmd, "Removing face outliers"):
             fatal_error("Failed to remove face outliers")
         
@@ -186,7 +186,7 @@ def run_training_pipeline(actor_name, show_name, max_pages, min_images):
             print(f"Reached max pages ({max_pages}), proceeding with {image_count} images")
     
     # Step 5: Generate embeddings
-    embedding_cmd = ['python3', 'compute_average_embeddings.py', actor_name]
+    embedding_cmd = ['venv/bin/python3', 'compute_average_embeddings.py', actor_name]
     embeddings_success = run_subprocess_command(embedding_cmd, "Computing average embeddings")
     
     final_count = len(get_image_files(training_folder))
@@ -216,24 +216,24 @@ def run_testing_pipeline(actor_name, show_name, max_pages, min_headshots):
         
         # Step 1: Download testing images
         download_cmd = [
-            'python3', 'download_actor_images.py', actor_name,
+            'venv/bin/python3', 'download_actor_images.py', actor_name,
             '--testing', '--show', show_name, '--page', str(page)
         ]
         if not run_subprocess_command(download_cmd, f"Downloading testing images (page {page})"):
             fatal_error(f"Failed to download testing images for page {page}")
         
         # Step 2: Remove duplicates
-        dedup_cmd = ['python3', 'remove_dupe_training_images.py', '--testing', actor_name]
+        dedup_cmd = ['venv/bin/python3', 'remove_dupe_training_images.py', '--testing', actor_name]
         if not run_subprocess_command(dedup_cmd, "Removing duplicate images"):
             fatal_error("Failed to remove duplicate images")
         
         # Step 3: Remove bad face counts (not 4-10 faces)
-        bad_cmd = ['python3', 'remove_bad_training_images.py', '--testing', actor_name]
+        bad_cmd = ['venv/bin/python3', 'remove_bad_training_images.py', '--testing', actor_name]
         if not run_subprocess_command(bad_cmd, "Removing bad testing images"):
             fatal_error("Failed to remove bad testing images")
         
         # Step 4: Run face detection
-        detect_cmd = ['python3', 'eval_star_detection.py', actor_name]
+        detect_cmd = ['venv/bin/python3', 'eval_star_detection.py', actor_name]
         if not run_subprocess_command(detect_cmd, "Running face detection"):
             fatal_error("Failed to run face detection")
         

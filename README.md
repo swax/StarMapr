@@ -35,12 +35,24 @@ git lfs install
 git lfs pull
 ```
 
-3. Install dependencies:
+3. Create and activate virtual environment:
 ```bash
-pip install deepface numpy opencv-python scikit-learn google-images-search python-dotenv yt-dlp
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-4. Set up configuration:
+4. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+To update dependencies to their latest versions:
+```bash
+pip-compile --upgrade requirements.in
+pip install -r requirements.txt
+```
+
+5. Set up configuration:
 Create a `.env` file with:
 ```
 # Google Custom Search API Configuration
@@ -77,14 +89,16 @@ OPERATIONS_HEADSHOT_MATCH_THRESHOLD=0.4
 MIN_FACE_SIZE=50
 ```
 
-5. Test the installation:
+6. Test the installation:
 ```bash
 # Extract mock data
 unzip mocks.zip
 
 # Run integration test
-python3 run_integration_test.py
+venv/bin/python3 run_integration_test.py
 ```
+
+**Note**: All scripts should be run using `venv/bin/python3` instead of `python3` to use the virtual environment. External applications should call scripts using the full path: `/path/to/StarMapr/venv/bin/python3 script.py`
 
 ## Architecture
 
@@ -118,22 +132,22 @@ run_integration_test.py             # Integration test root
 ### Primary Entry Point (Recommended)
 Complete end-to-end workflow from video URL to extracted headshots:
 ```bash
-python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" "Bill Murray" "Tina Fey"
-python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --actors "Bill Murray,Tina Fey,Amy Poehler"
+venv/bin/python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" "Bill Murray" "Tina Fey"
+venv/bin/python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --actors "Bill Murray,Tina Fey,Amy Poehler"
 ```
 **TOP-LEVEL SCRIPT**: This is the main entry point that orchestrates the entire process. It automatically trains actors, downloads video, and extracts headshots.
 
 ### Individual Actor Training
 For training a single actor without video processing:
 ```bash
-python3 run_actor_training.py "Actor Name" "Show Name"
+venv/bin/python3 run_actor_training.py "Actor Name" "Show Name"
 ```
 **MID-LEVEL SCRIPT**: Called automatically by `run_headshot_detection.py`, but can be run standalone for actor training.
 
-### Manual Pipeline Control  
+### Manual Pipeline Control
 For debugging, testing, or manual step-by-step control:
 ```bash
-python3 run_pipeline_steps.py
+venv/bin/python3 run_pipeline_steps.py
 ```
 **LOW-LEVEL SCRIPT**: Interactive menu for manual execution of individual pipeline components.
 
@@ -142,52 +156,52 @@ python3 run_pipeline_steps.py
 #### Training Pipeline
 ```bash
 # 1. Download training images (solo portraits)
-python3 download_actor_images.py "Bill Murray" --training --show "SNL"
+venv/bin/python3 download_actor_images.py "Bill Murray" --training --show "SNL"
 
 # 2. Remove duplicate images
-python3 remove_dupe_training_images.py --training "Bill Murray"
+venv/bin/python3 remove_dupe_training_images.py --training "Bill Murray"
 
 # 3. Remove bad images (keep exactly 1 face)
-python3 remove_bad_training_images.py --training "Bill Murray"
+venv/bin/python3 remove_bad_training_images.py --training "Bill Murray"
 
 # 4. Remove face outliers (detect inconsistent faces)
-python3 remove_face_outliers.py --training "Bill Murray"
+venv/bin/python3 remove_face_outliers.py --training "Bill Murray"
 
 # 5. Generate reference embeddings
-python3 compute_average_embeddings.py "Bill Murray"
+venv/bin/python3 compute_average_embeddings.py "Bill Murray"
 ```
 
 #### Testing Pipeline
 ```bash
 # 6. Download testing images (group photos)
-python3 download_actor_images.py "Bill Murray" --testing --show "SNL"
+venv/bin/python3 download_actor_images.py "Bill Murray" --testing --show "SNL"
 
 # 7. Remove duplicate images
-python3 remove_dupe_training_images.py --testing "Bill Murray"
+venv/bin/python3 remove_dupe_training_images.py --testing "Bill Murray"
 
 # 8. Remove bad images (keep 3-10 faces for group testing)
-python3 remove_bad_training_images.py --testing "Bill Murray"
+venv/bin/python3 remove_bad_training_images.py --testing "Bill Murray"
 
 # 9. Detect faces in test images
-python3 eval_star_detection.py "Bill Murray"
+venv/bin/python3 eval_star_detection.py "Bill Murray"
 ```
 
 #### Operations Pipeline
 ```bash
 # 1. Download video from supported platforms
-python3 download_video.py "https://www.youtube.com/watch?v=-_X904_TZnc"
+venv/bin/python3 download_video.py "https://www.youtube.com/watch?v=-_X904_TZnc"
 
 # 2. Extract representative frames using binary search pattern (script finds video automatically)
-python3 extract_video_frames.py videos/youtube_VIDEO_ID/ 50
+venv/bin/python3 extract_video_frames.py videos/youtube_VIDEO_ID/ 50
 
 # 3. Extract face data from all frames (script uses frames/ subfolder automatically)
-python3 extract_frame_faces.py videos/youtube_VIDEO_ID/
+venv/bin/python3 extract_frame_faces.py videos/youtube_VIDEO_ID/
 
 # 4. Extract actor headshots from video frames
-python3 extract_video_headshots.py "Bill Murray" videos/youtube_VIDEO_ID/
+venv/bin/python3 extract_video_headshots.py "Bill Murray" videos/youtube_VIDEO_ID/
 
 # 5. Create video thumbnails (selects frames with most actors)
-python3 extract_video_thumbnail.py videos/youtube_VIDEO_ID/
+venv/bin/python3 extract_video_thumbnail.py videos/youtube_VIDEO_ID/
 ```
 
 ### Architecture Flow
@@ -334,7 +348,7 @@ If the correct headshots are not being found for a video, follow these steps to 
    - Verify that remaining training images are actually of the target actor
    - Use `remove_face_outliers.py` with adjusted threshold if needed:
      ```bash
-     python3 remove_face_outliers.py --training "Actor Name" --threshold 0.05
+     venv/bin/python3 remove_face_outliers.py --training "Actor Name" --threshold 0.05
      ```
 
 2. **Adjust Outlier Detection Threshold**
@@ -345,26 +359,26 @@ If the correct headshots are not being found for a video, follow these steps to 
 3. **Regenerate Average Embeddings**
    - After cleaning training data, regenerate the reference embeddings:
      ```bash
-     python3 compute_average_embeddings.py "Actor Name"
+     venv/bin/python3 compute_average_embeddings.py "Actor Name"
      ```
 
 4. **Test Detection Accuracy**
    - Run testing pipeline with new average embeddings to verify improved accuracy:
      ```bash
-     python3 eval_star_detection.py "Actor Name"
+     venv/bin/python3 eval_star_detection.py "Actor Name"
      ```
 
 5. **Retry Video Headshot Extraction**
    - Extract headshots from video using the improved reference embeddings:
      ```bash
-     python3 extract_video_headshots.py "Actor Name" videos/youtube_VIDEO_ID/
+     venv/bin/python3 extract_video_headshots.py "Actor Name" videos/youtube_VIDEO_ID/
      ```
 
 6. **Increase Training/Testing Data**
    - If insufficient data was found, download additional pages:
      ```bash
-     python3 download_actor_images.py "Actor Name" --training --show "Show Name" --page 2
-     python3 download_actor_images.py "Actor Name" --testing --show "Show Name" --page 3
+     venv/bin/python3 download_actor_images.py "Actor Name" --training --show "Show Name" --page 2
+     venv/bin/python3 download_actor_images.py "Actor Name" --testing --show "Show Name" --page 3
      ```
    - Each page downloads 20 more images using different keywords for variety
 

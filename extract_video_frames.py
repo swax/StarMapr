@@ -2,6 +2,7 @@
 
 import cv2
 import os
+import sys
 import argparse
 from pathlib import Path
 from dotenv import load_dotenv
@@ -15,10 +16,20 @@ def get_video_frame_count(video_path):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         raise ValueError(f"Cannot open video file: {video_path}")
-    
+
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     cap.release()
     return frame_count
+
+def get_video_fps(video_path):
+    """Get frames per second of video"""
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise ValueError(f"Cannot open video file: {video_path}")
+
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    cap.release()
+    return fps
 
 def generate_binary_search_indices(total_frames, num_frames):
     """Generate frame indices using binary search pattern starting from middle"""
@@ -125,13 +136,20 @@ def main():
     # Get video info
     try:
         total_frames = get_video_frame_count(str(video_file))
-        log(f"Video has {total_frames} total frames")
+        fps = get_video_fps(str(video_file))
+        log(f"Video has {total_frames} total frames at {fps:.2f} FPS")
+
+        # Exclude last N seconds from frame extraction
+        exclude_end_seconds = get_env_int('OPERATIONS_EXCLUDE_END_SECONDS', 15)
+        frames_to_exclude = int(fps * exclude_end_seconds)
+        adjusted_total_frames = max(1, total_frames - frames_to_exclude)
+        log(f"Excluding last {exclude_end_seconds} seconds ({frames_to_exclude} frames), using {adjusted_total_frames} frames")
     except Exception as e:
         print_error(f"Error reading video: {str(e)}")
         sys.exit(1)
-    
+
     # Generate frame indices using binary search pattern
-    frame_indices = generate_binary_search_indices(total_frames, args.num_frames)
+    frame_indices = generate_binary_search_indices(adjusted_total_frames, args.num_frames)
     log(f"Will extract {len(frame_indices)} frames using binary search pattern")
     log(f"Frame indices: {frame_indices}")
     log(f"Frames will be saved to: {frames_dir}")
@@ -149,7 +167,7 @@ def main():
     
     for frame_idx in frame_indices:
         # Normalize frame index to 0-9999 range so that we can preference frames near the middle of the sketch (5000)
-        position = int(frame_idx * 9999 / total_frames)
+        position = int(frame_idx * 9999 / adjusted_total_frames)
 
         # Name file with actual frame number, zero-padded
         frame_filename = f"{position:04d}.jpg"

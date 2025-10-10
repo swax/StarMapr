@@ -215,6 +215,7 @@ Core dependencies are listed in `requirements.in`, with exact versions locked in
 - **TESTING_DETECTION_THRESHOLD**: 0.4 (0.0-1.0, lower = more strict)
 - **TESTING_MIN_HEADSHOTS**: 4 (threshold of headshot detections for successful test)
 - **OPERATIONS_EXTRACT_FRAME_COUNT**: 50 (number of frames to extract from videos)
+- **OPERATIONS_EXCLUDE_END_SECONDS**: 15 (exclude frames from last N seconds of video)
 - **OPERATIONS_HEADSHOT_MATCH_THRESHOLD**: 0.4 (0.0-1.0, lower = more strict)
 - **MIN_FACE_SIZE**: 50 (minimum face size for processing, width x height in pixels)
 

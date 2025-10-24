@@ -8,7 +8,7 @@ from pathlib import Path
 import cv2
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
-from utils import get_actor_folder_path, get_actor_folder_name, get_image_files, get_average_embedding_path, load_pickle, get_env_float, print_error, print_summary, calculate_face_similarity, log
+from utils import get_actor_folder_path, get_image_files, get_average_embedding_path, load_pickle, get_env_float, print_error, print_summary, calculate_face_similarity, log
 from utils_deepface import get_face_embeddings
 
 # Load environment variables
@@ -149,9 +149,6 @@ def main():
     args = parser.parse_args()
     
     try:
-        # Convert actor name to folder format (lowercase, spaces to underscores)
-        actor_folder = get_actor_folder_name(args.actor_name)
-        
         # Construct paths automatically
         images_folder = get_actor_folder_path(args.actor_name, 'testing')
         embedding_file = get_average_embedding_path(args.actor_name, 'training')

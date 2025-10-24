@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
-from utils import get_actor_folder_name, get_average_embedding_path, load_pickle, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity, get_headshot_crop_coordinates, log
+from utils import get_average_embedding_path, load_pickle, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity, get_headshot_crop_coordinates, log
 
 # Load environment variables
 load_dotenv()

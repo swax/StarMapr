@@ -9,6 +9,7 @@ and consistency.
 import os
 import pickle
 import argparse
+import unicodedata
 from pathlib import Path
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
@@ -25,7 +26,7 @@ def get_actor_folder_path(actor_name, mode='training'):
     Returns:
         str: Formatted folder path (e.g., '02_training/bill_murray/')
     """
-    actor_folder = actor_name.lower().replace(' ', '_')
+    actor_folder = get_actor_folder_name(actor_name)
     mode_prefix = '02_' if mode == 'training' else '03_'
     return f'{mode_prefix}{mode}/{actor_folder}/'
 
@@ -40,7 +41,9 @@ def get_actor_folder_name(actor_name):
     Returns:
         str: Formatted folder name (e.g., 'bill_murray')
     """
-    return actor_name.lower().replace(' ', '_')
+    normalized = unicodedata.normalize('NFKD', actor_name)
+    ascii_name = normalized.encode('ascii', 'ignore').decode('ascii')
+    return ascii_name.lower().replace(' ', '_')
 
 
 def get_average_embedding_filename(actor_name):

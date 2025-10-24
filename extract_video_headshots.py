@@ -138,7 +138,7 @@ def extract_top_headshots(actor_name, video_folder_path, threshold=0.6, dry_run=
         raise FileNotFoundError(f"Frames directory not found: {frames_dir}")
     
     # Create actor-specific headshots output directory
-    actor_name_clean = actor_name.lower().replace(' ', '_')
+    actor_name_clean = get_actor_folder_name(actor_name)
     headshots_dir = video_folder / "headshots" / actor_name_clean
     
     if not dry_run:

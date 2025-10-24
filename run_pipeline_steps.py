@@ -11,7 +11,7 @@ import sys
 import subprocess
 from pathlib import Path
 from dotenv import load_dotenv
-from utils import get_actor_folder_name, get_average_embedding_path
+from utils import get_average_embedding_path
 
 # Load environment variables
 load_dotenv()
@@ -72,8 +72,6 @@ def display_menu(actor_name):
     Args:
         actor_name (str): Name of the actor
     """
-    actor_folder = get_actor_folder_name(actor_name)
-    
     print(f"\n=== StarMapr Pipeline for '{actor_name}' ===")
     print("Select a step to run:")
     print()
@@ -191,7 +189,6 @@ def main():
     # Get actor name and optional show
     actor_name = get_actor_name()
     show_name = get_show_name()
-    actor_folder = get_actor_folder_name(actor_name)
     
     # Track page numbers for download steps
     # Track video folder path for video processing steps

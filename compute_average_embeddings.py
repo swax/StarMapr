@@ -5,7 +5,7 @@ import argparse
 import numpy as np
 import pickle
 from pathlib import Path
-from utils import get_actor_folder_path, get_actor_folder_name, get_image_files, get_average_embedding_path, save_pickle, print_error, print_summary, log
+from utils import get_actor_folder_path, get_image_files, get_average_embedding_path, save_pickle, print_error, print_summary, log
 from utils_deepface import get_face_embeddings
 
 def compute_average_embeddings(folder_path):
@@ -69,7 +69,6 @@ def main():
     
     try:
         # Convert actor name to folder path
-        actor_folder = get_actor_folder_name(args.actor_name)
         folder_path = Path(get_actor_folder_path(args.actor_name, 'training'))
         
         if not folder_path.exists():

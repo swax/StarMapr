@@ -234,7 +234,7 @@ def extract_actor_headshots(actor_name, video_folder):
     
     if success:
         # Count headshots in the actor-specific folder
-        actor_name_clean = actor_name.lower().replace(' ', '_')
+        actor_name_clean = get_actor_folder_name(actor_name)
         headshots_folder = Path(video_folder) / 'headshots' / actor_name_clean
         if headshots_folder.exists():
             headshot_files = list(headshots_folder.glob('*.jpg')) + list(headshots_folder.glob('*.png'))

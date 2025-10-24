@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 from dotenv import load_dotenv
 from utils import (
-    get_actor_folder_path, get_actor_folder_name, get_image_files, get_env_int,
+    get_actor_folder_path, get_image_files, get_env_int,
     get_average_embedding_path, print_error, ensure_folder_exists
 )
 

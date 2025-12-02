@@ -125,7 +125,7 @@ def find_face_outliers(actor_folder_path, similarity_threshold=0.1, dry_run=Fals
                 total_moved_count += moved_count
                 total_attempted_count += attempted_count
             
-            log(f"\nSuccessfully moved {total_moved_count}/{total_attempted_count} files")
+            log(f"\nSuccessfully moved {total_moved_count} files")
         else:
             total_files_to_move = 0
             for img, sim in outliers:
@@ -147,12 +147,11 @@ def find_face_outliers(actor_folder_path, similarity_threshold=0.1, dry_run=Fals
     # Add success summary
     if not dry_run:
         if outliers:
-            print_summary(f"Face outlier analysis completed. Moved {len(outliers)} outlier images to outliers/ folder.")
+            print_summary(f"Similarity analysis completed. {len(consensus_group)} similar images. {len(outliers)} outliers.")
         else:
-            print_summary("Face outlier analysis completed. All faces appear to be consistent!")
+            print_summary("Similarity analysis completed. All faces appear to be consistent!")
     else:
-        print_summary(f"DRY RUN: Face outlier analysis completed. Would move {len(outliers)} outlier images.")
-
+        print_summary(f"DRY RUN: Similarity analysis completed. Would keep {len(consensus_group)} images, and move {len(outliers)} outlier images.")
 def main():
     parser = argparse.ArgumentParser(description='Remove face outliers from actor training images')
     

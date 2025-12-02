@@ -124,7 +124,7 @@ def find_duplicate_groups(image_files, similarity_threshold=5):
 def remove_duplicate_images(actor_folder_path, similarity_threshold=5, dry_run=False):
     """
     Remove near-duplicate images from actor folder, keeping the oldest one in each group.
-    Keeping the oldest is important as it may have a corresponding pkl file that we don't want to abandon.
+    Keeping the oldest (first added to folder) ensures original files are preserved.
     
     Args:
         actor_folder_path (str): Path to actor folder containing training or testing images
@@ -166,9 +166,9 @@ def remove_duplicate_images(actor_folder_path, similarity_threshold=5, dry_run=F
     
     for i, group in enumerate(duplicate_groups, 1):
         log(f"\nGroup {i} ({len(group)} similar images):")
-        # Sort by modification time (keep oldest)
-        group.sort(key=lambda x: x.stat().st_mtime)
-        
+        # Sort by change time (keep oldest/first added to folder)
+        group.sort(key=lambda x: x.stat().st_ctime)
+
         keep_image = group[0]
         duplicate_images = group[1:]
         
@@ -189,8 +189,9 @@ def remove_duplicate_images(actor_folder_path, similarity_threshold=5, dry_run=F
         # Create duplicates folder
         duplicates_folder.mkdir(exist_ok=True)
         log(f"\nMoving {len(images_to_move)} duplicate images to {duplicates_folder}...")
-        
+
         moved_count = 0
+        pkl_moved_count = 0
         for img_file in images_to_move:
             try:
                 destination = duplicates_folder / img_file.name
@@ -201,14 +202,32 @@ def remove_duplicate_images(actor_folder_path, similarity_threshold=5, dry_run=F
                     suffix = img_file.suffix
                     destination = duplicates_folder / f"{stem}_{counter}{suffix}"
                     counter += 1
-                
+
                 shutil.move(str(img_file), str(destination))
                 log(f"  ✓ Moved: {img_file.name}")
                 moved_count += 1
+
+                # Check for corresponding .pkl file
+                pkl_file = img_file.with_suffix('.pkl')
+                if pkl_file.exists():
+                    pkl_destination = duplicates_folder / pkl_file.name
+                    # Handle name conflicts for pkl files
+                    pkl_counter = 1
+                    while pkl_destination.exists():
+                        pkl_destination = duplicates_folder / f"{pkl_file.stem}_{pkl_counter}.pkl"
+                        pkl_counter += 1
+
+                    shutil.move(str(pkl_file), str(pkl_destination))
+                    log(f"  ✓ Moved: {pkl_file.name}")
+                    pkl_moved_count += 1
+
             except Exception as e:
                 print_error(f"Failed to move {img_file.name}: {e}")
-        
-        print_summary(f"Successfully moved {moved_count}/{len(images_to_move)} duplicate images to duplicates folder")
+
+        summary_msg = f"Successfully moved {moved_count} duplicate images to duplicates folder"
+        if pkl_moved_count > 0:
+            summary_msg += f" (and {pkl_moved_count} corresponding .pkl files)"
+        print_summary(summary_msg)
     
     elif images_to_move and dry_run:
         print_dry_run_summary(len(images_to_move), "move duplicate images")

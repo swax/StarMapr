@@ -102,25 +102,25 @@ venv/bin/python3 run_integration_test.py
 
 ## Architecture
 
-StarMapr follows a hierarchical architecture with three execution levels:
+StarMapr follows a hierarchical architecture with four execution levels:
 
 ```
-run_integration_test.py             # Integration test root
-└── run_headshot_detection.py       # ★ PRIMARY ENTRY POINT
-    ├── run_actor_training.py   # ★ MID-LEVEL automation
-    |   |   # TESTING
-    │   ├── download_actor_images.py
-    │   ├── remove_dupe_training_images.py
-    │   ├── remove_bad_training_images.py
-    │   ├── remove_face_outliers.py -- testing
-    │   ├── compute_average_embeddings.py
-    |   |   # TRAINING
-    │   ├── download_actor_images.py
-    │   ├── remove_dupe_training_images.py
-    │   ├── remove_bad_training_images.py
-    │   └── eval_star_detection.py
-    |   # VIDEO PROCESSING
-    ├── download_video.py
+run_integration_test.py                 # Integration test root
+└── run_headshot_detection.py           # ★ PRIMARY ENTRY POINT
+    ├── run_actor_training.py       # ★ MID-LEVEL orchestration
+    │   ├── run_training_pipeline.py    # Training automation
+    │   │   ├── download_actor_images.py
+    │   │   ├── remove_dupe_training_images.py
+    │   │   ├── remove_bad_training_images.py
+    │   │   ├── remove_face_outliers.py
+    │   │   ├── cluster_and_keep_largest.py
+    │   │   └── compute_average_embeddings.py
+    │   └── run_testing_pipeline.py     # Testing automation
+    │       ├── download_actor_images.py
+    │       ├── remove_dupe_training_images.py
+    │       ├── remove_bad_training_images.py
+    │       └── eval_star_detection.py
+    ├── download_video.py               # VIDEO PROCESSING
     ├── extract_video_frames.py
     ├── extract_frame_faces.py
     ├── extract_video_headshots.py
@@ -137,12 +137,23 @@ venv/bin/python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID
 ```
 **TOP-LEVEL SCRIPT**: This is the main entry point that orchestrates the entire process. It automatically trains actors, downloads video, and extracts headshots.
 
-### Individual Actor Training
-For training a single actor without video processing:
+### Complete Actor Training (Training + Testing)
+For training and testing a single actor without video processing:
 ```bash
 venv/bin/python3 run_actor_training.py "Actor Name" "Show Name"
 ```
-**MID-LEVEL SCRIPT**: Called automatically by `run_headshot_detection.py`, but can be run standalone for actor training.
+**MID-LEVEL ORCHESTRATION**: Called automatically by `run_headshot_detection.py`, but can be run standalone. Orchestrates both training and testing pipelines.
+
+### Individual Pipeline Scripts
+For running only the training or testing phase independently:
+```bash
+# Training pipeline only (creates embeddings)
+venv/bin/python3 run_training_pipeline.py "Actor Name" "Show Name"
+
+# Testing pipeline only (validates model with detection tests)
+venv/bin/python3 run_testing_pipeline.py "Actor Name" "Show Name"
+```
+**PIPELINE SCRIPTS**: Run specific phases independently. Training must complete before testing can run.
 
 ### Manual Pipeline Control
 For debugging, testing, or manual step-by-step control:
@@ -208,8 +219,9 @@ venv/bin/python3 extract_video_thumbnail.py videos/youtube_VIDEO_ID/
 
 1. **Integration Test Layer**: `run_integration_test.py` provides end-to-end validation
 2. **Application Layer**: `run_headshot_detection.py` orchestrates the complete workflow
-3. **Training Layer**: `run_actor_training.py` handles actor model creation
-4. **Pipeline Layer**: Individual scripts handle specific data processing tasks
+3. **Orchestration Layer**: `run_actor_training.py` coordinates training and testing phases
+4. **Pipeline Layer**: `run_training_pipeline.py` and `run_testing_pipeline.py` handle specific phases
+5. **Component Layer**: Individual scripts handle specific data processing tasks
 
 ## Project Structure
 
@@ -222,7 +234,9 @@ StarMapr/
 ├── videos/                        # Downloaded videos and extracted frames
 │   └── [site]_[video_id]/         # Individual video folders with frames/
 ├── run_headshot_detection.py      # ★ PRIMARY ENTRY POINT - End-to-end workflow
-├── run_actor_training.py      # ★ MID-LEVEL - Actor training automation
+├── run_actor_training.py      # ★ MID-LEVEL - Actor training/testing orchestration
+├── run_training_pipeline.py       # Training pipeline automation
+├── run_testing_pipeline.py        # Testing pipeline automation
 ├── run_pipeline_steps.py          # ★ LOW-LEVEL - Manual pipeline control
 ├── run_integration_test.py         # Integration test script with mock data
 ├── download_actor_images.py   # Google Image Search downloader
@@ -234,6 +248,7 @@ StarMapr/
 ├── remove_dupe_training_images.py # Duplicate removal tool
 ├── remove_bad_training_images.py  # Image quality cleaner
 ├── remove_face_outliers.py        # Face consistency validator
+├── cluster_and_keep_largest.py    # Clustering-based outlier detection
 ├── compute_average_embeddings.py  # Embedding generator
 ├── eval_star_detection.py         # Face detection and matching
 ├── print_pkl.py                   # Pickle file inspection utility
@@ -252,15 +267,33 @@ StarMapr/
 - Downloads video and orchestrates video operations pipeline
 - Extracts headshots for all successfully trained actors
 
-#### Mid-Level Automation (`run_actor_training.py`)
-- Automated actor training pipeline for individual actors
+#### Mid-Level Orchestration (`run_actor_training.py`)
+- Orchestrates complete actor training and testing workflow
 - Called by `run_headshot_detection.py` but can run standalone
-- Iteratively processes images until quality thresholds are met
-- Handles both training and testing phases automatically
+- Calls `run_training_pipeline.py` and `run_testing_pipeline.py` in sequence
+- Handles model existence checks and folder cleanup
+- Copies successful models to models directory
+
+#### Pipeline Automation Scripts
+
+##### Training Pipeline (`run_training_pipeline.py`)
+- Automated training pipeline for individual actors
+- Iteratively downloads and processes training images
+- Removes duplicates, bad images, and outliers
+- Uses both similarity-based and clustering-based outlier detection
+- Generates average embeddings for the actor
+- Can be run independently of testing phase
+
+##### Testing Pipeline (`run_testing_pipeline.py`)
+- Automated testing pipeline for model validation
+- Iteratively downloads and processes testing images (group photos)
+- Runs face detection to validate model accuracy
+- Requires training embeddings to exist first
+- Can be run independently after training completes
 
 #### Low-Level Control (`run_pipeline_steps.py`)
 - Manual pipeline runner with interactive numbered menu
-- Manual step-by-step execution of training pipeline
+- Manual step-by-step execution of individual components
 - Provides numbered menu of all 15 pipeline steps
 - Built-in error checking and user-friendly prompts
 

@@ -174,7 +174,7 @@ def remove_bad_images(actor_folder_path, mode='training', dry_run=False):
         if dry_run:
             print_dry_run_summary(total_attempted_count, "move files to categorized folders")
         else:
-            print_summary(f"Successfully moved {total_moved_count}/{total_attempted_count} files to categorized folders")
+            print_summary(f"Successfully moved {total_moved_count} files to categorized folders")
     else:
         print_summary(f"No files need to be moved - all supported images meet the {face_description} requirement!")
 

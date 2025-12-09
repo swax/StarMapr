@@ -10,6 +10,7 @@ import os
 import pickle
 import argparse
 import unicodedata
+import re
 from pathlib import Path
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
@@ -34,16 +35,19 @@ def get_actor_folder_path(actor_name, mode='training'):
 def get_actor_folder_name(actor_name):
     """
     Get just the folder name part from actor name.
-    
+
     Args:
         actor_name (str): The actor name
-        
+
     Returns:
         str: Formatted folder name (e.g., 'bill_murray')
+              Only contains lowercase a-z and underscores
     """
     normalized = unicodedata.normalize('NFKD', actor_name)
     ascii_name = normalized.encode('ascii', 'ignore').decode('ascii')
-    return ascii_name.lower().replace(' ', '_')
+    sanitized = ascii_name.lower().replace(' ', '_')
+    # Keep only a-z and underscore characters
+    return re.sub(r'[^a-z_]', '', sanitized)
 
 
 def get_average_embedding_filename(actor_name):

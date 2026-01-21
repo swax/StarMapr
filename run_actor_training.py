@@ -21,7 +21,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from utils import (
     get_actor_folder_path, get_env_int,
-    get_average_embedding_path, print_error
+    get_average_embedding_path, print_error, get_venv_python
 )
 
 # Load environment variables
@@ -130,14 +130,14 @@ def main():
     # Step 1: Run training pipeline
     print_header("\n=== STEP 1: TRAINING PIPELINE ===")
     training_cmd = [
-        'venv/bin/python3', 'run_training_pipeline.py',
+        get_venv_python(), 'run_training_pipeline.py',
         args.actor_name, args.show_name
     ]
     if args.verbose:
         training_cmd.append('--verbose')
 
     try:
-        result = subprocess.run(training_cmd, check=True, capture_output=True, text=True)
+        result = subprocess.run(training_cmd, check=True, capture_output=True, text=True, encoding='utf-8', errors='replace')
         print(result.stdout)
     except subprocess.CalledProcessError as e:
         print_error(f"Training pipeline failed: {e}")
@@ -146,7 +146,7 @@ def main():
     # Step 2: Run testing pipeline
     print_header("\n=== STEP 2: TESTING PIPELINE ===")
     testing_cmd = [
-        'venv/bin/python3', 'run_testing_pipeline.py',
+        get_venv_python(), 'run_testing_pipeline.py',
         args.actor_name, args.show_name
     ]
     if args.verbose:
@@ -154,7 +154,7 @@ def main():
 
     testing_success = False
     try:
-        result = subprocess.run(testing_cmd, check=True, capture_output=True, text=True)
+        result = subprocess.run(testing_cmd, check=True, capture_output=True, text=True, encoding='utf-8', errors='replace')
         print(result.stdout)
         testing_success = True
     except subprocess.CalledProcessError as e:

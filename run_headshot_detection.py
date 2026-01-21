@@ -20,7 +20,7 @@ import time
 from pathlib import Path
 from dotenv import load_dotenv
 from utils import (
-    log, get_actor_folder_name, get_env_int, print_error
+    log, get_actor_folder_name, get_env_int, print_error, get_venv_python
 )
 
 # Load environment variables
@@ -78,7 +78,7 @@ def run_subprocess_command(command_list, description):
     try:
         print(f"Running: {description}")
         # Don't show real time output because there are unavoidable cuda errors that get piped to the console, filling the context
-        result = subprocess.run(command_list, check=True, capture_output=True, text=True)
+        result = subprocess.run(command_list, check=True, capture_output=True, text=True, encoding='utf-8', errors='replace')
         
         # Show output from successful commands
         if result.stdout:
@@ -138,7 +138,7 @@ def run_actor_training(actor_name, show_name):
     """
     print_header(f"\n=== TRAINING: {actor_name} ===")
     
-    command = ['venv/bin/python3', 'run_actor_training.py', actor_name, show_name]
+    command = [get_venv_python(), 'run_actor_training.py', actor_name, show_name]
     
     success, _, _ = run_subprocess_command(command, f"Training {actor_name}")
     
@@ -163,7 +163,7 @@ def download_video(video_url):
     print_header(f"\n=== DOWNLOADING VIDEO ===")
     print(f"URL: {video_url}")
     
-    command = ['venv/bin/python3', 'download_video.py', video_url]
+    command = [get_venv_python(), 'download_video.py', video_url]
     success, stdout, stderr = run_subprocess_command(command, "Downloading video")
     
     if success:
@@ -192,7 +192,7 @@ def extract_frames_from_video(video_folder, frame_count):
     """
     print(f"Extracting {frame_count} frames from video...")
     
-    command = ['venv/bin/python3', 'extract_video_frames.py', video_folder, str(frame_count)]
+    command = [get_venv_python(), 'extract_video_frames.py', video_folder, str(frame_count)]
     success, _, _ = run_subprocess_command(command, f"Extracting {frame_count} frames")
     
     return success
@@ -210,7 +210,7 @@ def extract_faces_from_frames(video_folder):
     """
     print("Extracting faces from frames...")
     
-    command = ['venv/bin/python3', 'extract_frame_faces.py', video_folder]
+    command = [get_venv_python(), 'extract_frame_faces.py', video_folder]
     success, _, _ = run_subprocess_command(command, "Extracting faces from frames")
     
     return success
@@ -229,7 +229,7 @@ def extract_actor_headshots(actor_name, video_folder):
     """
     print(f"Extracting headshots for {actor_name}...")
     
-    command = ['venv/bin/python3', 'extract_video_headshots.py', actor_name, video_folder]
+    command = [get_venv_python(), 'extract_video_headshots.py', actor_name, video_folder]
     success, _, _ = run_subprocess_command(command, f"Extracting {actor_name} headshots")
     
     if success:

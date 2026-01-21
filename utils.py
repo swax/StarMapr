@@ -7,6 +7,7 @@ and consistency.
 """
 
 import os
+import sys
 import pickle
 import argparse
 import unicodedata
@@ -14,6 +15,76 @@ import re
 from pathlib import Path
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
+
+
+# =============================================================================
+# Cross-Platform Compatibility
+# =============================================================================
+
+def is_windows():
+    """Check if running on Windows."""
+    return sys.platform == 'win32'
+
+
+def get_venv_python():
+    """
+    Get the path to the Python executable in the virtual environment.
+
+    Returns:
+        str: Path to venv Python (platform-specific)
+    """
+    if is_windows():
+        return r'venv\Scripts\python.exe'
+    return 'venv/bin/python3'
+
+
+def get_venv_executable(name):
+    """
+    Get the path to an executable in the virtual environment.
+
+    Args:
+        name (str): Name of the executable (e.g., 'yt-dlp')
+
+    Returns:
+        str: Path to the executable (platform-specific)
+    """
+    if is_windows():
+        return rf'venv\Scripts\{name}.exe'
+    return f'venv/bin/{name}'
+
+
+def enable_windows_ansi_colors():
+    """
+    Enable ANSI color codes in Windows console.
+    Must be called before using ANSI color codes on Windows.
+    """
+    if is_windows():
+        try:
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            # Enable ANSI escape sequences in Windows console
+            kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
+        except Exception:
+            pass  # Silently fail if we can't enable colors
+
+
+def enable_utf8_console():
+    """
+    Enable UTF-8 encoding for console output on Windows.
+    This allows emojis and other Unicode characters to display correctly.
+    """
+    if is_windows():
+        try:
+            # Reconfigure stdout and stderr to use UTF-8
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+        except Exception:
+            pass  # Silently fail if we can't reconfigure
+
+
+# Enable Windows compatibility features on module import
+enable_windows_ansi_colors()
+enable_utf8_console()
 
 
 def get_actor_folder_path(actor_name, mode='training'):

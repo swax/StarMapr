@@ -1,5 +1,6 @@
 # Environment variables - DO NOT COMMIT
 .env
+.claude
 
 # Python cache
 __pycache__/

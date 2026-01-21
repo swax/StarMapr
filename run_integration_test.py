@@ -13,7 +13,7 @@ import os
 import shutil
 import argparse
 from pathlib import Path
-from utils import get_average_embedding_path, print_error
+from utils import get_average_embedding_path, print_error, get_venv_python
 
 def print_header(text):
     """Print a header in yellow color."""
@@ -143,7 +143,7 @@ def run_integration_test(verbose=False):
     
     # Hardcoded mock values - these are magic strings that scripts will look for
     command = [
-        'venv/bin/python3', 
+        get_venv_python(),
         'run_headshot_detection.py',
         'MOCK_VIDEO',
         '--show', 'MOCK_SHOW',
@@ -158,7 +158,7 @@ def run_integration_test(verbose=False):
     
     try:
         # Run the headshot detection script with mock parameters
-        result = subprocess.run(command, check=True)
+        result = subprocess.run(command, check=True, encoding='utf-8', errors='replace')
         print_header("HEADSHOT DETECTION COMPLETED")
         
         # Verify file counts

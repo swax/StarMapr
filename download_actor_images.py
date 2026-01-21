@@ -78,27 +78,26 @@ def download_actor_images(actor_name, mode='training', show=None, page=1, api_ke
         api_key (str): Google Custom Search API key
         search_engine_id (str): Google Custom Search Engine ID
     """
-    
+
     # Get API credentials from environment or parameters
     if not api_key:
         api_key = os.getenv('GOOGLE_API_KEY')
     if not search_engine_id:
         search_engine_id = os.getenv('GOOGLE_SEARCH_ENGINE_ID')
-    
-    
+
     if not api_key or not search_engine_id:
         print_error("Missing API credentials. Please set your keys in the .env file:")
         log("GOOGLE_API_KEY=your_api_key_here")
         log("GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here")
         return False
-    
+
     # Set up Google Images Search
     try:
         gis = GoogleImagesSearch(api_key, search_engine_id)
     except Exception as e:
         print_error(f"Error initializing Google Images Search: {e}")
         return False
-    
+
     # Create actor directory based on mode
     download_path = get_actor_folder_path(actor_name, mode)
     ensure_folder_exists(download_path)

@@ -20,7 +20,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from utils import (
     get_actor_folder_path, get_image_files, get_env_int,
-    get_average_embedding_path, print_error, ensure_folder_exists
+    get_average_embedding_path, print_error, ensure_folder_exists, get_venv_python
 )
 
 # Load environment variables
@@ -72,7 +72,7 @@ def run_subprocess_command(command_list, description):
     try:
         print(f"Running: {description}")
         # Don't live stream the output because it shows unavoidable cuda errors that fills the context
-        result = subprocess.run(command_list, check=True, capture_output=True, text=True)
+        result = subprocess.run(command_list, check=True, capture_output=True, text=True, encoding='utf-8', errors='replace')
         print(result.stdout)
         return True
     except subprocess.CalledProcessError as e:
@@ -103,24 +103,24 @@ def run_testing_pipeline(actor_name, show_name, max_pages, min_headshots):
 
         # Step 1: Download testing images
         download_cmd = [
-            'venv/bin/python3', 'download_actor_images.py', actor_name,
+            get_venv_python(), 'download_actor_images.py', actor_name,
             '--testing', '--show', show_name, '--page', str(page)
         ]
         if not run_subprocess_command(download_cmd, f"Downloading testing images (page {page})"):
             fatal_error(f"Failed to download testing images for page {page}")
 
         # Step 2: Remove duplicates
-        dedup_cmd = ['venv/bin/python3', 'remove_dupe_training_images.py', '--testing', actor_name]
+        dedup_cmd = [get_venv_python(), 'remove_dupe_training_images.py', '--testing', actor_name]
         if not run_subprocess_command(dedup_cmd, "Removing duplicate images"):
             fatal_error("Failed to remove duplicate images")
 
         # Step 3: Remove bad face counts (not 4-10 faces)
-        bad_cmd = ['venv/bin/python3', 'remove_bad_training_images.py', '--testing', actor_name]
+        bad_cmd = [get_venv_python(), 'remove_bad_training_images.py', '--testing', actor_name]
         if not run_subprocess_command(bad_cmd, "Removing bad testing images"):
             fatal_error("Failed to remove bad testing images")
 
         # Step 4: Run face detection
-        detect_cmd = ['venv/bin/python3', 'eval_star_detection.py', actor_name]
+        detect_cmd = [get_venv_python(), 'eval_star_detection.py', actor_name]
         if not run_subprocess_command(detect_cmd, "Running face detection"):
             fatal_error("Failed to run face detection")
 

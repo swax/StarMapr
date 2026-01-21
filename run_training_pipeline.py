@@ -21,7 +21,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from utils import (
     get_actor_folder_path, get_image_files, get_env_int,
-    get_average_embedding_path, print_error, ensure_folder_exists
+    get_average_embedding_path, print_error, ensure_folder_exists, get_venv_python
 )
 
 # Load environment variables
@@ -165,7 +165,7 @@ def run_subprocess_command(command_list, description):
     try:
         print(f"Running: {description}")
         # Don't live stream the output because it shows unavoidable cuda errors that fills the context
-        result = subprocess.run(command_list, check=True, capture_output=True, text=True)
+        result = subprocess.run(command_list, check=True, capture_output=True, text=True, encoding='utf-8', errors='replace')
         print(result.stdout)
         return True
     except subprocess.CalledProcessError as e:
@@ -226,19 +226,19 @@ def run_training_pipeline(actor_name, show_name, max_pages, min_images):
 
         # Step 1: Download training images
         download_cmd = [
-            'venv/bin/python3', 'download_actor_images.py', actor_name,
+            get_venv_python(), 'download_actor_images.py', actor_name,
             '--training', '--show', show_name, '--page', str(page)
         ]
         if not run_subprocess_command(download_cmd, f"Downloading training images (page {page})"):
             fatal_error(f"Failed to download training images for page {page}")
 
         # Step 2: Remove duplicates
-        dedup_cmd = ['venv/bin/python3', 'remove_dupe_training_images.py', '--training', actor_name]
+        dedup_cmd = [get_venv_python(), 'remove_dupe_training_images.py', '--training', actor_name]
         if not run_subprocess_command(dedup_cmd, "Removing duplicate images"):
             fatal_error("Failed to remove duplicate images")
 
         # Step 3: Remove bad face counts (not exactly 1 face)
-        bad_cmd = ['venv/bin/python3', 'remove_bad_training_images.py', '--training', actor_name]
+        bad_cmd = [get_venv_python(), 'remove_bad_training_images.py', '--training', actor_name]
         if not run_subprocess_command(bad_cmd, "Removing bad training images"):
             fatal_error("Failed to remove bad training images")
 
@@ -251,7 +251,7 @@ def run_training_pipeline(actor_name, show_name, max_pages, min_images):
         # Step 4a: Try similarity-based outlier detection first (works better with fewer images)
         restore_outliers_to_training(actor_name, 'training')
 
-        outlier_cmd = ['venv/bin/python3', 'remove_face_outliers.py', '--training', actor_name]
+        outlier_cmd = [get_venv_python(), 'remove_face_outliers.py', '--training', actor_name]
         if not run_subprocess_command(outlier_cmd, "Removing face outliers (similarity based)"):
             fatal_error("Failed to remove face outliers")
 
@@ -264,7 +264,7 @@ def run_training_pipeline(actor_name, show_name, max_pages, min_images):
         # Step 4b: Try DBSCAN clustering, works better with lots of images where there might be an island of good ones that all match
         restore_outliers_to_training(actor_name, 'training')
 
-        cluster_cmd = ['venv/bin/python3', 'cluster_and_keep_largest.py', '--training', actor_name]
+        cluster_cmd = [get_venv_python(), 'cluster_and_keep_largest.py', '--training', actor_name]
         if not run_subprocess_command(cluster_cmd, "Removing face outliers (clustering based)"):
             fatal_error("Failed to cluster faces")
 
@@ -284,7 +284,7 @@ def run_training_pipeline(actor_name, show_name, max_pages, min_images):
     restore_best_group(actor_name, 'training')
 
     # Step 5: Generate embeddings
-    embedding_cmd = ['venv/bin/python3', 'compute_average_embeddings.py', actor_name]
+    embedding_cmd = [get_venv_python(), 'compute_average_embeddings.py', actor_name]
     embeddings_success = run_subprocess_command(embedding_cmd, "Computing average embeddings")
 
     final_count = len(get_image_files(training_folder))

@@ -8,8 +8,8 @@ Runs the complete testing pipeline for an actor:
 - Runs face detection to validate model accuracy
 
 Usage:
-    python3 run_testing_pipeline.py "Actor Name" "Show Name"
-    python3 run_testing_pipeline.py "Actor Name" "Show Name" --max-pages 5 --min-headshots 6
+    python3 04_run_testing_pipeline.py "Actor Name" "Show Name"
+    python3 04_run_testing_pipeline.py "Actor Name" "Show Name" --max-pages 5 --min-headshots 6
 """
 
 import os
@@ -103,24 +103,24 @@ def run_testing_pipeline(actor_name, show_name, max_pages, min_headshots):
 
         # Step 1: Download testing images
         download_cmd = [
-            get_venv_python(), 'download_actor_images.py', actor_name,
+            get_venv_python(), '10_download_actor_images.py', actor_name,
             '--testing', '--show', show_name, '--page', str(page)
         ]
         if not run_subprocess_command(download_cmd, f"Downloading testing images (page {page})"):
             fatal_error(f"Failed to download testing images for page {page}")
 
         # Step 2: Remove duplicates
-        dedup_cmd = [get_venv_python(), 'remove_dupe_training_images.py', '--testing', actor_name]
+        dedup_cmd = [get_venv_python(), '11_remove_dupe_training_images.py', '--testing', actor_name]
         if not run_subprocess_command(dedup_cmd, "Removing duplicate images"):
             fatal_error("Failed to remove duplicate images")
 
         # Step 3: Remove bad face counts (not 4-10 faces)
-        bad_cmd = [get_venv_python(), 'remove_bad_training_images.py', '--testing', actor_name]
+        bad_cmd = [get_venv_python(), '12_remove_bad_training_images.py', '--testing', actor_name]
         if not run_subprocess_command(bad_cmd, "Removing bad testing images"):
             fatal_error("Failed to remove bad testing images")
 
         # Step 4: Run face detection
-        detect_cmd = [get_venv_python(), 'eval_star_detection.py', actor_name]
+        detect_cmd = [get_venv_python(), '20_eval_star_detection.py', actor_name]
         if not run_subprocess_command(detect_cmd, "Running face detection"):
             fatal_error("Failed to run face detection")
 

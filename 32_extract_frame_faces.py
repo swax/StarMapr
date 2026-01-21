@@ -25,7 +25,7 @@ def main():
     # Validate frames directory
     if not frames_dir.exists():
         print_error(f"Frames directory not found: {frames_dir}")
-        print_error("Make sure you've extracted frames first using extract_video_frames.py")
+        print_error("Make sure you've extracted frames first using 31_extract_video_frames.py")
         sys.exit(1)
     
     # Get all image files

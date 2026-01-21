@@ -92,10 +92,10 @@ MIN_FACE_SIZE=50
 6. Test the installation:
 ```bash
 # Extract mock data
-unzip mocks.zip
+unzip 00_mocks.zip
 
 # Run integration test
-venv/bin/python3 run_integration_test.py
+venv/bin/python3 00_run_integration_test.py # On Windows: venv\Scripts\python 00_run_integration_test.py 
 ```
 
 **Note**: All scripts should be run using `venv/bin/python3` instead of `python3` to use the virtual environment. External applications should call scripts using the full path: `/path/to/StarMapr/venv/bin/python3 script.py`
@@ -105,26 +105,26 @@ venv/bin/python3 run_integration_test.py
 StarMapr follows a hierarchical architecture with four execution levels:
 
 ```
-run_integration_test.py                 # Integration test root
-└── run_headshot_detection.py           # ★ PRIMARY ENTRY POINT
-    ├── run_actor_training.py       # ★ MID-LEVEL orchestration
-    │   ├── run_training_pipeline.py    # Training automation
-    │   │   ├── download_actor_images.py
-    │   │   ├── remove_dupe_training_images.py
-    │   │   ├── remove_bad_training_images.py
-    │   │   ├── remove_face_outliers.py
-    │   │   ├── cluster_and_keep_largest.py
-    │   │   └── compute_average_embeddings.py
-    │   └── run_testing_pipeline.py     # Testing automation
-    │       ├── download_actor_images.py
-    │       ├── remove_dupe_training_images.py
-    │       ├── remove_bad_training_images.py
-    │       └── eval_star_detection.py
-    ├── download_video.py               # VIDEO PROCESSING
-    ├── extract_video_frames.py
-    ├── extract_frame_faces.py
-    ├── extract_video_headshots.py
-    └── extract_video_thumbnail.py
+00_run_integration_test.py                 # Integration test root
+└── 01_run_headshot_detection.py           # ★ PRIMARY ENTRY POINT
+    ├── 02_run_actor_training.py       # ★ MID-LEVEL orchestration
+    │   ├── 03_run_training_pipeline.py    # Training automation
+    │   │   ├── 10_download_actor_images.py
+    │   │   ├── 11_remove_dupe_training_images.py
+    │   │   ├── 12_remove_bad_training_images.py
+    │   │   ├── 13_remove_face_outliers.py
+    │   │   ├── 14_cluster_and_keep_largest.py
+    │   │   └── 15_compute_average_embeddings.py
+    │   └── 04_run_testing_pipeline.py     # Testing automation
+    │       ├── 10_download_actor_images.py
+    │       ├── 11_remove_dupe_training_images.py
+    │       ├── 12_remove_bad_training_images.py
+    │       └── 20_eval_star_detection.py
+    ├── 30_download_video.py               # VIDEO PROCESSING
+    ├── 31_extract_video_frames.py
+    ├── 32_extract_frame_faces.py
+    ├── 33_extract_video_headshots.py
+    └── 34_extract_video_thumbnail.py
 ```
 
 ## Quick Start
@@ -132,33 +132,33 @@ run_integration_test.py                 # Integration test root
 ### Primary Entry Point (Recommended)
 Complete end-to-end workflow from video URL to extracted headshots:
 ```bash
-venv/bin/python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" "Bill Murray" "Tina Fey"
-venv/bin/python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --actors "Bill Murray,Tina Fey,Amy Poehler"
+venv/bin/python3 01_run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" "Bill Murray" "Tina Fey"
+venv/bin/python3 01_run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --actors "Bill Murray,Tina Fey,Amy Poehler"
 ```
 **TOP-LEVEL SCRIPT**: This is the main entry point that orchestrates the entire process. It automatically trains actors, downloads video, and extracts headshots.
 
 ### Complete Actor Training (Training + Testing)
 For training and testing a single actor without video processing:
 ```bash
-venv/bin/python3 run_actor_training.py "Actor Name" "Show Name"
+venv/bin/python3 02_run_actor_training.py "Actor Name" "Show Name"
 ```
-**MID-LEVEL ORCHESTRATION**: Called automatically by `run_headshot_detection.py`, but can be run standalone. Orchestrates both training and testing pipelines.
+**MID-LEVEL ORCHESTRATION**: Called automatically by `01_run_headshot_detection.py`, but can be run standalone. Orchestrates both training and testing pipelines.
 
 ### Individual Pipeline Scripts
 For running only the training or testing phase independently:
 ```bash
 # Training pipeline only (creates embeddings)
-venv/bin/python3 run_training_pipeline.py "Actor Name" "Show Name"
+venv/bin/python3 03_run_training_pipeline.py "Actor Name" "Show Name"
 
 # Testing pipeline only (validates model with detection tests)
-venv/bin/python3 run_testing_pipeline.py "Actor Name" "Show Name"
+venv/bin/python3 04_run_testing_pipeline.py "Actor Name" "Show Name"
 ```
 **PIPELINE SCRIPTS**: Run specific phases independently. Training must complete before testing can run.
 
 ### Manual Pipeline Control
 For debugging, testing, or manual step-by-step control:
 ```bash
-venv/bin/python3 run_pipeline_steps.py
+venv/bin/python3 05_run_pipeline_steps.py
 ```
 **LOW-LEVEL SCRIPT**: Interactive menu for manual execution of individual pipeline components.
 
@@ -167,116 +167,116 @@ venv/bin/python3 run_pipeline_steps.py
 #### Training Pipeline
 ```bash
 # 1. Download training images (solo portraits)
-venv/bin/python3 download_actor_images.py "Bill Murray" --training --show "SNL"
+venv/bin/python3 10_download_actor_images.py "Bill Murray" --training --show "SNL"
 
 # 2. Remove duplicate images
-venv/bin/python3 remove_dupe_training_images.py --training "Bill Murray"
+venv/bin/python3 11_remove_dupe_training_images.py --training "Bill Murray"
 
 # 3. Remove bad images (keep exactly 1 face)
-venv/bin/python3 remove_bad_training_images.py --training "Bill Murray"
+venv/bin/python3 12_remove_bad_training_images.py --training "Bill Murray"
 
 # 4. Remove face outliers (detect inconsistent faces)
-venv/bin/python3 remove_face_outliers.py --training "Bill Murray"
+venv/bin/python3 13_remove_face_outliers.py --training "Bill Murray"
 
 # 5. Generate reference embeddings
-venv/bin/python3 compute_average_embeddings.py "Bill Murray"
+venv/bin/python3 15_compute_average_embeddings.py "Bill Murray"
 ```
 
 #### Testing Pipeline
 ```bash
 # 6. Download testing images (group photos)
-venv/bin/python3 download_actor_images.py "Bill Murray" --testing --show "SNL"
+venv/bin/python3 10_download_actor_images.py "Bill Murray" --testing --show "SNL"
 
 # 7. Remove duplicate images
-venv/bin/python3 remove_dupe_training_images.py --testing "Bill Murray"
+venv/bin/python3 11_remove_dupe_training_images.py --testing "Bill Murray"
 
 # 8. Remove bad images (keep 3-10 faces for group testing)
-venv/bin/python3 remove_bad_training_images.py --testing "Bill Murray"
+venv/bin/python3 12_remove_bad_training_images.py --testing "Bill Murray"
 
 # 9. Detect faces in test images
-venv/bin/python3 eval_star_detection.py "Bill Murray"
+venv/bin/python3 20_eval_star_detection.py "Bill Murray"
 ```
 
 #### Operations Pipeline
 ```bash
 # 1. Download video from supported platforms
-venv/bin/python3 download_video.py "https://www.youtube.com/watch?v=-_X904_TZnc"
+venv/bin/python3 30_download_video.py "https://www.youtube.com/watch?v=-_X904_TZnc"
 
 # 2. Extract representative frames using binary search pattern (script finds video automatically)
-venv/bin/python3 extract_video_frames.py videos/youtube_VIDEO_ID/ 50
+venv/bin/python3 31_extract_video_frames.py videos/youtube_VIDEO_ID/ 50
 
 # 3. Extract face data from all frames (script uses frames/ subfolder automatically)
-venv/bin/python3 extract_frame_faces.py videos/youtube_VIDEO_ID/
+venv/bin/python3 32_extract_frame_faces.py videos/youtube_VIDEO_ID/
 
 # 4. Extract actor headshots from video frames
-venv/bin/python3 extract_video_headshots.py "Bill Murray" videos/youtube_VIDEO_ID/
+venv/bin/python3 33_extract_video_headshots.py "Bill Murray" videos/youtube_VIDEO_ID/
 
 # 5. Create video thumbnails (selects frames with most actors)
-venv/bin/python3 extract_video_thumbnail.py videos/youtube_VIDEO_ID/
+venv/bin/python3 34_extract_video_thumbnail.py videos/youtube_VIDEO_ID/
 ```
 
 ### Architecture Flow
 
-1. **Integration Test Layer**: `run_integration_test.py` provides end-to-end validation
-2. **Application Layer**: `run_headshot_detection.py` orchestrates the complete workflow
-3. **Orchestration Layer**: `run_actor_training.py` coordinates training and testing phases
-4. **Pipeline Layer**: `run_training_pipeline.py` and `run_testing_pipeline.py` handle specific phases
+1. **Integration Test Layer**: `00_run_integration_test.py` provides end-to-end validation
+2. **Application Layer**: `01_run_headshot_detection.py` orchestrates the complete workflow
+3. **Orchestration Layer**: `02_run_actor_training.py` coordinates training and testing phases
+4. **Pipeline Layer**: `03_run_training_pipeline.py` and `04_run_testing_pipeline.py` handle specific phases
 5. **Component Layer**: Individual scripts handle specific data processing tasks
 
 ## Project Structure
 
 ```
 StarMapr/
-├── training/                      # Actor training images
-│   └── [actor_name]/          # Individual actor folders
-├── testing/                       # Test images to process
-│   └── detected_headshots/        # Extracted face crops
-├── videos/                        # Downloaded videos and extracted frames
-│   └── [site]_[video_id]/         # Individual video folders with frames/
-├── run_headshot_detection.py      # ★ PRIMARY ENTRY POINT - End-to-end workflow
-├── run_actor_training.py      # ★ MID-LEVEL - Actor training/testing orchestration
-├── run_training_pipeline.py       # Training pipeline automation
-├── run_testing_pipeline.py        # Testing pipeline automation
-├── run_pipeline_steps.py          # ★ LOW-LEVEL - Manual pipeline control
-├── run_integration_test.py         # Integration test script with mock data
-├── download_actor_images.py   # Google Image Search downloader
-├── download_video.py              # Video downloader for multiple platforms
-├── extract_video_frames.py        # Video frame extraction using binary search
-├── extract_frame_faces.py         # Face detection in video frames
-├── extract_video_headshots.py     # Actor headshot extraction from video frames
-├── extract_video_thumbnail.py     # Video thumbnail creation from best frames
-├── remove_dupe_training_images.py # Duplicate removal tool
-├── remove_bad_training_images.py  # Image quality cleaner
-├── remove_face_outliers.py        # Face consistency validator
-├── cluster_and_keep_largest.py    # Clustering-based outlier detection
-├── compute_average_embeddings.py  # Embedding generator
-├── eval_star_detection.py         # Face detection and matching
-├── print_pkl.py                   # Pickle file inspection utility
-├── utils.py                       # Common utility functions and helpers
-└── utils_deepface.py              # DeepFace-specific utilities with caching
+├── training/                         # Actor training images
+│   └── [actor_name]/                 # Individual actor folders
+├── testing/                          # Test images to process
+│   └── detected_headshots/           # Extracted face crops
+├── videos/                           # Downloaded videos and extracted frames
+│   └── [site]_[video_id]/            # Individual video folders with frames/
+├── 00_run_integration_test.py        # Integration test script with mock data
+├── 01_run_headshot_detection.py      # ★ PRIMARY ENTRY POINT - End-to-end workflow
+├── 02_run_actor_training.py          # ★ MID-LEVEL - Actor training/testing orchestration
+├── 03_run_training_pipeline.py       # Training pipeline automation
+├── 04_run_testing_pipeline.py        # Testing pipeline automation
+├── 05_run_pipeline_steps.py          # ★ LOW-LEVEL - Manual pipeline control
+├── 10_download_actor_images.py       # Google Image Search downloader
+├── 11_remove_dupe_training_images.py # Duplicate removal tool
+├── 12_remove_bad_training_images.py  # Image quality cleaner
+├── 13_remove_face_outliers.py        # Face consistency validator
+├── 14_cluster_and_keep_largest.py    # Clustering-based outlier detection
+├── 15_compute_average_embeddings.py  # Embedding generator
+├── 20_eval_star_detection.py         # Face detection and matching
+├── 30_download_video.py              # Video downloader for multiple platforms
+├── 31_extract_video_frames.py        # Video frame extraction using binary search
+├── 32_extract_frame_faces.py         # Face detection in video frames
+├── 33_extract_video_headshots.py     # Actor headshot extraction from video frames
+├── 34_extract_video_thumbnail.py     # Video thumbnail creation from best frames
+├── 92_print_pkl.py                   # Pickle file inspection utility
+├── utils.py                          # Common utility functions and helpers
+└── utils_deepface.py                 # DeepFace-specific utilities with caching
 ```
 
 ## Core Components
 
 ### Script Hierarchy
 
-#### Top-Level Orchestration (`run_headshot_detection.py`)
+#### Top-Level Orchestration (`01_run_headshot_detection.py`)
 - **PRIMARY ENTRY POINT** for end-to-end video processing
 - Takes video URL and list of actors as input
-- Automatically calls `run_actor_training.py` for each actor
+- Automatically calls `02_run_actor_training.py` for each actor
 - Downloads video and orchestrates video operations pipeline
 - Extracts headshots for all successfully trained actors
 
-#### Mid-Level Orchestration (`run_actor_training.py`)
+#### Mid-Level Orchestration (`02_run_actor_training.py`)
 - Orchestrates complete actor training and testing workflow
-- Called by `run_headshot_detection.py` but can run standalone
-- Calls `run_training_pipeline.py` and `run_testing_pipeline.py` in sequence
+- Called by `01_run_headshot_detection.py` but can run standalone
+- Calls `03_run_training_pipeline.py` and `04_run_testing_pipeline.py` in sequence
 - Handles model existence checks and folder cleanup
 - Copies successful models to models directory
 
 #### Pipeline Automation Scripts
 
-##### Training Pipeline (`run_training_pipeline.py`)
+##### Training Pipeline (`03_run_training_pipeline.py`)
 - Automated training pipeline for individual actors
 - Iteratively downloads and processes training images
 - Removes duplicates, bad images, and outliers
@@ -284,50 +284,50 @@ StarMapr/
 - Generates average embeddings for the actor
 - Can be run independently of testing phase
 
-##### Testing Pipeline (`run_testing_pipeline.py`)
+##### Testing Pipeline (`04_run_testing_pipeline.py`)
 - Automated testing pipeline for model validation
 - Iteratively downloads and processes testing images (group photos)
 - Runs face detection to validate model accuracy
 - Requires training embeddings to exist first
 - Can be run independently after training completes
 
-#### Low-Level Control (`run_pipeline_steps.py`)
+#### Low-Level Control (`05_run_pipeline_steps.py`)
 - Manual pipeline runner with interactive numbered menu
 - Manual step-by-step execution of individual components
 - Provides numbered menu of all 15 pipeline steps
 - Built-in error checking and user-friendly prompts
 
-#### Integration Testing (`run_integration_test.py`)
+#### Integration Testing (`00_run_integration_test.py`)
 - Complete end-to-end integration test using mock data
 - Tests entire pipeline with hardcoded mock actor and video
 - Validates file counts and processing results
 - Requires extracting `mocks.zip` to base directory first
 
-### Image Collection (`download_actor_images.py`)
+### Image Collection (`10_download_actor_images.py`)
 - Downloads actor photos from Google Image Search
 - 20 images per page, each page uses different keywords
 - Training: different keywords for more face variety
 - Testing: keywords targeting group photos
 - Automatic folder organization
 
-### Data Cleaning (`remove_dupe_training_images.py`, `remove_bad_training_images.py`, `remove_face_outliers.py`)
+### Data Cleaning (`11_remove_dupe_training_images.py`, `12_remove_bad_training_images.py`, `13_remove_face_outliers.py`)
 - Perceptual hashing for duplicate detection
 - Face detection validation
 - Face consistency validation using embedding similarity
 - Resolution and quality filtering
 
-### Embedding Generation (`compute_average_embeddings.py`)
+### Embedding Generation (`15_compute_average_embeddings.py`)
 - Uses DeepFace with ArcFace model
 - Computes average embeddings from multiple images
 - Saves reference embeddings as pickle files
 
-### Face Detection (`eval_star_detection.py`)
+### Face Detection (`20_eval_star_detection.py`)
 - Loads precomputed reference embeddings
 - Processes test images for matching faces
 - Extracts and saves face crops with similarity scores
 - Configurable similarity thresholds
 
-### Video Processing (`download_video.py`, `extract_video_frames.py`, `extract_frame_faces.py`, `extract_video_headshots.py`, `extract_video_thumbnail.py`)
+### Video Processing (`30_download_video.py`, `31_extract_video_frames.py`, `32_extract_frame_faces.py`, `33_extract_video_headshots.py`, `34_extract_video_thumbnail.py`)
 - Downloads videos from YouTube, Vimeo, TikTok, and other platforms using yt-dlp
 - Extracts representative frames using binary search pattern for optimal coverage
 - Detects faces in extracted frames with bounding boxes and embeddings
@@ -379,9 +379,9 @@ If the correct headshots are not being found for a video, follow these steps to 
 1. **Check Training Data Quality**
    - Ensure outliers have been pruned effectively from training images
    - Verify that remaining training images are actually of the target actor
-   - Use `remove_face_outliers.py` with adjusted threshold if needed:
+   - Use `13_remove_face_outliers.py` with adjusted threshold if needed:
      ```bash
-     venv/bin/python3 remove_face_outliers.py --training "Actor Name" --threshold 0.05
+     venv/bin/python3 13_remove_face_outliers.py --training "Actor Name" --threshold 0.05
      ```
 
 2. **Adjust Outlier Detection Threshold**
@@ -392,26 +392,26 @@ If the correct headshots are not being found for a video, follow these steps to 
 3. **Regenerate Average Embeddings**
    - After cleaning training data, regenerate the reference embeddings:
      ```bash
-     venv/bin/python3 compute_average_embeddings.py "Actor Name"
+     venv/bin/python3 15_compute_average_embeddings.py "Actor Name"
      ```
 
 4. **Test Detection Accuracy**
    - Run testing pipeline with new average embeddings to verify improved accuracy:
      ```bash
-     venv/bin/python3 eval_star_detection.py "Actor Name"
+     venv/bin/python3 20_eval_star_detection.py "Actor Name"
      ```
 
 5. **Retry Video Headshot Extraction**
    - Extract headshots from video using the improved reference embeddings:
      ```bash
-     venv/bin/python3 extract_video_headshots.py "Actor Name" videos/youtube_VIDEO_ID/
+     venv/bin/python3 33_extract_video_headshots.py "Actor Name" videos/youtube_VIDEO_ID/
      ```
 
 6. **Increase Training/Testing Data**
    - If insufficient data was found, download additional pages:
      ```bash
-     venv/bin/python3 download_actor_images.py "Actor Name" --training --show "Show Name" --page 2
-     venv/bin/python3 download_actor_images.py "Actor Name" --testing --show "Show Name" --page 3
+     venv/bin/python3 10_download_actor_images.py "Actor Name" --training --show "Show Name" --page 2
+     venv/bin/python3 10_download_actor_images.py "Actor Name" --testing --show "Show Name" --page 3
      ```
    - Each page downloads 20 more images using different keywords for variety
 

@@ -7,8 +7,8 @@ training for each, then downloads the video and extracts headshots for all succe
 trained actors. Uses adaptive frame extraction if no headshots are initially found.
 
 Usage:
-    python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" "Bill Murray" "Tina Fey" "Amy Poehler"
-    python3 run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --actors "Bill Murray,Tina Fey,Amy Poehler"
+    python3 01_run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" "Bill Murray" "Tina Fey" "Amy Poehler"
+    python3 01_run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --actors "Bill Murray,Tina Fey,Amy Poehler"
 """
 
 import os
@@ -138,7 +138,7 @@ def run_actor_training(actor_name, show_name):
     """
     print_header(f"\n=== TRAINING: {actor_name} ===")
     
-    command = [get_venv_python(), 'run_actor_training.py', actor_name, show_name]
+    command = [get_venv_python(), '02_run_actor_training.py', actor_name, show_name]
     
     success, _, _ = run_subprocess_command(command, f"Training {actor_name}")
     
@@ -163,7 +163,7 @@ def download_video(video_url):
     print_header(f"\n=== DOWNLOADING VIDEO ===")
     print(f"URL: {video_url}")
     
-    command = [get_venv_python(), 'download_video.py', video_url]
+    command = [get_venv_python(), '30_download_video.py', video_url]
     success, stdout, stderr = run_subprocess_command(command, "Downloading video")
     
     if success:
@@ -192,7 +192,7 @@ def extract_frames_from_video(video_folder, frame_count):
     """
     print(f"Extracting {frame_count} frames from video...")
     
-    command = [get_venv_python(), 'extract_video_frames.py', video_folder, str(frame_count)]
+    command = [get_venv_python(), '31_extract_video_frames.py', video_folder, str(frame_count)]
     success, _, _ = run_subprocess_command(command, f"Extracting {frame_count} frames")
     
     return success
@@ -210,7 +210,7 @@ def extract_faces_from_frames(video_folder):
     """
     print("Extracting faces from frames...")
     
-    command = [get_venv_python(), 'extract_frame_faces.py', video_folder]
+    command = [get_venv_python(), '32_extract_frame_faces.py', video_folder]
     success, _, _ = run_subprocess_command(command, "Extracting faces from frames")
     
     return success
@@ -229,7 +229,7 @@ def extract_actor_headshots(actor_name, video_folder):
     """
     print(f"Extracting headshots for {actor_name}...")
     
-    command = [get_venv_python(), 'extract_video_headshots.py', actor_name, video_folder]
+    command = [get_venv_python(), '33_extract_video_headshots.py', actor_name, video_folder]
     success, _, _ = run_subprocess_command(command, f"Extracting {actor_name} headshots")
     
     if success:

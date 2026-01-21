@@ -3,12 +3,12 @@
 StarMapr Comprehensive Actor Training Script
 
 Orchestrates the complete training and testing pipeline for an actor by calling:
-1. run_training_pipeline.py - Training phase
-2. run_testing_pipeline.py - Testing phase
+1. 03_run_training_pipeline.py - Training phase
+2. 04_run_testing_pipeline.py - Testing phase
 
 Usage:
-    python3 run_actor_training.py "Actor Name" "Show Name"
-    python3 run_actor_training.py "Actor Name" "Show Name" --retrain
+    python3 02_run_actor_training.py "Actor Name" "Show Name"
+    python3 02_run_actor_training.py "Actor Name" "Show Name" --retrain
 """
 
 import os
@@ -130,7 +130,7 @@ def main():
     # Step 1: Run training pipeline
     print_header("\n=== STEP 1: TRAINING PIPELINE ===")
     training_cmd = [
-        get_venv_python(), 'run_training_pipeline.py',
+        get_venv_python(), '03_run_training_pipeline.py',
         args.actor_name, args.show_name
     ]
     if args.verbose:
@@ -146,7 +146,7 @@ def main():
     # Step 2: Run testing pipeline
     print_header("\n=== STEP 2: TESTING PIPELINE ===")
     testing_cmd = [
-        get_venv_python(), 'run_testing_pipeline.py',
+        get_venv_python(), '04_run_testing_pipeline.py',
         args.actor_name, args.show_name
     ]
     if args.verbose:

@@ -111,7 +111,7 @@ def extract_face_crop(frames_dir, frame_file, face_data, output_path):
         x_start, y_start, x_end, y_end = crop_coords['x_start'], crop_coords['y_start'], crop_coords['x_end'], crop_coords['y_end']
         
         if crop_coords['clipped']:
-            print_error(f"Face crop for {frame_file} is clipped, skipping extraction, this should have been prevented in extract_frame_faces.py")
+            print_error(f"Face crop for {frame_file} is clipped, skipping extraction, this should have been prevented in 32_extract_frame_faces.py")
             return False
 
         face_crop = img[y_start:y_end, x_start:x_end]

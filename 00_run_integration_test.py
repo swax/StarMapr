@@ -144,7 +144,7 @@ def run_integration_test(verbose=False):
     # Hardcoded mock values - these are magic strings that scripts will look for
     command = [
         get_venv_python(),
-        'run_headshot_detection.py',
+        '01_run_headshot_detection.py',
         'MOCK_VIDEO',
         '--show', 'MOCK_SHOW',
         '--actors', 'MOCK_ACTOR'

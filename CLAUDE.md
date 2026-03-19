@@ -128,17 +128,17 @@ The system consists of 19 components organized in three execution tiers:
 
 ### Primary Entry Point
 ```bash
-venv/bin/python3 01_run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --actors "Bill Murray, Tina Fey"
+uv run python 01_run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --actors "Bill Murray, Tina Fey"
 ```
 
 ### Mid-Level Training
 ```bash
-venv/bin/python3 02_run_actor_training.py "Actor Name" "Show Name"
+uv run python 02_run_actor_training.py "Actor Name" "Show Name"
 ```
 
 ### Manual Control
 ```bash
-venv/bin/python3 05_run_pipeline_steps.py
+uv run python 05_run_pipeline_steps.py
 ```
 
 ### Integration Testing
@@ -147,54 +147,53 @@ venv/bin/python3 05_run_pipeline_steps.py
 unzip mocks.zip
 
 # Run integration test
-venv/bin/python3 00_run_integration_test.py
+uv run python 00_run_integration_test.py
 ```
 
 ### Manual Commands
 ```bash
 # Training pipeline (steps 1-5)
-venv/bin/python3 10_download_actor_images.py "Name" --training --show "Show" --page 1
-venv/bin/python3 11_remove_dupe_training_images.py --training "Name"
-venv/bin/python3 12_remove_bad_training_images.py --training "Name"
-venv/bin/python3 13_remove_face_outliers.py --training "Name"
-venv/bin/python3 15_compute_average_embeddings.py "Name"
+uv run python 10_download_actor_images.py "Name" --training --show "Show" --page 1
+uv run python 11_remove_dupe_training_images.py --training "Name"
+uv run python 12_remove_bad_training_images.py --training "Name"
+uv run python 13_remove_face_outliers.py --training "Name"
+uv run python 15_compute_average_embeddings.py "Name"
 
 # Testing pipeline (steps 6-10)
-venv/bin/python3 10_download_actor_images.py "Name" --testing --show "Show"
-venv/bin/python3 11_remove_dupe_training_images.py --testing "Name"
-venv/bin/python3 12_remove_bad_training_images.py --testing "Name"
-venv/bin/python3 20_eval_star_detection.py "Name"
+uv run python 10_download_actor_images.py "Name" --testing --show "Show"
+uv run python 11_remove_dupe_training_images.py --testing "Name"
+uv run python 12_remove_bad_training_images.py --testing "Name"
+uv run python 20_eval_star_detection.py "Name"
 
 # Operations pipeline (steps 11-15)
-venv/bin/python3 30_download_video.py "https://youtube.com/watch?v=VIDEO_ID"
-venv/bin/python3 31_extract_video_frames.py 05_videos/youtube_ABC123/
-venv/bin/python3 32_extract_frame_faces.py 05_videos/youtube_ABC123/
-venv/bin/python3 33_extract_video_headshots.py "Name" 05_videos/youtube_ABC123/
-venv/bin/python3 34_extract_video_thumbnail.py 05_videos/youtube_ABC123/
+uv run python 30_download_video.py "https://youtube.com/watch?v=VIDEO_ID"
+uv run python 31_extract_video_frames.py 05_videos/youtube_ABC123/
+uv run python 32_extract_frame_faces.py 05_videos/youtube_ABC123/
+uv run python 33_extract_video_headshots.py "Name" 05_videos/youtube_ABC123/
+uv run python 34_extract_video_thumbnail.py 05_videos/youtube_ABC123/
 ```
 
 ## Dependencies
 
-Create virtual environment:
+Install uv:
 ```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 Install dependencies:
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
-Update dependencies (uses pip-tools):
+Update dependencies:
 ```bash
-pip-compile --upgrade requirements.in
-pip install -r requirements.txt
+uv lock --upgrade
+uv sync
 ```
 
-Core dependencies are listed in `requirements.in`, with exact versions locked in `requirements.txt`.
+Core dependencies are listed in `pyproject.toml`, with exact versions locked in `uv.lock`.
 
-**Important**: All scripts must be run with `venv/bin/python3` instead of `python3`. External applications should use the full path: `/path/to/StarMapr/venv/bin/python3 script.py`
+**Important**: All scripts must be run with `uv run python` instead of `python3`. External applications should use the full path: `cd /path/to/StarMapr && uv run python script.py`
 
 ## Pipeline Stages
 

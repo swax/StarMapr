@@ -35,21 +35,20 @@ git lfs install
 git lfs pull
 ```
 
-3. Create and activate virtual environment:
+3. Install uv:
 ```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 4. Install dependencies:
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 To update dependencies to their latest versions:
 ```bash
-pip-compile --upgrade requirements.in
-pip install -r requirements.txt
+uv lock --upgrade
+uv sync
 ```
 
 5. Set up configuration:
@@ -95,10 +94,10 @@ MIN_FACE_SIZE=50
 unzip 00_mocks.zip
 
 # Run integration test
-venv/bin/python3 00_run_integration_test.py # On Windows: venv\Scripts\python 00_run_integration_test.py 
+uv run python 00_run_integration_test.py # On Windows: uv run python 00_run_integration_test.py 
 ```
 
-**Note**: All scripts should be run using `venv/bin/python3` instead of `python3` to use the virtual environment. External applications should call scripts using the full path: `/path/to/StarMapr/venv/bin/python3 script.py`
+**Note**: All scripts should be run using `uv run python` instead of `python3`. External applications should run: `cd /path/to/StarMapr && uv run python script.py`
 
 ## Architecture
 
@@ -132,15 +131,15 @@ StarMapr follows a hierarchical architecture with four execution levels:
 ### Primary Entry Point (Recommended)
 Complete end-to-end workflow from video URL to extracted headshots:
 ```bash
-venv/bin/python3 01_run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" "Bill Murray" "Tina Fey"
-venv/bin/python3 01_run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --actors "Bill Murray,Tina Fey,Amy Poehler"
+uv run python 01_run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" "Bill Murray" "Tina Fey"
+uv run python 01_run_headshot_detection.py "https://youtube.com/watch?v=VIDEO_ID" --show "SNL" --actors "Bill Murray,Tina Fey,Amy Poehler"
 ```
 **TOP-LEVEL SCRIPT**: This is the main entry point that orchestrates the entire process. It automatically trains actors, downloads video, and extracts headshots.
 
 ### Complete Actor Training (Training + Testing)
 For training and testing a single actor without video processing:
 ```bash
-venv/bin/python3 02_run_actor_training.py "Actor Name" "Show Name"
+uv run python 02_run_actor_training.py "Actor Name" "Show Name"
 ```
 **MID-LEVEL ORCHESTRATION**: Called automatically by `01_run_headshot_detection.py`, but can be run standalone. Orchestrates both training and testing pipelines.
 
@@ -148,17 +147,17 @@ venv/bin/python3 02_run_actor_training.py "Actor Name" "Show Name"
 For running only the training or testing phase independently:
 ```bash
 # Training pipeline only (creates embeddings)
-venv/bin/python3 03_run_training_pipeline.py "Actor Name" "Show Name"
+uv run python 03_run_training_pipeline.py "Actor Name" "Show Name"
 
 # Testing pipeline only (validates model with detection tests)
-venv/bin/python3 04_run_testing_pipeline.py "Actor Name" "Show Name"
+uv run python 04_run_testing_pipeline.py "Actor Name" "Show Name"
 ```
 **PIPELINE SCRIPTS**: Run specific phases independently. Training must complete before testing can run.
 
 ### Manual Pipeline Control
 For debugging, testing, or manual step-by-step control:
 ```bash
-venv/bin/python3 05_run_pipeline_steps.py
+uv run python 05_run_pipeline_steps.py
 ```
 **LOW-LEVEL SCRIPT**: Interactive menu for manual execution of individual pipeline components.
 
@@ -167,52 +166,52 @@ venv/bin/python3 05_run_pipeline_steps.py
 #### Training Pipeline
 ```bash
 # 1. Download training images (solo portraits)
-venv/bin/python3 10_download_actor_images.py "Bill Murray" --training --show "SNL"
+uv run python 10_download_actor_images.py "Bill Murray" --training --show "SNL"
 
 # 2. Remove duplicate images
-venv/bin/python3 11_remove_dupe_training_images.py --training "Bill Murray"
+uv run python 11_remove_dupe_training_images.py --training "Bill Murray"
 
 # 3. Remove bad images (keep exactly 1 face)
-venv/bin/python3 12_remove_bad_training_images.py --training "Bill Murray"
+uv run python 12_remove_bad_training_images.py --training "Bill Murray"
 
 # 4. Remove face outliers (detect inconsistent faces)
-venv/bin/python3 13_remove_face_outliers.py --training "Bill Murray"
+uv run python 13_remove_face_outliers.py --training "Bill Murray"
 
 # 5. Generate reference embeddings
-venv/bin/python3 15_compute_average_embeddings.py "Bill Murray"
+uv run python 15_compute_average_embeddings.py "Bill Murray"
 ```
 
 #### Testing Pipeline
 ```bash
 # 6. Download testing images (group photos)
-venv/bin/python3 10_download_actor_images.py "Bill Murray" --testing --show "SNL"
+uv run python 10_download_actor_images.py "Bill Murray" --testing --show "SNL"
 
 # 7. Remove duplicate images
-venv/bin/python3 11_remove_dupe_training_images.py --testing "Bill Murray"
+uv run python 11_remove_dupe_training_images.py --testing "Bill Murray"
 
 # 8. Remove bad images (keep 3-10 faces for group testing)
-venv/bin/python3 12_remove_bad_training_images.py --testing "Bill Murray"
+uv run python 12_remove_bad_training_images.py --testing "Bill Murray"
 
 # 9. Detect faces in test images
-venv/bin/python3 20_eval_star_detection.py "Bill Murray"
+uv run python 20_eval_star_detection.py "Bill Murray"
 ```
 
 #### Operations Pipeline
 ```bash
 # 1. Download video from supported platforms
-venv/bin/python3 30_download_video.py "https://www.youtube.com/watch?v=-_X904_TZnc"
+uv run python 30_download_video.py "https://www.youtube.com/watch?v=-_X904_TZnc"
 
 # 2. Extract representative frames using binary search pattern (script finds video automatically)
-venv/bin/python3 31_extract_video_frames.py videos/youtube_VIDEO_ID/ 50
+uv run python 31_extract_video_frames.py videos/youtube_VIDEO_ID/ 50
 
 # 3. Extract face data from all frames (script uses frames/ subfolder automatically)
-venv/bin/python3 32_extract_frame_faces.py videos/youtube_VIDEO_ID/
+uv run python 32_extract_frame_faces.py videos/youtube_VIDEO_ID/
 
 # 4. Extract actor headshots from video frames
-venv/bin/python3 33_extract_video_headshots.py "Bill Murray" videos/youtube_VIDEO_ID/
+uv run python 33_extract_video_headshots.py "Bill Murray" videos/youtube_VIDEO_ID/
 
 # 5. Create video thumbnails (selects frames with most actors)
-venv/bin/python3 34_extract_video_thumbnail.py videos/youtube_VIDEO_ID/
+uv run python 34_extract_video_thumbnail.py videos/youtube_VIDEO_ID/
 ```
 
 ### Architecture Flow
@@ -381,7 +380,7 @@ If the correct headshots are not being found for a video, follow these steps to 
    - Verify that remaining training images are actually of the target actor
    - Use `13_remove_face_outliers.py` with adjusted threshold if needed:
      ```bash
-     venv/bin/python3 13_remove_face_outliers.py --training "Actor Name" --threshold 0.05
+     uv run python 13_remove_face_outliers.py --training "Actor Name" --threshold 0.05
      ```
 
 2. **Adjust Outlier Detection Threshold**
@@ -392,26 +391,26 @@ If the correct headshots are not being found for a video, follow these steps to 
 3. **Regenerate Average Embeddings**
    - After cleaning training data, regenerate the reference embeddings:
      ```bash
-     venv/bin/python3 15_compute_average_embeddings.py "Actor Name"
+     uv run python 15_compute_average_embeddings.py "Actor Name"
      ```
 
 4. **Test Detection Accuracy**
    - Run testing pipeline with new average embeddings to verify improved accuracy:
      ```bash
-     venv/bin/python3 20_eval_star_detection.py "Actor Name"
+     uv run python 20_eval_star_detection.py "Actor Name"
      ```
 
 5. **Retry Video Headshot Extraction**
    - Extract headshots from video using the improved reference embeddings:
      ```bash
-     venv/bin/python3 33_extract_video_headshots.py "Actor Name" videos/youtube_VIDEO_ID/
+     uv run python 33_extract_video_headshots.py "Actor Name" videos/youtube_VIDEO_ID/
      ```
 
 6. **Increase Training/Testing Data**
    - If insufficient data was found, download additional pages:
      ```bash
-     venv/bin/python3 10_download_actor_images.py "Actor Name" --training --show "Show Name" --page 2
-     venv/bin/python3 10_download_actor_images.py "Actor Name" --testing --show "Show Name" --page 3
+     uv run python 10_download_actor_images.py "Actor Name" --training --show "Show Name" --page 2
+     uv run python 10_download_actor_images.py "Actor Name" --testing --show "Show Name" --page 3
      ```
    - Each page downloads 20 more images using different keywords for variety
 

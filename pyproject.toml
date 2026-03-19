@@ -1,0 +1,16 @@
+[project]
+name = "starmapr"
+version = "1.0.0"
+description = "Actor face recognition and detection using DeepFace with ArcFace"
+requires-python = ">=3.10"
+dependencies = [
+    "deepface",
+    "numpy",
+    "opencv-python",
+    "scikit-learn",
+    "google-images-search",
+    "python-dotenv",
+    "yt-dlp",
+    "tf-keras",
+    "windows-curses; sys_platform == 'win32'",
+]

@@ -28,19 +28,17 @@ def is_windows():
 
 def get_venv_python():
     """
-    Get the path to the Python executable in the virtual environment.
+    Get the path to the current Python executable.
 
     Returns:
-        str: Path to venv Python (platform-specific)
+        str: Path to the running Python interpreter
     """
-    if is_windows():
-        return r'venv\Scripts\python.exe'
-    return 'venv/bin/python3'
+    return sys.executable
 
 
 def get_venv_executable(name):
     """
-    Get the path to an executable in the virtual environment.
+    Get the path to an executable in the same directory as the Python interpreter.
 
     Args:
         name (str): Name of the executable (e.g., 'yt-dlp')
@@ -48,9 +46,10 @@ def get_venv_executable(name):
     Returns:
         str: Path to the executable (platform-specific)
     """
+    bin_dir = os.path.dirname(sys.executable)
     if is_windows():
-        return rf'venv\Scripts\{name}.exe'
-    return f'venv/bin/{name}'
+        return os.path.join(bin_dir, f'{name}.exe')
+    return os.path.join(bin_dir, name)
 
 
 def enable_windows_ansi_colors():

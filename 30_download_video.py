@@ -121,7 +121,7 @@ def download_video(video_url, site, video_id, title):
     cmd = [
         get_venv_executable('yt-dlp'),
         '-o', str(temp_dir / f'{safe_title}.%(ext)s'),
-        '--format', 'bestvideo[height<=720][vcodec!^=av01]',  # Download best quality up to 720p, excluding AV1 codec
+        '--format', 'bestvideo[height<=720][vcodec!^=av01]+bestaudio/best[height<=720][vcodec!^=av01]/best[height<=720]',  # ≤720p, non-AV1; falls back to muxed streams (e.g. HLS sites like Adult Swim)
         '--write-info-json',  # Save metadata
         '--write-thumbnail',  # Save thumbnail
         '--write-description',  # Save description if available

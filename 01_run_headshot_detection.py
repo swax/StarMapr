@@ -15,16 +15,25 @@ import os
 import sys
 import subprocess
 import argparse
+import json
 import re
 import time
 from pathlib import Path
+from progress import run_logged, emit_progress, initialize_progress
+from readiness import check_readiness
 from dotenv import load_dotenv
 from utils import (
     log, get_actor_folder_name, get_env_int, print_error, get_venv_python
 )
+from validation import write_json
 
 # Load environment variables
 load_dotenv()
+
+
+def emit_json_result(payload):
+    """Emit a machine-readable result for API wrappers and automation."""
+    print(json.dumps(payload, ensure_ascii=True))
 
 
 def print_header(text):
@@ -56,7 +65,8 @@ def parse_actors(actor_args, actor_list_arg):
     seen = set()
     unique_actors = []
     for actor in actors:
-        if actor not in seen:
+        actor = actor.strip()
+        if actor and actor not in seen:
             seen.add(actor)
             unique_actors.append(actor)
     
@@ -78,7 +88,7 @@ def run_subprocess_command(command_list, description):
     try:
         print(f"Running: {description}")
         # Don't show real time output because there are unavoidable cuda errors that get piped to the console, filling the context
-        result = subprocess.run(command_list, check=True, capture_output=True, text=True, encoding='utf-8', errors='replace')
+        result = run_logged(command_list, check=True)
         
         # Show output from successful commands
         if result.stdout:
@@ -225,22 +235,24 @@ def extract_actor_headshots(actor_name, video_folder):
         video_folder (str): Path to video folder
         
     Returns:
-        tuple: (success: bool, headshot_count: int)
+        tuple: (success: bool, result report)
     """
     print(f"Extracting headshots for {actor_name}...")
     
     command = [get_venv_python(), '33_extract_video_headshots.py', actor_name, video_folder]
     success, _, _ = run_subprocess_command(command, f"Extracting {actor_name} headshots")
     
-    if success:
-        # Count headshots in the actor-specific folder
-        actor_name_clean = get_actor_folder_name(actor_name)
-        headshots_folder = Path(video_folder) / 'headshots' / actor_name_clean
-        if headshots_folder.exists():
-            headshot_files = list(headshots_folder.glob('*.jpg')) + list(headshots_folder.glob('*.png'))
-            return True, len(headshot_files)
-    
-    return False, 0
+    if not success:
+        return False, dict(status='extraction_error', retryable=False, headshots=[])
+    report_path = Path(video_folder) / 'headshots' / get_actor_folder_name(actor_name) / 'result.json'
+    try:
+        report = json.loads(report_path.read_text(encoding='utf-8'))
+        for headshot in report['headshots']:
+            if not (report_path.parent / headshot['file']).is_file():
+                raise ValueError('Result references a missing headshot')
+        return True, report
+    except (OSError, ValueError, KeyError):
+        return False, dict(status='invalid_result', retryable=False, headshots=[])
 
 
 def run_operations_pipeline_with_adaptive_frames(video_folder, trained_actors):
@@ -260,6 +272,9 @@ def run_operations_pipeline_with_adaptive_frames(video_folder, trained_actors):
     default_frame_count = get_env_int('OPERATIONS_EXTRACT_FRAME_COUNT', 50)
     max_multiplier = 5
     results = {}
+    outcomes = {}
+    pending = list(trained_actors)
+    os.environ['STARMAPR_VIDEO_ACTORS'] = json.dumps(trained_actors)
     
     for multiplier in range(1, max_multiplier + 1):
         current_frame_count = default_frame_count * multiplier
@@ -271,19 +286,21 @@ def run_operations_pipeline_with_adaptive_frames(video_folder, trained_actors):
         
         # Extract frames
         if not extract_frames_from_video(video_folder, current_frame_count):
-            print_error("Failed to extract frames, aborting operations pipeline")
-            break
+            raise RuntimeError('Frame extraction failed')
         
         # Extract faces from frames
         if not extract_faces_from_frames(video_folder):
-            print_error("Failed to extract faces from frames, aborting operations pipeline")
-            break
+            raise RuntimeError('Face extraction failed')
         
         # Extract headshots for each trained actor
         total_headshots_found = 0
-        for actor_name in trained_actors:
-            success, headshot_count = extract_actor_headshots(actor_name, video_folder)
+        for actor_name in pending:
+            os.environ['STARMAPR_ACTOR'] = actor_name
+            emit_progress('headshots', processed=len(outcomes), total=len(trained_actors), attempt=multiplier)
+            success, report = extract_actor_headshots(actor_name, video_folder)
             if success:
+                outcomes[actor_name] = report
+                headshot_count = len(report['headshots'])
                 results[actor_name] = headshot_count
                 total_headshots_found += headshot_count
                 if headshot_count > 0:
@@ -291,8 +308,11 @@ def run_operations_pipeline_with_adaptive_frames(video_folder, trained_actors):
                 else:
                     print(f"No headshots found for {actor_name}")
             else:
-                results[actor_name] = 0
-                print_error(f"Failed to extract headshots for {actor_name}")
+                raise RuntimeError(f"Failed to extract headshots for {actor_name}: {report['status']}")
+        pending = [actor for actor in pending if outcomes[actor]['retryable']]
+        write_json(Path(video_folder) / 'headshot-results.json', dict(actors=outcomes, attempt=multiplier))
+        if not pending:
+            break
         
         # Check if all actors have at least 1 headshot
         actors_with_headshots = sum(1 for count in results.values() if count > 0)
@@ -307,6 +327,11 @@ def run_operations_pipeline_with_adaptive_frames(video_folder, trained_actors):
         else:
             print(f"Found headshots for {actors_with_headshots}/{total_trained_actors} actors with {current_frame_count} frames, trying {default_frame_count * (multiplier + 1)} frames...")
     
+    for report in outcomes.values():
+        if report['retryable']:
+            report.update(retryable=False, stop_reason='frame_attempt_limit')
+            write_json(Path(video_folder) / 'headshots' / get_actor_folder_name(report['actor']) / 'result.json', report)
+    write_json(Path(video_folder) / 'headshot-results.json', dict(actors=outcomes, attempt=multiplier))
     return results
 
 
@@ -329,6 +354,8 @@ Examples:
                        help='Actor names (comma-separated)')
     parser.add_argument('--show', required=True,
                        help='Show/movie name for actor training (required)')
+    parser.add_argument('--json', action='store_true',
+                       help='Emit a final JSON result line for automation')
     parser.add_argument('--verbose', '-v', action='store_true',
                        help='Show all output from subprocess commands')
     
@@ -336,46 +363,101 @@ Examples:
 
     if args.verbose:
         os.environ['STARMAPR_LOG_VERBOSE'] = 'true'
+
+    def finish(success, actors, trained_actors=None, failed_actors=None,
+               video_folder=None, headshot_results=None, error=None):
+        trained_actors = trained_actors or []
+        failed_actors = failed_actors or []
+        headshot_results = headshot_results or {}
+        elapsed_time = time.time() - start_time
+
+        payload = {
+            "success": success,
+            "video_url": args.video_url,
+            "show": args.show,
+            "actors": actors,
+            "trained_actors": trained_actors,
+            "failed_actors": failed_actors,
+            "video_folder": video_folder,
+            "headshot_results": headshot_results,
+            "total_headshots": sum(headshot_results.values()),
+            "elapsed_seconds": round(elapsed_time, 3),
+            "headshot_outcomes": {},
+        }
+
+        if success and video_folder:
+            try:
+                summary = json.loads((Path(video_folder) / 'headshot-results.json').read_text(encoding='utf-8'))
+                payload['headshot_outcomes'] = {
+                    actor: summary['actors'][actor] for actor in actors
+                    if actor in summary['actors'] and actor not in failed_actors
+                }
+            except (OSError, ValueError, KeyError, TypeError):
+                success = False
+                payload['success'] = False
+                error = 'Missing or invalid headshot validation summary'
+        payload['outcome'] = ('headshots_available' if payload['total_headshots'] else 'no_reliable_headshots') if success else 'failed'
+
+        if error:
+            payload["error"] = error
+
+        if args.json:
+            emit_json_result(payload)
+
+        sys.exit(0 if success else 1)
     
     # Parse actor names
     actors = parse_actors(args.actors, args.actor_list)
     
     if not actors:
-        print_error("No actors specified. Use either positional arguments or --actors flag.")
-        sys.exit(1)
+        error = "No actors specified. Use either positional arguments or --actors flag."
+        print_error(error)
+        finish(False, actors, error=error)
     
     print_header(f"=== HEADSHOT DETECTION PIPELINE ===")
     print(f"Video URL: {args.video_url}")
     print(f"Actors: {', '.join(actors)}")
     print(f"Show: {args.show}")
+
+    initialize_progress()
+    try:
+        emit_progress('preflight', 'started')
+        print(json.dumps(check_readiness()))
+    except (RuntimeError, ImportError, ValueError) as exc:
+        finish(False, actors, error=str(exc))
+    # Establish real downloader/host access before any expensive actor training.
+    video_folder = download_video(args.video_url)
+    if not video_folder:
+        finish(False, actors, error='Video download failed during preflight; training was not started')
     
     # Step 1: Run actor training for each actor
     trained_actors = []
     failed_actors = []
     
     for actor_name in actors:
+        os.environ['STARMAPR_ACTOR'] = actor_name
+        emit_progress('training', processed=len(trained_actors) + len(failed_actors), total=len(actors))
         if run_actor_training(actor_name, args.show):
             trained_actors.append(actor_name)
         else:
             failed_actors.append(actor_name)
     
     if not trained_actors:
-        print_error("No actors were successfully trained. Aborting pipeline.")
-        sys.exit(1)
+        error = "No actors were successfully trained. Aborting pipeline."
+        print_error(error)
+        finish(False, actors, trained_actors, failed_actors, error=error)
     
     print_header(f"\nTraining Results:")
     print(f"✓ Successfully trained: {', '.join(trained_actors)}")
     if failed_actors:
         print(f"✗ Failed to train: {', '.join(failed_actors)}")
     
-    # Step 2: Download video
-    video_folder = download_video(args.video_url)
-    if not video_folder:
-        print_error("Video download failed. Aborting pipeline.")
-        sys.exit(1)
-    
     # Step 3: Run operations pipeline with adaptive frame extraction
-    headshot_results = run_operations_pipeline_with_adaptive_frames(video_folder, trained_actors)
+    try:
+        headshot_results = run_operations_pipeline_with_adaptive_frames(video_folder, trained_actors)
+    except (RuntimeError, OSError, ValueError) as exc:
+        print_error(str(exc))
+        finish(False, actors, trained_actors, failed_actors, video_folder, error=str(exc))
     
     # Calculate elapsed time
     elapsed_time = time.time() - start_time
@@ -400,9 +482,10 @@ Examples:
     
     if total_headshots > 0:
         print(f"🎉 SUCCESS! Found {total_headshots} total headshots across all actors")
-        sys.exit(0)
+        finish(True, actors, trained_actors, failed_actors, video_folder, headshot_results)
     else:
-        sys.exit(1)
+        print('Completed: no reliable headshot. Continue without an optional portrait; see headshot-results.json.')
+        finish(True, actors, trained_actors, failed_actors, video_folder, headshot_results)
 
 
 if __name__ == '__main__':

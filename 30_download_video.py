@@ -25,6 +25,22 @@ from urllib.parse import urlparse
 from utils import print_error, print_summary, log, get_venv_executable
 
 
+def has_playable_video(folder):
+    """Metadata, thumbnails and interrupted downloads are not a usable cache."""
+    import cv2
+    for path in Path(folder).glob('*'):
+        if path.suffix.lower() not in ('.mp4', '.mkv', '.webm', '.mov', '.avi', '.m4v') or not path.is_file():
+            continue
+        capture = cv2.VideoCapture(str(path))
+        try:
+            ok, frame = capture.read()
+            if ok and frame is not None:
+                return True
+        finally:
+            capture.release()
+    return False
+
+
 def extract_site_and_id(url):
     # if url is mock_video, return mock data
     if url.lower() == "mock_video":
@@ -99,7 +115,7 @@ def download_video(video_url, site, video_id, title):
     video_dir = videos_dir / folder_name
     
     # Check if video already exists
-    if video_dir.exists() and any(video_dir.iterdir()):
+    if video_dir.exists() and has_playable_video(video_dir):
         log(f"Video already exists in {video_dir}/, skipping download")
         return True
 
@@ -130,6 +146,9 @@ def download_video(video_url, site, video_id, title):
     
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True, encoding='utf-8', errors='replace')
+        if not has_playable_video(temp_dir):
+            print_error('Downloaded artifacts contain no decodable video; keeping partial files for diagnosis')
+            return False
         log(f"Download completed, moving to {video_dir}/")
         
         # Create final video directory

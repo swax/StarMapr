@@ -10,6 +10,12 @@ import numpy as np
 import pickle
 from pathlib import Path
 from utils import print_error, get_env_int, get_headshot_crop_coordinates
+from validation import embedding_spec, file_hash
+
+
+def cache_spec(image_path):
+    return dict(embedding_spec=embedding_spec(), image_sha256=file_hash(image_path),
+                min_face_size=get_env_int('MIN_FACE_SIZE', 50), crop_schema=1)
 
 def get_face_embeddings(image_path, headshotable_only=False):
     """
@@ -35,6 +41,8 @@ def get_face_embeddings(image_path, headshotable_only=False):
         try:
             with open(pkl_path, 'rb') as f:
                 cached_data = pickle.load(f)
+            if cached_data.get('cache_spec') != cache_spec(image_path):
+                raise ValueError('Embedding cache is stale or unversioned; regenerating')
             
             # Get all cached faces
             all_faces = cached_data.get('faces', [])
@@ -56,6 +64,7 @@ def get_face_embeddings(image_path, headshotable_only=False):
         face_analysis = DeepFace.represent(
             str(image_path), 
             model_name='ArcFace',
+            detector_backend='opencv', normalization='base', align=True,
             enforce_detection=False,  # Allow processing even if no faces are detected
         )
         
@@ -124,12 +133,14 @@ def get_face_embeddings(image_path, headshotable_only=False):
                 'face_id': len(faces_data) + 1,
                 'bounding_box': bbox,
                 'embedding': face_data['embedding'],
+                'detector_confidence': face_data.get('face_confidence'),
                 'isHeadshotable': is_headshotable
             })
         
         # Cache the structured data
         try:
             frame_data = {
+                'cache_spec': cache_spec(image_path),
                 'frame_file': image_path.name,
                 'total_faces': len(faces_data),
                 'faces': faces_data

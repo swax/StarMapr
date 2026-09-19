@@ -23,3 +23,6 @@ venv/
 
 # Temporary files
 *.tmp
+
+# Runtime job state and private worker logs
+06_jobs/

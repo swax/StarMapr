@@ -38,6 +38,8 @@ def cluster_and_keep_largest(actor_folder_path, eps=0.4, min_samples=2, dry_run=
 
     if len(image_files) < 3:
         log(f"Need at least 3 images to cluster. Found {len(image_files)} images.")
+        for image in image_files:
+            move_file_with_pkl(image, outliers_folder, dry_run)
         return
 
     log(f"Clustering {len(image_files)} images...")
@@ -61,6 +63,8 @@ def cluster_and_keep_largest(actor_folder_path, eps=0.4, min_samples=2, dry_run=
 
     if len(valid_images) < 3:
         log(f"\nInsufficient embeddings ({len(valid_images)}) to cluster.")
+        for image in image_files:
+            move_file_with_pkl(image, outliers_folder, dry_run)
         return
 
     log(f"\nClustering {len(valid_images)} embeddings with DBSCAN...")
@@ -87,7 +91,9 @@ def cluster_and_keep_largest(actor_folder_path, eps=0.4, min_samples=2, dry_run=
 
     if not valid_clusters:
         log("No clusters found! All images classified as noise.")
-        log("Try increasing 'eps' parameter or decreasing 'min_samples'.")
+        # Zero eligible images is a recoverable page miss, never a successful group.
+        for image in image_files:
+            move_file_with_pkl(image, outliers_folder, dry_run)
         return
 
     largest_cluster_label = max(valid_clusters, key=valid_clusters.get)
@@ -96,6 +102,7 @@ def cluster_and_keep_largest(actor_folder_path, eps=0.4, min_samples=2, dry_run=
     # Separate images into keep vs move
     keep_images = []
     move_images = []
+    move_images.extend((image, -1) for image in image_files if image not in image_clusters)
 
     for img, label in image_clusters.items():
         if label == largest_cluster_label:

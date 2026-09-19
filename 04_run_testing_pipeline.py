@@ -15,6 +15,7 @@ Usage:
 import os
 import sys
 import subprocess
+from progress import run_logged
 import argparse
 from pathlib import Path
 from dotenv import load_dotenv
@@ -72,11 +73,12 @@ def run_subprocess_command(command_list, description):
     try:
         print(f"Running: {description}")
         # Don't live stream the output because it shows unavoidable cuda errors that fills the context
-        result = subprocess.run(command_list, check=True, capture_output=True, text=True, encoding='utf-8', errors='replace')
+        result = run_logged(command_list, check=True)
         print(result.stdout)
         return True
     except subprocess.CalledProcessError as e:
         print_error(f"Failed: {description}")
+        print_error((e.stdout or '') + (e.stderr or ''))
         return False
 
 

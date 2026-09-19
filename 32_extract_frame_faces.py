@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import sys
 from pathlib import Path
 from utils import get_image_files, print_dry_run_header, print_error, print_summary, log
 from utils_deepface import get_face_embeddings
@@ -57,19 +58,13 @@ def main():
     for img_file in image_files:
         pkl_path = img_file.with_suffix('.pkl')
         
-        # Check if face data already exists (caching is now handled in the utility function)
-        if pkl_path.exists():
-            log(f"Skipping {img_file.name} - face data already exists")
-            skipped_count += 1
-            continue
-        
         log(f"Processing {img_file.name}...")
         
         try:
             # Detect faces (automatically handles caching)
             all_faces_data = get_face_embeddings(img_file)
             if all_faces_data is None:
-                all_faces_data = []
+                raise RuntimeError(f'Face extraction failed for {img_file.name}')
             
             # Count headshotable faces
             headshotable_faces = [face for face in all_faces_data if face.get('isHeadshotable', True)]
@@ -83,6 +78,7 @@ def main():
                 
         except Exception as e:
             print_error(f"Error processing {img_file.name}: {str(e)}")
+            sys.exit(1)
     
     log(f"\nSummary:")
     log(f"  Frames processed: {processed_count}")

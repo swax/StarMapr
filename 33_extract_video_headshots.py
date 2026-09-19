@@ -1,226 +1,191 @@
 #!/usr/bin/env python3
+"""Extract corroborated, unambiguous headshots or record an explicit abstention."""
 
-import os
-import sys
 import argparse
-import numpy as np
-import pickle
-import cv2
+import json
+import os
 import shutil
+import sys
+import tempfile
+from collections import Counter
 from pathlib import Path
-from sklearn.metrics.pairwise import cosine_similarity
-from dotenv import load_dotenv
-from utils import get_actor_folder_name, get_average_embedding_path, load_pickle, get_env_float, print_dry_run_header, print_dry_run_summary, print_error, print_summary, calculate_face_similarity, get_headshot_crop_coordinates, log
 
-# Load environment variables
+import cv2
+from dotenv import load_dotenv
+
+from celebrity_verifier import configured_verifier, jpeg_bytes
+from utils import (get_actor_folder_name, get_average_embedding_path, get_env_float,
+                   get_headshot_crop_coordinates, load_pickle, print_error)
+from utils_deepface import cache_spec
+from validation import (classify_candidate, corroborated_candidates, unit,
+                        validate_model_metadata, write_json)
+
 load_dotenv()
 
-def load_actor_embedding(actor_name):
-    """Load the precomputed average embedding for a actor."""
-    embedding_path = get_average_embedding_path(actor_name, 'models')
-    
-    if not embedding_path.exists():
-        raise FileNotFoundError(f"Actor embedding file not found: {embedding_path}")
-    
-    embedding = load_pickle(embedding_path)
-    if embedding is None:
-        raise ValueError(f"Error loading actor embedding from: {embedding_path}")
-    
-    log(f"Loaded actor embedding for '{actor_name}' with shape: {embedding.shape}")
-    return embedding
 
-def load_frame_face_data(pkl_path):
-    """Load face data from a frame pickle file."""
-    frame_data = load_pickle(pkl_path)
-    if frame_data is None:
-        print_error(f"Error loading face data from {pkl_path}")
-    return frame_data
-
-def calculate_face_similarities(frames_dir, reference_embedding, threshold=0.6):
-    """
-    Scan all pickle files in frames directory and calculate similarities.
-    
-    Returns:
-        list: List of tuples (similarity_score, frame_file, face_data, pkl_path)
-    """
-    frames_dir = Path(frames_dir)
-    
-    if not frames_dir.exists():
-        raise FileNotFoundError(f"Frames directory not found: {frames_dir}")
-    
-    # Get all pickle files
-    pkl_files = list(frames_dir.glob("*.pkl"))
-    
-    if not pkl_files:
-        raise ValueError(f"No pickle files found in {frames_dir}")
-    
-    log(f"Scanning {len(pkl_files)} frame files for face matches...")
-    
-    matches = []
-    total_faces_scanned = 0
-    
-    for pkl_path in pkl_files:
-        frame_data = load_frame_face_data(pkl_path)
-        if frame_data is None:
+def load_competitors(model_path, reference):
+    competitors = {}
+    for path in sorted(model_path.parent.glob('*_average_embedding.pkl')):
+        if path == model_path:
             continue
-        
-        frame_file = frame_data.get('frame_file', pkl_path.stem + '.jpg')
-        faces = [face for face in frame_data.get('faces', []) if face.get('isHeadshotable', True)]
-        total_faces_scanned += len(faces)
-        
-        for face in faces:
-            try:
-                # Get face embedding and calculate similarity
-                face_embedding = face['embedding']
-                similarity = calculate_face_similarity(face_embedding, reference_embedding)
-                
-                if similarity >= threshold:
-                    matches.append((similarity, frame_file, face, pkl_path))
-                    
-            except Exception as e:
-                print_error(f"Error processing face in {pkl_path}: {e}")
+        vector = load_pickle(path)
+        if vector is None:
+            raise ValueError(f'Unreadable competitor model: {path.name}')
+        vector = unit(vector)
+        if vector.shape != reference.shape:
+            raise ValueError(f'Incompatible competitor model: {path.name}')
+        # Even a legacy rival can veto an ambiguous match; it cannot authorize one.
+        competitors[path.stem.removesuffix('_average_embedding')] = vector
+    return competitors
+
+
+def scan_candidates(frames_dir, reference, competitors, threshold, margin):
+    candidates, rejected = [], Counter()
+    files = sorted(frames_dir.glob('*.pkl'))
+    if not files:
+        raise ValueError('No processed frames; run 32_extract_frame_faces.py first')
+    for path in files:
+        data = load_pickle(path)
+        if not isinstance(data, dict):
+            raise ValueError(f'Unreadable frame data: {path.name}')
+        frame_file = data.get('frame_file', path.stem + '.jpg')
+        if Path(frame_file).name != frame_file or not Path(frame_file).stem.isdigit():
+            raise ValueError(f'Invalid frame filename: {frame_file}')
+        frame = frames_dir / frame_file
+        if data.get('cache_spec') != cache_spec(frame):
+            raise ValueError(f'Stale cache for {frame_file}; run 32_extract_frame_faces.py')
+        for face in data.get('faces', []):
+            if not face.get('isHeadshotable', False):
+                rejected['not_headshotable'] += 1
                 continue
-    
-    log(f"Scanned {total_faces_scanned} faces across {len(pkl_files)} frames")
-    log(f"Found {len(matches)} faces above similarity threshold {threshold}")
-    
-    return matches
+            decision = classify_candidate(face['embedding'], reference, competitors, threshold, margin)
+            if decision['status'] != 'accepted':
+                rejected[decision['status']] += 1
+                continue
+            candidates.append(dict(frame_file=frame_file, frame_position=int(Path(frame_file).stem),
+                                   face=face, decision=decision))
+    return candidates, rejected
 
-def extract_face_crop(frames_dir, frame_file, face_data, output_path):
-    """Extract and save face crop from frame image."""
-    try:
-        # Find the frame image file
-        frame_path = Path(frames_dir) / frame_file
-        
-        if not frame_path.exists():
-            print_error(f"Frame file not found: {frame_path}")
-            return False
-        
-        # Read the frame image
-        img = cv2.imread(str(frame_path))
-        if img is None:
-            print_error(f"Could not read image: {frame_path}")
-            return False
-        
-        # Extract face region using bounding box
-        bbox = face_data['bounding_box']
-        
-        # Get crop coordinates using utility function
-        img_width, img_height = img.shape[1], img.shape[0]
-        crop_coords = get_headshot_crop_coordinates(bbox, img_width, img_height)
-        x_start, y_start, x_end, y_end = crop_coords['x_start'], crop_coords['y_start'], crop_coords['x_end'], crop_coords['y_end']
-        
-        if crop_coords['clipped']:
-            print_error(f"Face crop for {frame_file} is clipped, skipping extraction, this should have been prevented in 32_extract_frame_faces.py")
-            return False
 
-        face_crop = img[y_start:y_end, x_start:x_end]
-        
-        # Save the cropped face
-        cv2.imwrite(str(output_path), face_crop)
-        return True
-        
-    except Exception as e:
-        print_error(f"Error extracting face crop: {e}")
-        return False
+def crop_candidate(frames_dir, candidate):
+    image = cv2.imread(str(frames_dir / candidate['frame_file']))
+    if image is None:
+        raise ValueError(f"Cannot read frame {candidate['frame_file']}")
+    coords = get_headshot_crop_coordinates(candidate['face']['bounding_box'], image.shape[1], image.shape[0])
+    if coords['clipped']:
+        return None
+    crop = image[coords['y_start']:coords['y_end'], coords['x_start']:coords['x_end']]
+    success, encoded = cv2.imencode('.jpg', crop)
+    if not success:
+        raise ValueError('Could not encode headshot')
+    return encoded.tobytes()
 
-def extract_top_headshots(actor_name, video_folder_path, threshold=0.6, dry_run=False):
-    """
-    Extract top 5 most similar headshots from video frames.
-    """
-    video_folder = Path(video_folder_path)
-    
-    if not video_folder.exists():
-        raise FileNotFoundError(f"Video folder not found: {video_folder}")
-    
-    frames_dir = video_folder / "frames"
-    if not frames_dir.exists():
-        raise FileNotFoundError(f"Frames directory not found: {frames_dir}")
-    
-    # Create actor-specific headshots output directory
-    actor_name_clean = get_actor_folder_name(actor_name)
-    headshots_dir = video_folder / "headshots" / actor_name_clean
-    
+
+def publish_result(folder, images, report):
+    """Reports name the exact current output; old loose JPGs never count as success."""
+    folder.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=folder.parent) as temp:
+        stage = Path(temp)
+        for name, data in images.items():
+            (stage / name).write_bytes(data)
+        # Limit cleanup to files owned by this headshot stage.
+        for old in folder.iterdir():
+            if old.is_file() and old.suffix.lower() in ('.jpg', '.jpeg', '.png'):
+                old.unlink()
+        for image in stage.iterdir():
+            shutil.move(str(image), folder / image.name)
+        write_json(folder / 'result.json', report)
+
+
+def extract_top_headshots(actor_name, video_folder_path, threshold=0.4, dry_run=False):
+    video = Path(video_folder_path)
+    frames = video / 'frames'
+    if not frames.is_dir():
+        raise FileNotFoundError(f'Frames directory not found: {frames}')
+    actor = get_actor_folder_name(actor_name)
+    if not actor:
+        raise ValueError('Actor name must contain letters')
+    output = video / 'headshots' / actor
+    model_path = get_average_embedding_path(actor_name, 'models')
+    margin = float(os.getenv('OPERATIONS_MIN_MATCH_MARGIN', '0.08'))
+    gap = int(os.getenv('OPERATIONS_MIN_FRAME_GAP', '25'))
+    min_frames = int(os.getenv('OPERATIONS_MIN_CONFIRMING_FRAMES', '2'))
+    support_threshold = float(os.getenv('OPERATIONS_CORROBORATION_THRESHOLD', '0.6'))
+    report = dict(schema=1, actor=actor_name, status='model_unvalidated', headshots=[],
+                  retryable=False, threshold=threshold, min_margin=margin,
+                  min_confirming_frames=min_frames, min_frame_gap=gap,
+                  corroboration_threshold=support_threshold, dry_run=dry_run)
+    images = {}
+    model_report = validate_model_metadata(model_path)
+    if model_report:
+        reference = unit(load_pickle(model_path))
+        competitors = load_competitors(model_path, reference)
+        report['competitor_models'] = list(competitors)
+        report['model_sha256'] = model_report['model_sha256']
+        candidates, rejected = scan_candidates(frames, reference, competitors, threshold, margin)
+        supported = corroborated_candidates(candidates, min_frames, gap, support_threshold)
+        rejected['insufficient_corroboration'] += len(candidates) - len(supported)
+        verifier, identity_map = configured_verifier(video / 'celebrity-cache.sqlite',
+            json.loads(os.getenv('STARMAPR_VIDEO_ACTORS', json.dumps([actor_name]))))
+        report['verification'] = 'aws_required' if verifier else 'local_only'
+        report['status'] = 'no_reliable_headshot'
+        report['retryable'] = True
+        selected_positions = []
+        attempted = 0
+        for candidate in supported:
+            if len(images) >= 5 or attempted >= 10:
+                break
+            if any(abs(candidate['frame_position'] - p) < gap for p in selected_positions):
+                continue
+            attempted += 1
+            data = crop_candidate(frames, candidate)
+            if data is None:
+                rejected['clipped_crop'] += 1
+                continue
+            if verifier:
+                # A dry run must not call AWS or create a cache/budget database.
+                verdict = dict(status='not_run_dry_run') if dry_run else verifier.verify(
+                    jpeg_bytes(frames / candidate['frame_file'], candidate['face']['bounding_box']),
+                    identity_map.get(actor), actor_name)
+            else:
+                verdict = dict(status='disabled')
+            if verifier and verdict['status'] != 'verified':
+                rejected[verdict['status']] += 1
+                if verdict['status'] in ('missing_identity_mapping', 'budget_exhausted', 'actor_budget_exhausted',
+                                         'verifier_unavailable', 'not_run_dry_run'):
+                    report.update(status=verdict['status'], retryable=False)
+                    break
+                continue
+            name = (f"{actor}_match_{candidate['decision']['score']:.3f}_"
+                    f"position_{Path(candidate['frame_file']).stem}.jpg")
+            images[name] = data
+            selected_positions.append(candidate['frame_position'])
+            report['headshots'].append(dict(file=name, frame=candidate['frame_file'],
+                                            face_id=candidate['face'].get('face_id'),
+                                            decision=candidate['decision'], verification=verdict))
+        report['rejections'] = dict(rejected)
+        if images:
+            report.update(status='accepted', retryable=False)
     if not dry_run:
-        # Remove existing actor headshots folder and recreate it
-        if headshots_dir.exists():
-            shutil.rmtree(headshots_dir)
-        headshots_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Load actor reference embedding
-    reference_embedding = load_actor_embedding(actor_name)
-    
-    # Find all matching faces
-    matches = calculate_face_similarities(frames_dir, reference_embedding, threshold)
-    
-    if not matches:
-        print_error(f"No faces found matching '{actor_name}' above threshold {threshold}")
-        return
-    
-    # Sort by similarity score (highest first) and take top 5
-    matches.sort(key=lambda x: x[0], reverse=True)
-    top_matches = matches[:5]
-    
-    log(f"\nTop {len(top_matches)} matches:")
-    
-    for i, (similarity, frame_file, face_data, pkl_path) in enumerate(top_matches, 1):
-        # Extract frame number from filename (e.g., "00000001.jpg" -> "00000001")
-        frame_position = Path(frame_file).stem
-        
-        # Create output filename with frame number
-        output_filename = f"{actor_name_clean}_match_{similarity:.3f}_position_{frame_position}.jpg"
-        output_path = headshots_dir / output_filename
-        
-        log(f"  {i}. {output_filename} (similarity: {similarity:.3f})")
-        
-        if dry_run:
-            log(f"     Would extract from: {frame_file}")
-            continue
-        
-        # Extract and save the face crop
-        if extract_face_crop(frames_dir, frame_file, face_data, output_path):
-            log(f"     → Saved to: {output_path}")
-        else:
-            print_error("Failed to extract face crop")
-    
-    if not dry_run:
-        print_summary(f"Successfully extracted {len(top_matches)} headshots for {actor_name} to {headshots_dir}")
-    else:
-        print_summary(f"DRY RUN: Would extract {len(top_matches)} headshots for {actor_name}")
+        publish_result(output, images, report)
+    print(json.dumps(report, allow_nan=False))
+    return report
+
 
 def main():
-    parser = argparse.ArgumentParser(description='Extract top 5 most similar actor headshots from video frames')
-    parser.add_argument('actor_name', help='Actor name (e.g., "Bill Murray")')
-    parser.add_argument('video_folder_path', help='Path to video folder containing frames/ subdirectory')
-    # Get default threshold from environment variable
-    default_threshold = get_env_float('OPERATIONS_HEADSHOT_MATCH_THRESHOLD', 0.6)
-    parser.add_argument('--threshold', '-t', type=float, default=default_threshold,
-                       help=f'Similarity threshold for face matching (default: {default_threshold})')
-    parser.add_argument('--dry-run', action='store_true',
-                       help='Show what would be extracted without actually doing it')
-    
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('actor_name')
+    parser.add_argument('video_folder_path')
+    parser.add_argument('--threshold', '-t', type=float,
+                        default=get_env_float('OPERATIONS_HEADSHOT_MATCH_THRESHOLD', 0.4))
+    parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args()
-    
     try:
-        log(f"Extracting headshots for: {args.actor_name}")
-        log(f"Video folder: {args.video_folder_path}")
-        log(f"Similarity threshold: {args.threshold}")
-        
-        if args.dry_run:
-            print_dry_run_header("No files will be created")
-            log("")
-        
-        extract_top_headshots(
-            args.actor_name,
-            args.video_folder_path,
-            args.threshold,
-            args.dry_run
-        )
-        
-        
-    except Exception as e:
-        print_error(str(e))
+        extract_top_headshots(args.actor_name, args.video_folder_path, args.threshold, args.dry_run)
+    except Exception as exc:
+        print_error(str(exc))
         sys.exit(1)
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     main()

@@ -12,6 +12,9 @@ StarMapr enables automated identification and extraction of actor faces from vid
 
 ## Features
 
+See [automated validation and AWS setup](AUTOMATED_VALIDATION.md) for the quality
+gates, explicit no-headshot outcomes, model migration, and held-out benchmark.
+
 - **Actor Image Collection**: Download training images from Google Image Search
 - **Data Cleaning**: Remove duplicates and low-quality images automatically
 - **Face Consistency Validation**: Remove outlier faces that don't match the target actor

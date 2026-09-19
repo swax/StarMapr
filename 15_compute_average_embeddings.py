@@ -7,8 +7,9 @@ import pickle
 from pathlib import Path
 from utils import get_actor_folder_path, get_image_files, get_average_embedding_path, save_pickle, print_error, print_summary, log
 from utils_deepface import get_face_embeddings
+from validation import QualityPolicy, assess_reference, embedding_spec, file_hash, metadata_path, write_json
 
-def compute_average_embeddings(folder_path):
+def compute_average_embeddings(folder_path, policy=None):
     """
     Compute average embeddings for all images in a folder using DeepFace with ArcFace.
     
@@ -37,7 +38,7 @@ def compute_average_embeddings(folder_path):
     for img_file in image_files:
         log(f"Processing: {img_file.name}")
         face_embeddings = get_face_embeddings(img_file)
-        if face_embeddings:
+        if face_embeddings and len(face_embeddings) == 1:
             embeddings.append(face_embeddings[0]['embedding'])
             successful_embeddings += 1
     
@@ -46,9 +47,10 @@ def compute_average_embeddings(folder_path):
     
     log(f"Successfully processed {successful_embeddings}/{len(image_files)} images")
     
-    # Convert to numpy array and compute average
-    embeddings_array = np.array(embeddings)
-    average_embedding = np.mean(embeddings_array, axis=0)
+    average_embedding, report = assess_reference(embeddings, policy)
+    write_json(folder_path / 'training-quality.json', report)
+    if not report['accepted']:
+        raise ValueError(f"Reference quality rejected: {report['reason']}")
     
     return average_embedding, successful_embeddings
 
@@ -64,6 +66,7 @@ def main():
     parser.add_argument('actor_name', help='Actor name (will use training/actor_name/ folder)')
     parser.add_argument('--output', '-o', help='Output file path for the average embedding', 
                        default=None)
+    parser.add_argument('--min-images', type=int, default=None)
     
     args = parser.parse_args()
     
@@ -75,7 +78,8 @@ def main():
             raise FileNotFoundError(f"Training folder not found: {folder_path}")
         
         # Compute average embedding
-        avg_embedding, successful_count = compute_average_embeddings(folder_path)
+        policy = QualityPolicy.from_env(args.min_images)
+        avg_embedding, successful_count = compute_average_embeddings(folder_path, policy)
         
         # Generate output filename if not provided
         if args.output is None:
@@ -83,6 +87,12 @@ def main():
         
         # Save the embedding
         save_embedding(avg_embedding, args.output)
+        import json
+        report = json.loads((folder_path / 'training-quality.json').read_text(encoding='utf-8'))
+        write_json(metadata_path(args.output), dict(
+            quality=report, embedding_spec=embedding_spec(), model_sha256=file_hash(args.output),
+            training_images={image.name: file_hash(image) for image in get_image_files(folder_path)},
+            identity_validation='cohesion_only'))
         
         log(f"Average embedding shape: {avg_embedding.shape}")
         print_summary(f"Successfully computed average embedding for {args.actor_name} from {successful_count} images.")

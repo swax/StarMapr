@@ -17,12 +17,18 @@ import sys
 import subprocess
 import argparse
 import shutil
+import json
 from pathlib import Path
 from dotenv import load_dotenv
 from utils import (
     get_actor_folder_path, get_image_files, get_env_int,
     get_average_embedding_path, print_error, ensure_folder_exists, get_venv_python
 )
+from validation import QualityPolicy, assess_reference, write_json, metadata_path
+from utils_deepface import get_face_embeddings
+from celebrity_verifier import configured_verifier, jpeg_bytes
+from progress import run_logged
+from utils import get_actor_folder_name, move_file_with_pkl
 
 # Load environment variables
 load_dotenv()
@@ -165,11 +171,12 @@ def run_subprocess_command(command_list, description):
     try:
         print(f"Running: {description}")
         # Don't live stream the output because it shows unavoidable cuda errors that fills the context
-        result = subprocess.run(command_list, check=True, capture_output=True, text=True, encoding='utf-8', errors='replace')
+        result = run_logged(command_list, check=True)
         print(result.stdout)
         return True
     except subprocess.CalledProcessError as e:
         print_error(f"Failed: {description}")
+        print_error((e.stdout or '') + (e.stderr or ''))
         return False
 
 
@@ -187,14 +194,24 @@ def check_image_threshold(training_folder, min_images, best_image_count):
     """
     current_images = get_image_files(training_folder)
     image_count = len(current_images)
-
-    # Update best count if current is higher
-    if image_count > best_image_count:
+    embeddings = []
+    for image in current_images:
+        faces = get_face_embeddings(image)
+        if faces and len(faces) == 1:
+            embeddings.append(faces[0]['embedding'])
+    _, quality = assess_reference(embeddings, QualityPolicy.from_env(min_images))
+    write_json(Path(training_folder) / 'candidate-quality.json', quality)
+    score = quality.get('p10', -1)
+    best_path = Path(training_folder) / 'best_group' / 'quality.json'
+    best_quality = json.loads(best_path.read_text()) if best_path.exists() else {}
+    # Never save a large, incoherent fallback group.
+    if quality['accepted'] and (best_image_count == 0 or score > best_quality.get('p10', -1)):
         best_image_count = image_count
         save_best_group(training_folder, current_images)
+        write_json(best_path, quality)
 
     # Check if threshold is met
-    threshold_met = image_count >= min_images
+    threshold_met = quality['accepted']
     if threshold_met:
         print(f"✓ Achieved minimum training images ({image_count} >= {min_images})")
 
@@ -220,6 +237,8 @@ def run_training_pipeline(actor_name, show_name, max_pages, min_images):
     ensure_folder_exists(training_folder)
 
     best_image_count = 0
+    verifier, identity_map = configured_verifier(Path(training_folder) / 'celebrity-cache.sqlite')
+    expected_id = identity_map.get(get_actor_folder_name(actor_name))
 
     for page in range(1, max_pages + 1):
         print_header(f"\n--- Training Page {page} ---")
@@ -251,6 +270,26 @@ def run_training_pipeline(actor_name, show_name, max_pages, min_images):
         # Step 4a: Try similarity-based outlier detection first (works better with fewer images)
         restore_outliers_to_training(actor_name, 'training')
 
+        if verifier:
+            seed_results = []
+            for image in get_image_files(training_folder):
+                faces = get_face_embeddings(image)
+                if not faces or len(faces) != 1:
+                    result = dict(status='unknown_or_multiple_faces')
+                else:
+                    result = verifier.verify(jpeg_bytes(image, faces[0]['bounding_box']), expected_id, actor_name)
+                seed_results.append(dict(image=image.name, **result))
+                if result['status'] != 'verified':
+                    # This folder is intentionally never restored as an outlier.
+                    move_file_with_pkl(image, Path(training_folder) / 'unverified', False)
+                    if image.exists():
+                        raise OSError(f'Could not quarantine unverified seed: {image.name}')
+                if result['status'] in ('verifier_unavailable', 'budget_exhausted'):
+                    write_json(Path(training_folder) / 'seed-verification.json', seed_results)
+                    print_error(f"Seed verification stopped: {result['status']}")
+                    return False, 0
+            write_json(Path(training_folder) / 'seed-verification.json', seed_results)
+
         outlier_cmd = [get_venv_python(), '13_remove_face_outliers.py', '--training', actor_name]
         if not run_subprocess_command(outlier_cmd, "Removing face outliers (similarity based)"):
             fatal_error("Failed to remove face outliers")
@@ -281,14 +320,25 @@ def run_training_pipeline(actor_name, show_name, max_pages, min_images):
             print(f"Reached max pages ({max_pages}), proceeding with {image_count} images")
 
     # Restore and move files with names not in the best group text file to the outliers folder
+    if best_image_count < min_images:
+        print_error('Download limit reached without a sufficiently large, coherent reference set')
+        return False, best_image_count
     restore_best_group(actor_name, 'training')
 
     # Step 5: Generate embeddings
-    embedding_cmd = [get_venv_python(), '15_compute_average_embeddings.py', actor_name]
+    embedding_cmd = [get_venv_python(), '15_compute_average_embeddings.py', actor_name,
+                     '--min-images', str(min_images)]
     embeddings_success = run_subprocess_command(embedding_cmd, "Computing average embeddings")
+    if embeddings_success and verifier:
+        report_path = metadata_path(get_average_embedding_path(actor_name, 'training'))
+        report = json.loads(report_path.read_text(encoding='utf-8'))
+        report['identity_validation'] = 'aws_seed_verified'
+        report['seed_identity'] = dict(expected_id=expected_id, expected_name=actor_name,
+                                       confidence=verifier.confidence, region=verifier.region)
+        write_json(report_path, report)
 
     final_count = len(get_image_files(training_folder))
-    return embeddings_success and final_count > 0, final_count
+    return embeddings_success and final_count >= min_images, final_count
 
 
 def main():
@@ -321,7 +371,8 @@ def main():
     )
 
     if not success:
-        fatal_error("Training pipeline failed!")
+        print_error('No reliable reference model could be produced within the configured limits')
+        sys.exit(2)
 
     print(f"✓ Training pipeline completed with {final_count} images")
     print(f"✓ Average embeddings saved to: {get_average_embedding_path(args.actor_name, 'training')}")

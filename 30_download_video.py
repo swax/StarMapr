@@ -183,6 +183,18 @@ def download_video(video_url, site, video_id, title):
         return False
 
 
+def build_download_result(source_url, site, video_id):
+    """Publish host-qualified absolute paths; consumers may have a different cwd."""
+    import socket
+    folder = Path(f"05_videos/{site}_{video_id}").resolve()
+    files = [
+        {"path": str(p.resolve()), "bytes": p.stat().st_size}
+        for p in sorted(folder.iterdir()) if p.is_file()
+    ]
+    return {"success": True, "video_folder": str(folder),
+            "host": socket.gethostname(), "source_url": source_url, "files": files}
+
+
 def main():
     parser = argparse.ArgumentParser(description='Download video from various sites to 05_videos/[site]_[video_id]/ folder')
     parser.add_argument('url', help='Video URL from supported site')
@@ -219,8 +231,7 @@ def main():
         success = download_video(args.url, site, video_id, title)
         
         if success:
-            video_folder = f"05_videos/{site}_{video_id}"
-            result = {"success": True, "video_folder": video_folder}
+            result = build_download_result(args.url, site, video_id)
             print_summary(json.dumps(result))
         else:
             result = {"success": False, "video_folder": None}

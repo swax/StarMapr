@@ -424,3 +424,32 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is open source and available under the [MIT License](LICENSE.md).
+
+## Face detection and cropping without identification
+
+To prepare character images from a local video without loading actor models, use
+the standalone crop command. Its inline dependency metadata installs only OpenCV 4
+and its numerical dependencies; a full `uv sync`, credentials, training images, and
+cloud services are unnecessary.
+
+```powershell
+uv run --no-project --script 35_extract_face_crops.py "C:\media\sketch.mp4" "C:\media\sketch-crops" --start 3 --end 264 --interval 8
+```
+
+Use `--timestamps 51 123 131 251` instead of interval sampling to revisit specific
+moments. The output directory must be empty. Results include original frames,
+square JPEG crops at their native resolution, contact sheets, and `manifest.json`
+with timestamps, pixel bounds, and sharpness measurements. No identities,
+embeddings, or cross-frame face matching are produced.
+
+These are candidates for manual review: the detector can miss profile faces or
+mistake background objects for faces. Select clear, unobstructed crops and label
+fictional characters from dialogue/scene context and independently verified cast
+credits. Sharpness is a focus measurement, not an identity or acceptance score.
+No detections produces an empty crop list; nothing is automatically published.
+
+Run the crop geometry and video-decoding checks with:
+
+```powershell
+uv run --no-project --with "opencv-python>=4.10,<5" python -m unittest discover -s tests -p test_face_crops.py -v
+```

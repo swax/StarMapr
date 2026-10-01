@@ -3,8 +3,10 @@ import unittest
 import argparse
 import tempfile
 import json
+import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 spec = importlib.util.spec_from_file_location("face_crops", Path(__file__).resolve().parents[1] / "35_extract_face_crops.py")
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
@@ -13,12 +15,19 @@ spec.loader.exec_module(module)
 class FaceCropGeometryTests(unittest.TestCase):
     def test_crop_stays_square_and_inside_frame_at_every_edge(self):
         for box in [(0, 0, 100, 90), (900, 0, 100, 100), (0, 480, 100, 100), (900, 480, 100, 100)]:
-            left, top, right, bottom = module.crop_bounds(box, 1000, 580, 1.7)
+            left, top, right, bottom = module.crop_bounds(box, 1000, 580, 1.7, "square")
             self.assertEqual(right - left, bottom - top)
             self.assertGreaterEqual(left, 0)
             self.assertGreaterEqual(top, 0)
             self.assertLessEqual(right, 1000)
             self.assertLessEqual(bottom, 580)
+
+    def test_default_framing_keeps_starmapr_head_and_shoulders_padding(self):
+        self.assertEqual(module.crop_bounds((400, 200, 100, 80), 1000, 800), (250, 160, 650, 400))
+
+    def test_default_rejects_clipped_crops_instead_of_shifting_them(self):
+        for box in [(0, 200, 100, 80), (900, 200, 100, 80), (400, 0, 100, 80), (400, 750, 100, 80)]:
+            self.assertIsNone(module.crop_bounds(box, 1000, 800))
 
     def test_sampling_never_seeks_to_or_beyond_video_end(self):
         self.assertEqual(module.sample_times(10, 0, None, 5), [0, 5])
@@ -49,7 +58,7 @@ class FaceCropRuntimeTests(unittest.TestCase):
             for _ in range(10):
                 writer.write(np.zeros((240, 320, 3), dtype=np.uint8))
             writer.release()
-            args = argparse.Namespace(video=video, output=output, start=0, end=None, interval=0.5, timestamps=None, min_face=72, padding=1.7)
+            args = argparse.Namespace(video=video, output=output, start=0, end=None, interval=0.5, timestamps=None, min_face=72, padding=1.7, crop_style="starmapr")
             self.assertEqual(module.extract(args), 0)
             manifest = json.loads((output / "manifest.json").read_text())
             self.assertEqual(len(manifest["frames"]), 2)

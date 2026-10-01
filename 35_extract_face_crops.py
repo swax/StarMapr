@@ -12,6 +12,7 @@ import argparse
 import json
 import math
 from pathlib import Path
+from headshot_geometry import get_headshot_crop_coordinates
 
 
 def sample_times(duration, start, end, interval, explicit=None):
@@ -32,10 +33,17 @@ def sample_times(duration, start, end, interval, explicit=None):
     return [start + i * interval for i in range(count) if start + i * interval < stop]
 
 
-def crop_bounds(face, width, height, padding):
+def crop_bounds(face, width, height, padding=1.7, style="starmapr"):
     x, y, w, h = (int(v) for v in face)
     if w <= 0 or h <= 0 or width <= 0 or height <= 0 or not math.isfinite(padding) or padding < 1:
         raise ValueError("Invalid face dimensions or padding")
+    if style == "starmapr":
+        coords = get_headshot_crop_coordinates(dict(x=x, y=y, w=w, h=h), width, height)
+        if coords["clipped"]:
+            return None
+        return coords["x_start"], coords["y_start"], coords["x_end"], coords["y_end"]
+    if style != "square":
+        raise ValueError("Unknown crop style")
     side = min(width, height, math.ceil(max(w, h) * padding))
     # Include forehead/hair above the detector's face rectangle.
     left = max(0, min(width - side, round(x + w / 2 - side / 2)))
@@ -96,7 +104,7 @@ def extract(args):
             raise RuntimeError("OpenCV face detector could not be loaded")
         (output / "frames").mkdir(parents=True, exist_ok=True)
         (output / "crops").mkdir()
-        frames, crops, skipped = [], [], []
+        frames, crops, skipped, rejected = [], [], [], []
         for sample_index, seconds in enumerate(times):
             frame_index = round(seconds * fps)
             capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
@@ -112,7 +120,11 @@ def extract(args):
             write_image(cv2, frame_path, frame)
             frames.append({"timestamp_seconds": round(frame_index / fps, 3), "file": frame_path.relative_to(output).as_posix(), "face_count": len(boxes)})
             for number, box in enumerate(boxes):
-                x1, y1, x2, y2 = crop_bounds(box, frame.shape[1], frame.shape[0], args.padding)
+                bounds = crop_bounds(box, frame.shape[1], frame.shape[0], args.padding, args.crop_style)
+                if bounds is None:
+                    rejected.append({"frame": frames[-1]["file"], "face_index": number, "face_box": [int(v) for v in box], "reason": "clipped_crop"})
+                    continue
+                x1, y1, x2, y2 = bounds
                 crop = frame[y1:y2, x1:x2]
                 crop_id = f"{frame_id}-face{number:02d}"
                 crop_path = output / "crops" / f"{crop_id}.jpg"
@@ -122,9 +134,9 @@ def extract(args):
                 crops.append({"id": crop_id, "file": crop_path.relative_to(output).as_posix(), "frame": frames[-1]["file"], "timestamp_seconds": frames[-1]["timestamp_seconds"], "face_box": [x, y, w, h], "crop_box": [x1, y1, x2, y2], "size": [x2-x1, y2-y1], "sharpness": round(float(sharpness), 2)})
         sheets = contact_sheets(cv2, [(output / f["file"], f'{f["timestamp_seconds"]:.2f}s / {f["face_count"]} faces') for f in frames], output, "frames", 320, 210)
         sheets += contact_sheets(cv2, [(output / c["file"], c["id"]) for c in crops], output, "crops", 230, 260)
-        result = {"mode": "face_detection_only", "review_required": True, "video": str(video), "fps": fps, "duration_seconds": frame_count / fps, "detector": "opencv-haar-frontalface", "parameters": {"min_face": args.min_face, "padding": args.padding}, "frames": frames, "crops": crops, "skipped_timestamps": skipped, "contact_sheets": sheets}
+        result = {"mode": "face_detection_only", "review_required": True, "video": str(video), "fps": fps, "duration_seconds": frame_count / fps, "detector": "opencv-haar-frontalface", "parameters": {"min_face": args.min_face, "crop_style": args.crop_style, "square_padding": args.padding if args.crop_style == "square" else None}, "frames": frames, "crops": crops, "rejected_crops": rejected, "skipped_timestamps": skipped, "contact_sheets": sheets}
         (output / "manifest.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-        print(json.dumps({"manifest": str(output / "manifest.json"), "frames": len(frames), "crops": len(crops), "skipped_frames": len(skipped)}))
+        print(json.dumps({"manifest": str(output / "manifest.json"), "frames": len(frames), "crops": len(crops), "rejected_crops": len(rejected), "skipped_frames": len(skipped)}))
         return 0 if frames else 1
     finally:
         capture.release()
@@ -139,7 +151,8 @@ def main():
     parser.add_argument("--interval", type=float, default=5)
     parser.add_argument("--timestamps", type=float, nargs="+")
     parser.add_argument("--min-face", type=int, default=72)
-    parser.add_argument("--padding", type=float, default=1.7)
+    parser.add_argument("--crop-style", choices=("starmapr", "square"), default="starmapr", help="Default: StarMapr's shared headshot framing and clipped-crop rejection")
+    parser.add_argument("--padding", type=float, default=1.7, help="Padding multiplier for --crop-style square only")
     args = parser.parse_args()
     try:
         return extract(args)

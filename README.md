@@ -438,8 +438,12 @@ uv run --no-project --script 35_extract_face_crops.py "C:\media\sketch.mp4" "C:\
 
 Use `--timestamps 51 123 131 251` instead of interval sampling to revisit specific
 moments. The output directory must be empty. Results include original frames,
-square JPEG crops at their native resolution, contact sheets, and `manifest.json`
-with timestamps, pixel bounds, and sharpness measurements. No identities,
+JPEG crops using the standard StarMapr headshot framing at native resolution, contact sheets, and `manifest.json`
+with timestamps, pixel bounds, and sharpness measurements. The shared crop helper
+adds 1.5 face-widths on each side, 0.5 face-heights above, and 1.5 below; crops
+that hit an image edge are rejected, as in the existing extraction stage. The
+previous tight square layout is available explicitly with `--crop-style square`.
+No identities,
 embeddings, or cross-frame face matching are produced.
 
 These are candidates for manual review: the detector can miss profile faces or

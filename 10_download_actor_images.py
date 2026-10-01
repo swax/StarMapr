@@ -14,7 +14,7 @@ import uuid
 import shutil
 from google_images_search import GoogleImagesSearch
 from dotenv import load_dotenv
-from utils import get_actor_folder_name, get_actor_folder_path, get_env_int, ensure_folder_exists, print_error, print_summary, log
+from utils import get_actor_folder_name, get_actor_folder_path, get_env_int, ensure_folder_exists, get_supported_image_extensions, print_error, print_summary, log
 
 # Load environment variables from .env file
 load_dotenv()
@@ -26,6 +26,43 @@ MAX_PAGES = get_env_int('MAX_DOWNLOAD_PAGES', 10)
 # SketchTV upload renames them) are low-res crops chosen by an earlier model; training
 # on them would reinforce that model's mistakes.
 STARMAPR_HEADSHOT = re.compile(r'_match_\d+[._]\d+_position_\d+')
+
+# Image URLs often keep their query string in the cached filename ("x.jpg;w=960",
+# "x.jpg&w=537&f=jpg"), and some have no extension at all.
+URL_PARAMETERS = re.compile(r'[;&?,].*')
+IMAGE_SIGNATURES = (
+    (b'\xff\xd8\xff', '.jpg'),
+    (b'\x89PNG\r\n\x1a\n', '.png'),
+    (b'GIF87a', '.gif'),
+    (b'GIF89a', '.gif'),
+    (b'BM', '.bmp'),
+    (b'II*\x00', '.tiff'),
+    (b'MM\x00*', '.tiff'),
+)
+
+
+def detect_image_extension(path):
+    """Return the extension matching the file's image signature, or None if it isn't a known image."""
+    with open(path, 'rb') as f:
+        header = f.read(12)
+    if header[:4] == b'RIFF' and header[8:12] == b'WEBP':
+        return '.webp'
+    return next((ext for signature, ext in IMAGE_SIGNATURES if header.startswith(signature)), None)
+
+
+def image_extension(path):
+    """
+    Extension to save a downloaded image under, without URL parameters. Falls back to the
+    file's contents when the name has no supported extension, since a valid JPEG or PNG
+    can be named anything.
+    """
+    ext = URL_PARAMETERS.sub('', os.path.splitext(path)[1].lower())
+    if ext in get_supported_image_extensions():
+        return ext
+    try:
+        return detect_image_extension(path) or ext
+    except OSError:
+        return ext
 
 
 def copy_images_from_cache_to_destination(cache_folder, destination_folder):
@@ -56,11 +93,9 @@ def copy_images_from_cache_to_destination(cache_folder, destination_folder):
             log(f"  Skipped StarMapr headshot: {filename}")
             continue
 
-        # Get file extension
-        ext = os.path.splitext(filename)[1].lower()
         # Create new GUID-based filename (first 8 characters)
         guid_prefix = str(uuid.uuid4()).replace('-', '')[:8]
-        new_filename = f"{guid_prefix}{ext}"
+        new_filename = f"{guid_prefix}{image_extension(source_path)}"
         dest_path = os.path.join(destination_folder, new_filename)
         
         try:

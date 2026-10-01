@@ -66,6 +66,7 @@ The system consists of 19 components organized in three execution tiers:
    - Testing: keywords targeting group photos; pages 3-4 add the show name so namesakes' photos don't crowd out the cast
    - GUID-based naming prevents collisions
    - Never copies StarMapr's own video headshots (`*_match_*_position_*`) into training
+   - Drops URL parameters from extensions (`x.jpg;w=960` → `.jpg`) and names other files by their image signature, so valid images aren't set aside as unsupported
 
 2. **11_remove_dupe_training_images.py** - Removes near-duplicates
    - Perceptual hashing, keeps largest file
@@ -73,6 +74,7 @@ The system consists of 19 components organized in three execution tiers:
 3. **12_remove_bad_training_images.py** - Face count validation
    - Training: exactly 1 face | Testing: 3-10 faces
    - Training faces close to a blank image's embedding (blurry, tiny, drawn, or detector false positives) move to `low_information/`
+   - Other non-image files move to `bad_unsupported/`; face caches (`.pkl`) and the pipeline's JSON reports stay in place
 
 4. **13_remove_face_outliers.py** - Removes inconsistent faces
    - Cosine similarity comparison, moves outliers to subfolder

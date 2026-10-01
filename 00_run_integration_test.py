@@ -33,6 +33,9 @@ def verify_file_counts():
     # low_information/ (image + pkl) instead of being found later as an outlier.
     # Page 1 anchors identity on 5 of its 7 faces; 5 faces across both pages don't match
     # the anchor and go to off_anchor/ (image + pkl), leaving 17 images and no outliers.
+    # Every mock is a PNG whatever its name, so the testing page's extensionless
+    # bc428226 (a group photo matching the actor, giving a 5th headshot) and d2cfc0ac.img
+    # (wrong face count) are copied as .png and analyzed; nothing is unsupported.
     expected_counts = {
         '02_training/mock_actor': 38,
         '02_training/mock_actor/outliers': 0,
@@ -40,11 +43,10 @@ def verify_file_counts():
         '02_training/mock_actor/low_information': 2,
         '02_training/mock_actor/duplicates': 2,
         '02_training/mock_actor/bad_face_count': 22,
-        '03_testing/mock_actor': 20,
-        '03_testing/mock_actor/detected_headshots': 4,
+        '03_testing/mock_actor': 22,
+        '03_testing/mock_actor/detected_headshots': 5,
         '03_testing/mock_actor/duplicates': 1,
-        '03_testing/mock_actor/bad_face_count': 18,
-        '03_testing/mock_actor/bad_unsupported': 2,
+        '03_testing/mock_actor/bad_face_count': 20,
         '05_videos/mock_video': 5,
         '05_videos/mock_video/headshots': 0,
         '05_videos/mock_video/headshots/mock_actor': 5,

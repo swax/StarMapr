@@ -145,6 +145,32 @@ class TrainingImageTests(unittest.TestCase):
         self.assertEqual(downloader.copy_images_from_cache_to_destination(cache, self.folder), 1)
         self.assertEqual(len(list(self.folder.iterdir())), 1)
 
+    def test_downloaded_images_drop_url_parameters_from_their_extension(self):
+        downloader = script('10_download_actor_images.py')
+        cache = Path('cache')
+        cache.mkdir()
+        pixels = np.full((8, 8, 3), 128, dtype=np.uint8)
+        jpeg, png = (cv2.imencode(ext, pixels)[1].tobytes() for ext in ('.jpg', '.png'))
+        for name, data in (('a.jpg;w=960', jpeg), ('b.jpg&w=537&f=jpg&aoe=0&q=100', jpeg),
+                           ('c.JPEG,w=300', jpeg), ('no_extension', png), ('d.img', png),
+                           ('error_page', b'<html>not an image</html>')):
+            (cache / name).write_bytes(data)
+        self.assertEqual(downloader.copy_images_from_cache_to_destination(cache, self.folder), 6)
+        self.assertEqual(sorted(path.suffix for path in self.folder.iterdir()),
+                         ['', '.jpeg', '.jpg', '.jpg', '.png', '.png'])
+
+    def test_pipeline_reports_are_not_moved_as_unsupported_files(self):
+        cleanup = script('12_remove_bad_training_images.py')
+        write_photo(self.folder, 'clear', ACTOR)
+        write_json(self.folder / 'candidate-quality.json', dict(accepted=False))
+        (self.folder / 'error_page').write_bytes(b'<html>not an image</html>')
+        with patch.object(cleanup, 'get_blank_embedding', return_value=np.array(BLANK, dtype=float)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            cleanup.remove_bad_images(self.folder, 'training')
+        self.assertEqual(sorted(path.name for path in self.folder.iterdir() if path.is_file()),
+                         ['candidate-quality.json', 'clear.jpg', 'clear.pkl'])
+        self.assertEqual([path.name for path in (self.folder / 'bad_unsupported').iterdir()], ['error_page'])
+
 
 class TestingStageTests(unittest.TestCase):
     def setUp(self):

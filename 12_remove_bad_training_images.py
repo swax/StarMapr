@@ -103,7 +103,8 @@ def remove_bad_images(actor_folder_path, mode='training', dry_run=False, max_bla
     images_with_good_faces = []
     images_with_errors = []
     low_information_images = []
-    unsupported_to_move = [f for f in unsupported_files if f.suffix.lower() != '.pkl']
+    # Face caches and the pipeline's own JSON reports belong beside the images
+    unsupported_to_move = [f for f in unsupported_files if f.suffix.lower() not in ('.pkl', '.json')]
     
     # Define face count requirements based on mode
     if mode == 'training':

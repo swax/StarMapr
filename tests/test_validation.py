@@ -135,6 +135,25 @@ class TrainingImageTests(unittest.TestCase):
         report = json.loads((self.folder / 'anchor' / 'anchor.json').read_text())
         self.assertEqual(sorted(report['members']), ['show0.jpg', 'show1.jpg', 'show2.jpg'])
 
+    def test_earlier_outliers_are_back_before_deduplication(self):
+        # Otherwise a later page's copy of an outlier survives deduplication and pads the training set
+        training = script('03_run_training_pipeline.py')
+        (self.folder / 'outliers').mkdir()
+        (self.folder / 'outliers' / 'earlier.jpg').write_bytes(b'synthetic')
+        present_at_dedupe = []
+
+        def run(command, description):
+            if command[1] == '11_remove_dupe_training_images.py':
+                present_at_dedupe.append((self.folder / 'earlier.jpg').exists())
+            return True
+        with patch.object(training, 'run_subprocess_command', side_effect=run), \
+                patch.object(training, 'configured_verifier', return_value=(None, {})), \
+                patch.object(training, 'establish_anchor', return_value=None), \
+                patch.object(training, 'check_image_threshold', return_value=(True, 1, 1)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            training.run_training_pipeline('Example', 'Show', 1, 1)
+        self.assertEqual(present_at_dedupe, [True])
+
     def test_starmapr_headshots_are_not_reused_for_training(self):
         downloader = script('10_download_actor_images.py')
         cache = Path('cache')

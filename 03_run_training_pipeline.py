@@ -304,6 +304,9 @@ def run_training_pipeline(actor_name, show_name, max_pages, min_images):
         if not run_subprocess_command(download_cmd, f"Downloading training images (page {page})"):
             fatal_error(f"Failed to download training images for page {page}")
 
+        # Bring back earlier outliers before deduplicating, so a later page can't re-add an outlier's copy
+        restore_outliers_to_training(actor_name, 'training')
+
         # Step 2: Remove duplicates
         dedup_cmd = [get_venv_python(), '11_remove_dupe_training_images.py', '--training', actor_name]
         if not run_subprocess_command(dedup_cmd, "Removing duplicate images"):
@@ -321,8 +324,6 @@ def run_training_pipeline(actor_name, show_name, max_pages, min_images):
             continue
 
         # Step 4a: Try similarity-based outlier detection first (works better with fewer images)
-        restore_outliers_to_training(actor_name, 'training')
-
         if verifier:
             seed_results = []
             for image in get_image_files(training_folder):

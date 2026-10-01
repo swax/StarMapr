@@ -151,18 +151,24 @@ def classify_candidate(embedding, reference, competitors, threshold=0.4, margin=
                 margin=None if rival_score is None else score - rival_score)
 
 
+def is_low_information(embedding, blank, max_blank_similarity=0.5):
+    """Tiny, blurred and drawn faces (and detector false positives) embed near the
+    featureless `blank` direction and score highly against unrelated people and
+    averaged models, so they carry no usable identity."""
+    if not 0 < max_blank_similarity <= 1:
+        raise ValueError('Invalid blank similarity limit')
+    return similarity(embedding, blank) >= max_blank_similarity
+
+
 def best_test_detection(faces, reference, competitors, blank, threshold=0.4, margin=0.08,
                         max_blank_similarity=0.5):
     """Judge only the best-scoring face of a test photo; the actor appears at most once.
 
-    Tiny, blurred and drawn faces embed near the featureless `blank` direction and
-    score highly against unrelated people and averaged models, so they are not
-    counted as faces. A weaker clear face cannot rescue an ambiguous best face.
-    Returns (face or None, decision).
+    Low-information faces are not counted as faces. A weaker clear face cannot
+    rescue an ambiguous best face. Returns (face or None, decision).
     """
-    if not 0 < max_blank_similarity <= 1:
-        raise ValueError('Invalid blank similarity limit')
-    informative = [face for face in faces if similarity(face['embedding'], blank) < max_blank_similarity]
+    informative = [face for face in faces
+                   if not is_low_information(face['embedding'], blank, max_blank_similarity)]
     if not informative:
         return None, dict(status='low_information' if faces else 'no_faces',
                           low_information_faces=len(faces))

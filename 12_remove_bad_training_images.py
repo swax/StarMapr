@@ -7,8 +7,12 @@ import shutil
 import cv2
 import numpy as np
 from collections import defaultdict
-from utils import add_training_testing_args, get_mode_and_path_from_args, print_dry_run_header, print_dry_run_summary, get_supported_image_extensions, print_error, print_summary, move_file_with_pkl, log
-from utils_deepface import get_face_embeddings
+from dotenv import load_dotenv
+from utils import add_training_testing_args, get_mode_and_path_from_args, print_dry_run_header, print_dry_run_summary, get_supported_image_extensions, print_error, print_summary, move_file_with_pkl, log, get_env_float
+from utils_deepface import get_blank_embedding, get_face_embeddings
+from validation import is_low_information
+
+load_dotenv()
 
 def count_faces_in_image(image_path):
     """
@@ -52,14 +56,16 @@ def move_files_to_folder(files_to_move, destination_folder, folder_name, dry_run
     
     return moved_count, attempted_count
 
-def remove_bad_images(actor_folder_path, mode='training', dry_run=False):
+def remove_bad_images(actor_folder_path, mode='training', dry_run=False, max_blank_similarity=0.5):
     """
     Move images from actor folder that don't meet face count requirements to categorized subfolders.
-    
+
     Args:
         actor_folder_path (str): Path to actor folder containing training or testing images
-        mode (str): 'training' expects exactly 1 face, 'testing' expects 4-10 faces
+        mode (str): 'training' expects exactly 1 identifiable face, 'testing' expects 3-10 faces
         dry_run (bool): If True, only report what would be moved without actually moving files
+        max_blank_similarity (float): Training faces at least this similar to a blank image are
+            too blurry, small or featureless to identify (or are not faces at all)
     """
     folder_path = Path(actor_folder_path)
     
@@ -71,6 +77,7 @@ def remove_bad_images(actor_folder_path, mode='training', dry_run=False):
     bad_face_count_folder = folder_path / "bad_face_count"
     unsupported_folder = folder_path / "bad_unsupported"
     error_folder = folder_path / "bad_error"
+    low_information_folder = folder_path / "low_information"
     
     # Get all files (excluding those already in categorized folders and subdirectories)
     image_extensions = get_supported_image_extensions()
@@ -95,12 +102,14 @@ def remove_bad_images(actor_folder_path, mode='training', dry_run=False):
     images_to_move = []
     images_with_good_faces = []
     images_with_errors = []
+    low_information_images = []
     unsupported_to_move = [f for f in unsupported_files if f.suffix.lower() != '.pkl']
     
     # Define face count requirements based on mode
     if mode == 'training':
         required_faces = 1
         face_description = "exactly 1 face"
+        blank = get_blank_embedding() if image_files else None
     else:  # testing mode
         min_faces, max_faces = 3, 10
         face_description = f"{min_faces}-{max_faces} faces"
@@ -114,8 +123,12 @@ def remove_bad_images(actor_folder_path, mode='training', dry_run=False):
             images_with_errors.append(img_file)
         elif mode == 'training':
             if face_count == required_faces:
-                log(f"  → KEEP: Exactly 1 face detected")
-                images_with_good_faces.append(img_file)
+                if is_low_information(get_face_embeddings(img_file)[0]['embedding'], blank, max_blank_similarity):
+                    log(f"  → MOVE TO LOW_INFORMATION: Face is too blurry, small or featureless to identify")
+                    low_information_images.append(img_file)
+                else:
+                    log(f"  → KEEP: Exactly 1 face detected")
+                    images_with_good_faces.append(img_file)
             else:
                 if face_count == 0:
                     log(f"  → MOVE TO BAD_FACE_COUNT: No faces detected")
@@ -147,6 +160,7 @@ def remove_bad_images(actor_folder_path, mode='training', dry_run=False):
     log(f"Supported images analyzed: {len(image_files)}")
     log(f"Images with {face_description} (keeping): {len(images_with_good_faces)}")
     log(f"Images to move to bad_face_count folder (wrong face count): {len(images_to_move)}")
+    log(f"Images to move to low_information folder (unidentifiable face): {len(low_information_images)}")
     log(f"Unsupported files to move to unsupported folder: {len(unsupported_to_move)}")
     log(f"Images with processing errors to move to error folder: {len(images_with_errors)}")
     
@@ -159,6 +173,11 @@ def remove_bad_images(actor_folder_path, mode='training', dry_run=False):
     total_moved_count += moved_count
     total_attempted_count += attempted_count
     
+    # Move low-information faces (never restored as outliers)
+    moved_count, attempted_count = move_files_to_folder(low_information_images, low_information_folder, "low_information", dry_run)
+    total_moved_count += moved_count
+    total_attempted_count += attempted_count
+
     # Move unsupported files
     moved_count, attempted_count = move_files_to_folder(unsupported_to_move, unsupported_folder, "unsupported", dry_run)
     total_moved_count += moved_count
@@ -193,7 +212,8 @@ def main():
     mode, actor_name, actor_folder_path = get_mode_and_path_from_args(args)
     
     try:
-        remove_bad_images(actor_folder_path, mode, args.dry_run)
+        remove_bad_images(actor_folder_path, mode, args.dry_run,
+                          get_env_float('MAX_BLANK_SIMILARITY', 0.5))
         
     except Exception as e:
         print_error(f"Error: {e}")

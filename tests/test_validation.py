@@ -76,6 +76,46 @@ def group_faces(*vectors):
             for n, vector in enumerate(vectors, 1)]
 
 
+def write_photo(folder, name, *vectors):
+    """A blank image with a valid face cache, so DeepFace inference never runs."""
+    path = Path(folder) / f'{name}.jpg'
+    cv2.imwrite(str(path), np.full((400, 400, 3), 128, dtype=np.uint8))
+    path.with_suffix('.pkl').write_bytes(pickle.dumps(dict(frame_file=path.name, faces=group_faces(*vectors),
+                                                           cache_spec=cache_spec(path))))
+
+
+class TrainingImageTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        old = Path.cwd()
+        os.chdir(self.temp.name)
+        self.addCleanup(os.chdir, old)
+        self.folder = Path('02_training/example')
+        self.folder.mkdir(parents=True)
+
+    def test_blank_like_training_face_is_set_aside(self):
+        cleanup = script('12_remove_bad_training_images.py')
+        write_photo(self.folder, 'clear', ACTOR)
+        write_photo(self.folder, 'blurry', [.3, 0, 0, 1])
+        with patch.object(cleanup, 'get_blank_embedding', return_value=np.array(BLANK, dtype=float)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            cleanup.remove_bad_images(self.folder, 'training')
+        self.assertEqual([path.name for path in self.folder.glob('*.jpg')], ['clear.jpg'])
+        self.assertEqual(sorted(path.name for path in (self.folder / 'low_information').iterdir()),
+                         ['blurry.jpg', 'blurry.pkl'])
+
+    def test_starmapr_headshots_are_not_reused_for_training(self):
+        downloader = script('10_download_actor_images.py')
+        cache = Path('cache')
+        cache.mkdir()
+        for name in ('portrait.jpg', 'example_match_0.512_position_0001.jpg',
+                     'sketchtv_api001_example_match_0_430_position_1676_a6e8bd81.jpeg'):
+            (cache / name).write_bytes(b'synthetic')
+        self.assertEqual(downloader.copy_images_from_cache_to_destination(cache, self.folder), 1)
+        self.assertEqual(len(list(self.folder.iterdir())), 1)
+
+
 class TestingStageTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -92,13 +132,10 @@ class TestingStageTests(unittest.TestCase):
         Path('04_models').mkdir()
 
     def make_photo(self, name, *vectors):
-        path = self.folder / f'{name}.jpg'
-        cv2.imwrite(str(path), np.full((400, 400, 3), 128, dtype=np.uint8))
-        path.with_suffix('.pkl').write_bytes(pickle.dumps(dict(frame_file=path.name, faces=group_faces(*vectors),
-                                                               cache_spec=cache_spec(path))))
+        write_photo(self.folder, name, *vectors)
 
     def detect(self):
-        # DeepFace is never loaded: the blank embedding and face caches are synthetic.
+        # DeepFace is never loaded: the blank embedding is synthetic too.
         with patch.object(self.detection, 'get_blank_embedding', return_value=np.array(BLANK, dtype=float)), \
                 contextlib.redirect_stdout(io.StringIO()):
             self.detection.process_images(self.folder, self.model, threshold=.4)

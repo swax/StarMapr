@@ -81,8 +81,8 @@ TESTING_DETECTION_THRESHOLD=0.4
 # The threshold of headshot detections to consider a successful test and the model ready
 TESTING_MIN_HEADSHOTS=4
 
-# Ignore test faces this similar to a blank image's embedding (tiny, blurred or drawn faces; lower = more strict)
-TESTING_MAX_BLANK_SIMILARITY=0.5
+# Ignore training and test faces this similar to a blank image's embedding (tiny, blurred or drawn faces; lower = more strict)
+MAX_BLANK_SIMILARITY=0.5
 
 # Operations: number of frames to extract from videos
 OPERATIONS_EXTRACT_FRAME_COUNT=50
@@ -311,13 +311,15 @@ StarMapr/
 ### Image Collection (`10_download_actor_images.py`)
 - Downloads actor photos from Google Image Search
 - 20 images per page, each page uses different keywords
-- Training: different keywords for more face variety
+- Training: different keywords for more face variety; large, face-dominant results
 - Testing: keywords targeting group photos
 - Automatic folder organization
+- Never reuses StarMapr's own video headshots (`*_match_*_position_*`) as training images
 
 ### Data Cleaning (`11_remove_dupe_training_images.py`, `12_remove_bad_training_images.py`, `13_remove_face_outliers.py`)
 - Perceptual hashing for duplicate detection
 - Face detection validation
+- Sets aside training faces close to a blank image's embedding (blurry, tiny, drawn, or detector false positives) in `low_information/`
 - Face consistency validation using embedding similarity
 - Resolution and quality filtering
 
@@ -353,7 +355,7 @@ All default values are configurable through environment variables in the `.env` 
 - **Training outlier threshold**: 0.2 cosine similarity, 0.0-1.0 scale (`TRAINING_OUTLIER_THRESHOLD`)
 - **Testing detection threshold**: 0.4 cosine similarity, 0.0-1.0 scale (`TESTING_DETECTION_THRESHOLD`)
 - **Testing minimum headshots**: 4 detected headshots (`TESTING_MIN_HEADSHOTS`)
-- **Testing blank-image similarity limit**: 0.5 cosine similarity, 0.0-1.0 scale (`TESTING_MAX_BLANK_SIMILARITY`)
+- **Blank-image similarity limit**: 0.5 cosine similarity, 0.0-1.0 scale (`MAX_BLANK_SIMILARITY`)
 - **Frame extraction count**: 50 frames (`OPERATIONS_EXTRACT_FRAME_COUNT`)
 - **Headshot match threshold**: 0.4 cosine similarity, 0.0-1.0 scale (`OPERATIONS_HEADSHOT_MATCH_THRESHOLD`)
 - **Minimum face size**: 50 pixels (`MIN_FACE_SIZE`)

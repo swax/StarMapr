@@ -31,6 +31,11 @@ error tails are bounded. Waiting heartbeats indicate a live wait, not useful wor
 - Training must meet both the image minimum and leave-one-out cohesion gates.
   Each embedding is normalized before averaging. A larger incoherent group cannot
   replace a qualifying group; all-noise clustering produces zero eligible images.
+- Faces whose embedding is close to a blank image's (`MAX_BLANK_SIMILARITY`) are
+  tiny, blurred or drawn, or are detector false positives. They score highly
+  against unrelated people and against each other, so cohesion cannot catch them.
+  Training sets them aside in `low_information/`, and never copies StarMapr's own
+  video headshots, so a model is not trained on an earlier model's guesses.
 - Model quality reports are tied to the model file's SHA-256 and the explicit
   ArcFace/detector/normalization/DeepFace version. Legacy models are preserved, but
   cannot produce new portraits until successfully retrained with this code.
@@ -38,9 +43,8 @@ error tails are bounded. Waiting heartbeats indicate a live wait, not useful wor
   available actor model by the configured margin. Legacy competitor models can
   veto a match; they cannot authorize one. Missing competitors limit this check.
 - The group-photo test stage counts at most one face per photo: the best match,
-  which must pass the same competitor margin. Faces whose embedding is close to
-  a blank image's (tiny, blurred or drawn faces) are ignored, since they score
-  highly against unrelated people and averaged models (`TESTING_MAX_BLANK_SIMILARITY`).
+  which must pass the same competitor margin. Faces close to the blank-image
+  embedding are not counted.
 - Candidates need similar appearances in at least two separated video frames.
   This is corroboration, not full tracking or independent identity evidence.
 - An optional AWS gate checks single-face training images and each final headshot.

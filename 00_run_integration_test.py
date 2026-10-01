@@ -29,9 +29,12 @@ def verify_file_counts():
     # Expected file counts based on Thomas Lennon reference. Training stops once the
     # quality gates pass (page 2) and testing once 4 headshots are detected (page 1).
     # Counts include the quality and result JSON reports written beside the images.
+    # One 28px training face embeds close to a blank image (0.59), so it is set aside in
+    # low_information/ (image + pkl) instead of being found later as an outlier.
     expected_counts = {
         '02_training/mock_actor': 42,
-        '02_training/mock_actor/outliers': 8,
+        '02_training/mock_actor/outliers': 6,
+        '02_training/mock_actor/low_information': 2,
         '02_training/mock_actor/duplicates': 2,
         '02_training/mock_actor/bad_face_count': 22,
         '03_testing/mock_actor': 20,

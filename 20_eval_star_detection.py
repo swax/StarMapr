@@ -163,7 +163,7 @@ def main():
         # Same competitor margin as video headshot extraction
         process_images(images_folder, embedding_file, args.threshold, args.output,
                        margin=get_env_float('OPERATIONS_MIN_MATCH_MARGIN', 0.08),
-                       max_blank_similarity=get_env_float('TESTING_MAX_BLANK_SIMILARITY', 0.5))
+                       max_blank_similarity=get_env_float('MAX_BLANK_SIMILARITY', 0.5))
 
     except Exception as e:
         print_error(str(e))

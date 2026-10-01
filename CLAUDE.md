@@ -62,15 +62,17 @@ The system consists of 19 components organized in three execution tiers:
 
 1. **10_download_actor_images.py** - Downloads from Google Image Search
    - 20 images per page, each page uses different keywords
-   - Training: different keywords for more face variety
+   - Training: different keywords for more face variety; large, face-dominant results
    - Testing: keywords targeting group photos
    - GUID-based naming prevents collisions
+   - Never copies StarMapr's own video headshots (`*_match_*_position_*`) into training
 
 2. **11_remove_dupe_training_images.py** - Removes near-duplicates
    - Perceptual hashing, keeps largest file
 
 3. **12_remove_bad_training_images.py** - Face count validation
    - Training: exactly 1 face | Testing: 3-10 faces
+   - Training faces close to a blank image's embedding (blurry, tiny, drawn, or detector false positives) move to `low_information/`
 
 4. **13_remove_face_outliers.py** - Removes inconsistent faces
    - Cosine similarity comparison, moves outliers to subfolder
@@ -215,7 +217,7 @@ Core dependencies are listed in `pyproject.toml`, with exact versions locked in 
 - **TRAINING_OUTLIER_THRESHOLD**: 0.2 (0.0-1.0, lower = more strict)
 - **TESTING_DETECTION_THRESHOLD**: 0.4 (0.0-1.0, lower = more strict)
 - **TESTING_MIN_HEADSHOTS**: 4 (threshold of headshot detections for successful test)
-- **TESTING_MAX_BLANK_SIMILARITY**: 0.5 (0.0-1.0, lower = more strict; ignore test faces this similar to a blank image)
+- **MAX_BLANK_SIMILARITY**: 0.5 (0.0-1.0, lower = more strict; training and testing ignore faces this similar to a blank image)
 - **OPERATIONS_EXTRACT_FRAME_COUNT**: 50 (number of frames to extract from videos)
 - **OPERATIONS_EXCLUDE_END_SECONDS**: 15 (exclude frames from last N seconds of video)
 - **OPERATIONS_HEADSHOT_MATCH_THRESHOLD**: 0.4 (0.0-1.0, lower = more strict)

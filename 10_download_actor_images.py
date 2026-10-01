@@ -8,6 +8,7 @@ Integrates with the existing training/ folder structure.
 
 import os
 import argparse
+import re
 import sys
 import uuid
 import shutil
@@ -20,6 +21,11 @@ load_dotenv()
 
 # Get max pages from environment
 MAX_PAGES = get_env_int('MAX_DOWNLOAD_PAGES', 10)
+
+# StarMapr's own video headshots ({actor}_match_{score}_position_{frame}, also after a
+# SketchTV upload renames them) are low-res crops chosen by an earlier model; training
+# on them would reinforce that model's mistakes.
+STARMAPR_HEADSHOT = re.compile(r'_match_\d+[._]\d+_position_\d+')
 
 
 def copy_images_from_cache_to_destination(cache_folder, destination_folder):
@@ -45,7 +51,11 @@ def copy_images_from_cache_to_destination(cache_folder, destination_folder):
         # Skip directories
         if os.path.isdir(source_path):
             continue
-            
+
+        if STARMAPR_HEADSHOT.search(filename):
+            log(f"  Skipped StarMapr headshot: {filename}")
+            continue
+
         # Get file extension
         ext = os.path.splitext(filename)[1].lower()
         # Create new GUID-based filename (first 8 characters)
@@ -206,8 +216,11 @@ def download_actor_images(actor_name, mode='training', show=None, page=1, api_ke
             'q': query,
             'num': images_to_download,
             'fileType': 'jpg|jpeg|png',
-            'imgSize': 'medium' if mode == 'training' else 'large',
+            'imgSize': 'large',
         }
+        if mode == 'training':
+            # Face-dominant results give larger, sharper faces; testing needs group photos
+            search_params['imgType'] = 'face'
             
         gis.search(search_params=search_params, path_to_dir=cache_folder)
     

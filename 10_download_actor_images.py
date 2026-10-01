@@ -85,19 +85,6 @@ def download_actor_images(actor_name, mode='training', show=None, page=1, api_ke
     if not search_engine_id:
         search_engine_id = os.getenv('GOOGLE_SEARCH_ENGINE_ID')
 
-    if not api_key or not search_engine_id:
-        print_error("Missing API credentials. Please set your keys in the .env file:")
-        log("GOOGLE_API_KEY=your_api_key_here")
-        log("GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here")
-        return False
-
-    # Set up Google Images Search
-    try:
-        gis = GoogleImagesSearch(api_key, search_engine_id)
-    except Exception as e:
-        print_error(f"Error initializing Google Images Search: {e}")
-        return False
-
     # Create actor directory based on mode
     download_path = get_actor_folder_path(actor_name, mode)
     ensure_folder_exists(download_path)
@@ -183,6 +170,23 @@ def download_actor_images(actor_name, mode='training', show=None, page=1, api_ke
     # If actor name starts with 'mock_' return an error here as it should not get to this point
     if actor_name.lower().startswith('mock_'):
         print_error("Mock actor data not found")
+        return False
+
+    # Credentials are only needed for a network search, so cached and manually added images work offline
+    if not api_key or not search_engine_id:
+        if manual_images_copied > 0:
+            print_summary(f"Successfully copied {manual_images_copied} manually added images for '{actor_name}' (no Google credentials; search skipped) - Images saved to: {download_path}")
+            return True
+        print_error(f"No cached or manually added images for query '{query}' and missing API credentials. Add images to 01_images/{actor_folder}/{mode}/ or set your keys in the .env file:")
+        log("GOOGLE_API_KEY=your_api_key_here")
+        log("GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here")
+        return False
+
+    # Set up Google Images Search
+    try:
+        gis = GoogleImagesSearch(api_key, search_engine_id)
+    except Exception as e:
+        print_error(f"Error initializing Google Images Search: {e}")
         return False
 
     # Needs to be increments of 10, google queries in blocks of 10

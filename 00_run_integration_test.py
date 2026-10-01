@@ -12,6 +12,7 @@ import sys
 import os
 import shutil
 import argparse
+import json
 from pathlib import Path
 from utils import get_average_embedding_path, print_error, get_venv_python
 
@@ -25,18 +26,20 @@ def verify_file_counts():
     """Verify that the mock_actor folders have the expected number of files."""
     print_header("VERIFYING FILE COUNTS")
     
-    # Expected file counts based on Thomas Lennon reference
+    # Expected file counts based on Thomas Lennon reference. Training stops once the
+    # quality gates pass (page 2) and testing once 4 headshots are detected (page 1).
+    # Counts include the quality and result JSON reports written beside the images.
     expected_counts = {
-        '02_training/mock_actor': 33,
-        '02_training/mock_actor/outliers': 10,
-        '02_training/mock_actor/duplicates': 4,
+        '02_training/mock_actor': 42,
+        '02_training/mock_actor/outliers': 8,
+        '02_training/mock_actor/duplicates': 2,
         '02_training/mock_actor/bad_face_count': 22,
-        '03_testing/mock_actor': 14,
-        '03_testing/mock_actor/detected_headshots': 5,
-        '03_testing/mock_actor/duplicates': 2,
-        '03_testing/mock_actor/bad_face_count': 60,
-        '03_testing/mock_actor/bad_unsupported': 3,
-        '05_videos/mock_video': 4,
+        '03_testing/mock_actor': 20,
+        '03_testing/mock_actor/detected_headshots': 4,
+        '03_testing/mock_actor/duplicates': 1,
+        '03_testing/mock_actor/bad_face_count': 18,
+        '03_testing/mock_actor/bad_unsupported': 2,
+        '05_videos/mock_video': 5,
         '05_videos/mock_video/headshots': 0,
         '05_videos/mock_video/headshots/mock_actor': 5,
         '05_videos/mock_video/frames': 100
@@ -69,7 +72,21 @@ def verify_file_counts():
     else:
         print_error(f"❌ Model file missing: {pkl_path}")
         all_passed = False
-    
+
+    # result.json is authoritative for which headshots were accepted
+    result_path = Path('05_videos/mock_video/headshots/mock_actor/result.json')
+    try:
+        result = json.loads(result_path.read_text(encoding='utf-8'))
+        listed = [result_path.parent / h['file'] for h in result['headshots']]
+        if result['status'] == 'accepted' and len(listed) == 4 and all(p.exists() for p in listed):
+            print(f"✅ Headshot result accepted with {len(listed)} listed headshots")
+        else:
+            print_error(f"❌ Unexpected headshot result: status {result['status']}, {len(listed)} listed")
+            all_passed = False
+    except (OSError, ValueError, KeyError) as e:
+        print_error(f"❌ Could not read headshot result {result_path}: {e}")
+        all_passed = False
+
     if all_passed:
         print("✅ All file counts and model file verified successfully")
     else:

@@ -22,7 +22,7 @@ import json
 import shutil
 from pathlib import Path
 from urllib.parse import urlparse
-from utils import print_error, print_summary, log, get_venv_executable
+from utils import print_error, log, get_venv_executable
 
 
 def has_playable_video(folder):
@@ -230,12 +230,13 @@ def main():
         # Download video
         success = download_video(args.url, site, video_id, title)
         
+        # Plain (uncolored) JSON so callers can parse the last line
         if success:
             result = build_download_result(args.url, site, video_id)
-            print_summary(json.dumps(result))
+            print(json.dumps(result))
         else:
             result = {"success": False, "video_folder": None}
-            print_summary(json.dumps(result))
+            print(json.dumps(result))
             sys.exit(1)
             
     except Exception as e:

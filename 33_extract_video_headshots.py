@@ -17,26 +17,10 @@ from celebrity_verifier import configured_verifier, jpeg_bytes
 from utils import (get_actor_folder_name, get_average_embedding_path, get_env_float,
                    get_headshot_crop_coordinates, load_pickle, print_error)
 from utils_deepface import cache_spec
-from validation import (classify_candidate, corroborated_candidates, unit,
+from validation import (classify_candidate, corroborated_candidates, load_competitors, unit,
                         validate_model_metadata, write_json)
 
 load_dotenv()
-
-
-def load_competitors(model_path, reference):
-    competitors = {}
-    for path in sorted(model_path.parent.glob('*_average_embedding.pkl')):
-        if path == model_path:
-            continue
-        vector = load_pickle(path)
-        if vector is None:
-            raise ValueError(f'Unreadable competitor model: {path.name}')
-        vector = unit(vector)
-        if vector.shape != reference.shape:
-            raise ValueError(f'Incompatible competitor model: {path.name}')
-        # Even a legacy rival can veto an ambiguous match; it cannot authorize one.
-        competitors[path.stem.removesuffix('_average_embedding')] = vector
-    return competitors
 
 
 def scan_candidates(frames_dir, reference, competitors, threshold, margin):

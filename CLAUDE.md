@@ -85,6 +85,8 @@ The system consists of 19 components organized in three execution tiers:
 8. **12_remove_bad_training_images.py** - Test face validation (keeps 3-10 people for group testing)
 9. **20_eval_star_detection.py** - Detects matching faces in test images
    - Loads reference embeddings, extracts matching face crops
+   - At most one face per image (the best match), which must beat other actors' models in `04_models/` by `OPERATIONS_MIN_MATCH_MARGIN`
+   - Ignores low-information faces (tiny, blurred, drawn) whose embedding is close to a blank image's
 
 10. **Accept Model** - Copies embedding to models directory
 
@@ -213,6 +215,7 @@ Core dependencies are listed in `pyproject.toml`, with exact versions locked in 
 - **TRAINING_OUTLIER_THRESHOLD**: 0.2 (0.0-1.0, lower = more strict)
 - **TESTING_DETECTION_THRESHOLD**: 0.4 (0.0-1.0, lower = more strict)
 - **TESTING_MIN_HEADSHOTS**: 4 (threshold of headshot detections for successful test)
+- **TESTING_MAX_BLANK_SIMILARITY**: 0.5 (0.0-1.0, lower = more strict; ignore test faces this similar to a blank image)
 - **OPERATIONS_EXTRACT_FRAME_COUNT**: 50 (number of frames to extract from videos)
 - **OPERATIONS_EXCLUDE_END_SECONDS**: 15 (exclude frames from last N seconds of video)
 - **OPERATIONS_HEADSHOT_MATCH_THRESHOLD**: 0.4 (0.0-1.0, lower = more strict)

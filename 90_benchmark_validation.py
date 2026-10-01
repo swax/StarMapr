@@ -2,7 +2,6 @@
 """User-run, held-out positive/negative benchmark. Never promotes models."""
 
 import argparse
-import importlib.util
 import json
 import os
 from collections import Counter
@@ -12,13 +11,10 @@ from dotenv import load_dotenv
 from celebrity_verifier import configured_verifier, jpeg_bytes
 from utils import get_actor_folder_name, get_average_embedding_path, load_pickle
 from utils_deepface import get_face_embeddings
-from validation import classify_candidate, file_hash, unit, validate_model_metadata, write_json
+from validation import classify_candidate, file_hash, load_competitors, unit, validate_model_metadata, write_json
 
 
 def run_benchmark(manifest, output, use_aws=False):
-    spec = importlib.util.spec_from_file_location('headshots', Path(__file__).with_name('33_extract_video_headshots.py'))
-    headshots = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(headshots)
     manifest = Path(manifest)
     cases = json.loads(manifest.read_text(encoding='utf-8'))
     if not isinstance(cases, list) or not cases:
@@ -54,7 +50,7 @@ def run_benchmark(manifest, output, use_aws=False):
         if validate_model_metadata(model) is None:
             raise ValueError(f"Unvalidated model: {case['actor']}")
         reference = unit(load_pickle(model))
-        competitors = headshots.load_competitors(model, reference)
+        competitors = load_competitors(model, reference)
         faces = get_face_embeddings(path)
         if faces is None:
             raise ValueError(f"Embedding extraction failed: {case['image']}")

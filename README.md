@@ -81,6 +81,9 @@ TESTING_DETECTION_THRESHOLD=0.4
 # The threshold of headshot detections to consider a successful test and the model ready
 TESTING_MIN_HEADSHOTS=4
 
+# Ignore test faces this similar to a blank image's embedding (tiny, blurred or drawn faces; lower = more strict)
+TESTING_MAX_BLANK_SIMILARITY=0.5
+
 # Operations: number of frames to extract from videos
 OPERATIONS_EXTRACT_FRAME_COUNT=50
 
@@ -326,6 +329,8 @@ StarMapr/
 ### Face Detection (`20_eval_star_detection.py`)
 - Loads precomputed reference embeddings
 - Processes test images for matching faces
+- Counts at most one face per image: the best match, which must beat other actors' models by the competitor margin
+- Ignores low-information faces (tiny, blurred or drawn) whose embedding is close to a blank image's
 - Extracts and saves face crops with similarity scores
 - Configurable similarity thresholds
 
@@ -348,6 +353,7 @@ All default values are configurable through environment variables in the `.env` 
 - **Training outlier threshold**: 0.2 cosine similarity, 0.0-1.0 scale (`TRAINING_OUTLIER_THRESHOLD`)
 - **Testing detection threshold**: 0.4 cosine similarity, 0.0-1.0 scale (`TESTING_DETECTION_THRESHOLD`)
 - **Testing minimum headshots**: 4 detected headshots (`TESTING_MIN_HEADSHOTS`)
+- **Testing blank-image similarity limit**: 0.5 cosine similarity, 0.0-1.0 scale (`TESTING_MAX_BLANK_SIMILARITY`)
 - **Frame extraction count**: 50 frames (`OPERATIONS_EXTRACT_FRAME_COUNT`)
 - **Headshot match threshold**: 0.4 cosine similarity, 0.0-1.0 scale (`OPERATIONS_HEADSHOT_MATCH_THRESHOLD`)
 - **Minimum face size**: 50 pixels (`MIN_FACE_SIZE`)

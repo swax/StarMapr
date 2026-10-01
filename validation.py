@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import pickle
 import tempfile
 from dataclasses import asdict, dataclass
 from importlib.metadata import PackageNotFoundError, version
@@ -114,6 +115,26 @@ def validate_model_metadata(model_path, policy=None):
         return None
 
 
+def load_competitors(model_path, reference, models_dir=None):
+    """Other actors' models. A model with the actor's own filename (such as the
+    previously promoted model during a retrain) is the same person, never a rival."""
+    model_path = Path(model_path)
+    competitors = {}
+    for path in sorted(Path(models_dir or model_path.parent).glob('*_average_embedding.pkl')):
+        if path.name == model_path.name:
+            continue
+        try:
+            vector = pickle.loads(path.read_bytes())
+        except Exception as exc:
+            raise ValueError(f'Unreadable competitor model: {path.name}') from exc
+        vector = unit(vector)
+        if vector.shape != reference.shape:
+            raise ValueError(f'Incompatible competitor model: {path.name}')
+        # Even a legacy rival can veto an ambiguous match; it cannot authorize one.
+        competitors[path.stem.removesuffix('_average_embedding')] = vector
+    return competitors
+
+
 def classify_candidate(embedding, reference, competitors, threshold=0.4, margin=0.08):
     if not (0 <= threshold <= 1 and 0 < margin <= 1):
         raise ValueError('Invalid matching threshold or margin')
@@ -128,6 +149,27 @@ def classify_candidate(embedding, reference, competitors, threshold=0.4, margin=
         reason = 'ambiguous'
     return dict(status=reason, score=score, competitor=rival, competitor_score=rival_score,
                 margin=None if rival_score is None else score - rival_score)
+
+
+def best_test_detection(faces, reference, competitors, blank, threshold=0.4, margin=0.08,
+                        max_blank_similarity=0.5):
+    """Judge only the best-scoring face of a test photo; the actor appears at most once.
+
+    Tiny, blurred and drawn faces embed near the featureless `blank` direction and
+    score highly against unrelated people and averaged models, so they are not
+    counted as faces. A weaker clear face cannot rescue an ambiguous best face.
+    Returns (face or None, decision).
+    """
+    if not 0 < max_blank_similarity <= 1:
+        raise ValueError('Invalid blank similarity limit')
+    informative = [face for face in faces if similarity(face['embedding'], blank) < max_blank_similarity]
+    if not informative:
+        return None, dict(status='low_information' if faces else 'no_faces',
+                          low_information_faces=len(faces))
+    best = max(informative, key=lambda face: similarity(face['embedding'], reference))
+    decision = classify_candidate(best['embedding'], reference, competitors, threshold, margin)
+    decision['low_information_faces'] = len(faces) - len(informative)
+    return (best if decision['status'] == 'accepted' else None), decision
 
 
 def corroborated_candidates(candidates, min_frames=2, min_frame_gap=25, min_similarity=0.6):

@@ -162,6 +162,22 @@ def get_face_embeddings(image_path, headshotable_only=False):
         return None
 
 
+def get_blank_embedding():
+    """
+    Get the ArcFace embedding of a featureless image.
+
+    Blank, noisy and heavily blurred inputs all embed close to this one direction
+    (typically above 0.9 cosine similarity) while clear faces sit near 0, so faces
+    close to it carry little identity information.
+    """
+    from deepface import DeepFace
+
+    blank = np.full((112, 112, 3), 128, dtype=np.uint8)
+    result = DeepFace.represent(blank, model_name='ArcFace', detector_backend='skip',
+                                normalization='base', align=True, enforce_detection=False)
+    return np.array(result[0]['embedding'])
+
+
 def get_single_face_embedding(image_path):
     """
     Get embedding for single face image.

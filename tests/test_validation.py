@@ -15,8 +15,9 @@ import cv2
 import numpy as np
 
 from celebrity_verifier import CelebrityVerifier, evaluate_response, configured_verifier, jpeg_bytes
-from validation import (QualityPolicy, assess_reference, classify_candidate, corroborated_candidates,
-                        embedding_spec, file_hash, metadata_path, validate_model_metadata, write_json)
+from validation import (QualityPolicy, assess_reference, best_test_detection, classify_candidate,
+                        corroborated_candidates, embedding_spec, file_hash, metadata_path,
+                        validate_model_metadata, write_json)
 from utils_deepface import cache_spec, get_face_embeddings
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -65,6 +66,72 @@ class QualityTests(unittest.TestCase):
         self.assertEqual(corroborated_candidates([first, candidate(2, [1, 0])]), [])
         self.assertEqual(corroborated_candidates([first, candidate(100, [0, 1])]), [])
         self.assertEqual(len(corroborated_candidates([first, candidate(100, [1, 0])])), 2)
+
+
+ACTOR, RIVAL, BLANK = [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]
+
+
+def group_faces(*vectors):
+    return [dict(face_id=n, embedding=list(vector), bounding_box={'x': 20 + 60 * n, 'y': 150, 'w': 50, 'h': 50})
+            for n, vector in enumerate(vectors, 1)]
+
+
+class TestingStageTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        old = Path.cwd()
+        os.chdir(self.temp.name)
+        self.addCleanup(os.chdir, old)
+        self.detection = script('20_eval_star_detection.py')
+        self.folder = Path('03_testing/example')
+        self.folder.mkdir(parents=True)
+        self.model = Path('02_training/example/example_average_embedding.pkl')
+        self.model.parent.mkdir(parents=True)
+        self.model.write_bytes(pickle.dumps(np.array(ACTOR, dtype=float)))
+        Path('04_models').mkdir()
+
+    def make_photo(self, name, *vectors):
+        path = self.folder / f'{name}.jpg'
+        cv2.imwrite(str(path), np.full((400, 400, 3), 128, dtype=np.uint8))
+        path.with_suffix('.pkl').write_bytes(pickle.dumps(dict(frame_file=path.name, faces=group_faces(*vectors),
+                                                               cache_spec=cache_spec(path))))
+
+    def detect(self):
+        # DeepFace is never loaded: the blank embedding and face caches are synthetic.
+        with patch.object(self.detection, 'get_blank_embedding', return_value=np.array(BLANK, dtype=float)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.detection.process_images(self.folder, self.model, threshold=.4)
+        return sorted(path.name for path in (self.folder / 'detected_headshots').iterdir())
+
+    def test_several_matching_faces_yield_only_the_best(self):
+        face, decision = best_test_detection(group_faces([1, .5, 0, 0], [1, .1, 0, 0], [1, 0, .9, 0]), ACTOR, {}, BLANK)
+        self.assertEqual(face['face_id'], 2)
+        self.assertEqual(decision['status'], 'accepted')
+
+    def test_best_face_tied_with_competitor_abstains_without_fallback(self):
+        # The strongest match sits exactly between two actors; a weaker clear face cannot rescue the photo.
+        face, decision = best_test_detection(group_faces([1, 1, 0, 0], [1, 0, 1.2, 0]), ACTOR, {'rival': RIVAL}, BLANK)
+        self.assertIsNone(face)
+        self.assertEqual(decision['status'], 'ambiguous')
+        self.assertAlmostEqual(decision['margin'], 0)
+
+    def test_featureless_faces_are_not_counted(self):
+        face, decision = best_test_detection(group_faces([1, 0, 0, 1], [1, 0, 1.2, 0]), ACTOR, {}, BLANK)
+        self.assertEqual(face['face_id'], 2)
+        self.assertEqual(decision['low_information_faces'], 1)
+        self.assertEqual(best_test_detection(group_faces([1, 0, 0, 1]), ACTOR, {}, BLANK)[1]['status'], 'low_information')
+
+    def test_group_photo_counts_once_and_own_promoted_model_is_not_a_rival(self):
+        Path('04_models/example_average_embedding.pkl').write_bytes(self.model.read_bytes())
+        self.make_photo('group', [1, .5, 0, 0], [1, .1, 0, 0], [1, 0, .9, 0])
+        self.assertEqual(self.detect(), [f'group_{1 / np.sqrt(1.01):.3f}.jpg'])
+
+    def test_competitor_tie_is_not_a_detection(self):
+        Path('04_models/rival_average_embedding.pkl').write_bytes(pickle.dumps(np.array(RIVAL, dtype=float)))
+        self.make_photo('tied', [1, 1, 0, 0])
+        self.make_photo('clear', [1, .1, 0, 0])
+        self.assertEqual(self.detect(), [f'clear_{1 / np.sqrt(1.01):.3f}.jpg'])
 
 
 class CloudTests(unittest.TestCase):

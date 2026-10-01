@@ -37,6 +37,10 @@ error tails are bounded. Waiting heartbeats indicate a live wait, not useful wor
 - Every candidate must exceed the local similarity threshold and beat every other
   available actor model by the configured margin. Legacy competitor models can
   veto a match; they cannot authorize one. Missing competitors limit this check.
+- The group-photo test stage counts at most one face per photo: the best match,
+  which must pass the same competitor margin. Faces whose embedding is close to
+  a blank image's (tiny, blurred or drawn faces) are ignored, since they score
+  highly against unrelated people and averaged models (`TESTING_MAX_BLANK_SIMILARITY`).
 - Candidates need similar appearances in at least two separated video frames.
   This is corroboration, not full tracking or independent identity evidence.
 - An optional AWS gate checks single-face training images and each final headshot.

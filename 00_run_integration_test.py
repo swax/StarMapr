@@ -31,9 +31,12 @@ def verify_file_counts():
     # Counts include the quality and result JSON reports written beside the images.
     # One 28px training face embeds close to a blank image (0.59), so it is set aside in
     # low_information/ (image + pkl) instead of being found later as an outlier.
+    # Page 1 anchors identity on 5 of its 7 faces; 5 faces across both pages don't match
+    # the anchor and go to off_anchor/ (image + pkl), leaving 17 images and no outliers.
     expected_counts = {
-        '02_training/mock_actor': 42,
-        '02_training/mock_actor/outliers': 6,
+        '02_training/mock_actor': 38,
+        '02_training/mock_actor/outliers': 0,
+        '02_training/mock_actor/off_anchor': 10,
         '02_training/mock_actor/low_information': 2,
         '02_training/mock_actor/duplicates': 2,
         '02_training/mock_actor/bad_face_count': 22,

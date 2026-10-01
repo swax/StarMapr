@@ -63,7 +63,7 @@ The system consists of 19 components organized in three execution tiers:
 1. **10_download_actor_images.py** - Downloads from Google Image Search
    - 20 images per page, each page uses different keywords
    - Training: different keywords for more face variety; large, face-dominant results
-   - Testing: keywords targeting group photos
+   - Testing: keywords targeting group photos; pages 3-4 add the show name so namesakes' photos don't crowd out the cast
    - GUID-based naming prevents collisions
    - Never copies StarMapr's own video headshots (`*_match_*_position_*`) into training
 
@@ -76,6 +76,7 @@ The system consists of 19 components organized in three execution tiers:
 
 4. **13_remove_face_outliers.py** - Removes inconsistent faces
    - Cosine similarity comparison, moves outliers to subfolder
+   - Before this step, `03_run_training_pipeline.py` anchors identity on the largest consistent group from the page 1 show search (skipping a group another actor's model claims) and moves faces that don't match it (namesakes, co-stars) to `off_anchor/`; see `anchor/anchor.json`
 
 5. **15_compute_average_embeddings.py** - Creates actor embeddings
    - Generates and averages ArcFace embeddings, saves as .pkl
@@ -215,6 +216,7 @@ Core dependencies are listed in `pyproject.toml`, with exact versions locked in 
 - **TRAINING_MIN_IMAGES**: 15 (number of good images to find for training)
 - **TRAINING_DUPLICATE_THRESHOLD**: 5 (0-64, lower = more strict)
 - **TRAINING_OUTLIER_THRESHOLD**: 0.2 (0.0-1.0, lower = more strict)
+- **TRAINING_ANCHOR_THRESHOLD**: 0.4 (0.0-1.0, higher = more strict; faces must match the page 1 show-search identity)
 - **TESTING_DETECTION_THRESHOLD**: 0.4 (0.0-1.0, lower = more strict)
 - **TESTING_MIN_HEADSHOTS**: 4 (threshold of headshot detections for successful test)
 - **MAX_BLANK_SIMILARITY**: 0.5 (0.0-1.0, lower = more strict; training and testing ignore faces this similar to a blank image)

@@ -21,10 +21,11 @@ import json
 from pathlib import Path
 from dotenv import load_dotenv
 from utils import (
-    get_actor_folder_path, get_image_files, get_env_int,
+    get_actor_folder_path, get_image_files, get_env_int, get_env_float,
     get_average_embedding_path, print_error, ensure_folder_exists, get_venv_python
 )
-from validation import QualityPolicy, assess_reference, write_json, metadata_path
+from validation import (QualityPolicy, assess_reference, find_anchor, load_competitors, metadata_path,
+                        similarity, unit, write_json)
 from utils_deepface import get_face_embeddings
 from celebrity_verifier import configured_verifier, jpeg_bytes
 from progress import run_logged
@@ -218,6 +219,56 @@ def check_image_threshold(training_folder, min_images, best_image_count):
     return threshold_met, image_count, best_image_count
 
 
+def establish_anchor(actor_name, training_folder, threshold):
+    """
+    Anchor the actor's identity on the page 1 "{actor} {show}" results and manual images.
+
+    Args:
+        actor_name (str): Name of the actor
+        training_folder (str): Path to training folder
+        threshold (float): Similarity that joins a face to a group
+
+    Returns:
+        numpy.ndarray or None: Anchor centroid, or None when page 1 has no usable group
+    """
+    names, embeddings = [], []
+    for image in get_image_files(training_folder):
+        faces = get_face_embeddings(image)
+        if faces and len(faces) == 1:
+            names.append(image.name)
+            embeddings.append(faces[0]['embedding'])
+    competitors = (load_competitors(get_average_embedding_path(actor_name, 'models'), unit(embeddings[0]))
+                   if embeddings else {})
+    anchor, members = find_anchor(embeddings, competitors, threshold)
+    # A subfolder, because later pages move loose non-image files to bad_unsupported/
+    write_json(Path(training_folder) / 'anchor' / 'anchor.json', dict(
+        anchored=anchor is not None, threshold=threshold, candidates=len(embeddings),
+        members=[names[i] for i in members], competitor_models=list(competitors)))
+    if anchor is None:
+        print_error("No consistent group of faces in the show search; training without an identity anchor")
+    else:
+        print(f"✓ Anchored identity on {len(members)} of {len(embeddings)} show-search faces")
+    return anchor
+
+
+def set_aside_off_anchor(training_folder, anchor, threshold):
+    """
+    Move faces that don't match the anchor (namesakes, co-stars) to off_anchor/, which is never restored.
+
+    Returns:
+        int: Number of images set aside
+    """
+    moved = 0
+    for image in get_image_files(training_folder):
+        faces = get_face_embeddings(image)
+        if faces and len(faces) == 1 and similarity(faces[0]['embedding'], anchor) < threshold:
+            move_file_with_pkl(image, Path(training_folder) / 'off_anchor', False)
+            moved += 1
+    if moved:
+        print(f"✓ Set aside {moved} faces that don't match the anchor")
+    return moved
+
+
 def run_training_pipeline(actor_name, show_name, max_pages, min_images):
     """
     Run the training pipeline until minimum images achieved or max pages reached.
@@ -237,6 +288,8 @@ def run_training_pipeline(actor_name, show_name, max_pages, min_images):
     ensure_folder_exists(training_folder)
 
     best_image_count = 0
+    anchor = None
+    anchor_threshold = get_env_float('TRAINING_ANCHOR_THRESHOLD', 0.4)
     verifier, identity_map = configured_verifier(Path(training_folder) / 'celebrity-cache.sqlite')
     expected_id = identity_map.get(get_actor_folder_name(actor_name))
 
@@ -290,7 +343,13 @@ def run_training_pipeline(actor_name, show_name, max_pages, min_images):
                     return False, 0
             write_json(Path(training_folder) / 'seed-verification.json', seed_results)
 
-        outlier_cmd = [get_venv_python(), '13_remove_face_outliers.py', '--training', actor_name]
+        # Only page 1 searches with the show name; later name-only searches can return namesakes
+        if page == 1:
+            anchor = establish_anchor(actor_name, training_folder, anchor_threshold)
+        if anchor is not None:
+            set_aside_off_anchor(training_folder, anchor, anchor_threshold)
+
+        outlier_cmd =[get_venv_python(), '13_remove_face_outliers.py', '--training', actor_name]
         if not run_subprocess_command(outlier_cmd, "Removing face outliers (similarity based)"):
             fatal_error("Failed to remove face outliers")
 

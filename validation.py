@@ -92,6 +92,28 @@ def assess_reference(embeddings, policy=None):
     return centroid if accepted else None, report
 
 
+def find_anchor(embeddings, competitors, threshold=0.4, min_size=3):
+    """Identity seed from the show-specific search, so namesakes returned by later
+    name-only searches cannot outvote the actor. The largest group of mutually similar
+    faces wins unless another actor's model claims it (a co-star from the same show).
+    Returns (centroid or None, member indexes)."""
+    if not embeddings:
+        return None, []
+    rows = np.stack([unit(row) for row in embeddings])
+    similar = rows @ rows.T >= threshold
+    remaining = list(range(len(rows)))
+    while remaining:
+        seed = max(remaining, key=lambda i: similar[i, remaining].sum())
+        group = [i for i in remaining if similar[seed, i]]
+        if len(group) < min_size:
+            break
+        centroid = unit(rows[group].sum(axis=0))
+        if all(similarity(centroid, other) < threshold for other in competitors.values()):
+            return centroid, group
+        remaining = [i for i in remaining if i not in group]
+    return None, []
+
+
 def metadata_path(model_path):
     return Path(model_path).with_suffix('.quality.json')
 

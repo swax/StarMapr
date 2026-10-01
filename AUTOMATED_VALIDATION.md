@@ -31,6 +31,11 @@ error tails are bounded. Waiting heartbeats indicate a live wait, not useful wor
 - Training must meet both the image minimum and leave-one-out cohesion gates.
   Each embedding is normalized before averaging. A larger incoherent group cannot
   replace a qualifying group; all-noise clustering produces zero eligible images.
+- Only the page 1 search includes the show name. Its largest consistent group of
+  faces anchors the actor's identity, unless another actor's model claims it (a
+  co-star). Faces from any page that don't match the anchor go to `off_anchor/`,
+  so namesakes from later name-only searches can't outvote the actor. Without a
+  page 1 group of at least three faces, training proceeds unanchored.
 - Faces whose embedding is close to a blank image's (`MAX_BLANK_SIMILARITY`) are
   tiny, blurred or drawn, or are detector false positives. They score highly
   against unrelated people and against each other, so cohesion cannot catch them.

@@ -116,11 +116,13 @@ def download_actor_images(actor_name, mode='training', show=None, page=1, api_ke
             f'{actor_name} studio'     # Page 10: name + studio
         ]
     else:  # testing mode
+        # Name-only queries return namesakes' group photos for common names, so pages 3-4
+        # also name the show (pages 1-2 stay as-is because the integration mocks cache them)
         search_terms = [
             f'{actor_name} group',         # Page 1: name + group
             f'{actor_name} cast',          # Page 2: name + cast
-            f'{actor_name} team',          # Page 3: name + team
-            f'{actor_name} with friends',  # Page 4: name + with friends
+            f'{actor_name} {show} cast',   # Page 3: name + show + cast
+            f'{actor_name} {show} group',  # Page 4: name + show + group
             f'{actor_name} ensemble',      # Page 5: name + ensemble
             f'{actor_name} crowd',         # Page 6: name + crowd
             f'{actor_name} party',         # Page 7: name + party

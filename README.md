@@ -75,6 +75,9 @@ TRAINING_DUPLICATE_THRESHOLD=5
 # Training outlier detection threshold (0.0-1.0, lower = more strict)
 TRAINING_OUTLIER_THRESHOLD=0.2
 
+# Faces from the page 1 "{actor} {show}" search anchor identity; later faces must match it (higher = more strict)
+TRAINING_ANCHOR_THRESHOLD=0.4
+
 # Testing detection threshold (0.0-1.0, lower = more strict)
 TESTING_DETECTION_THRESHOLD=0.4
 
@@ -312,7 +315,7 @@ StarMapr/
 - Downloads actor photos from Google Image Search
 - 20 images per page, each page uses different keywords
 - Training: different keywords for more face variety; large, face-dominant results
-- Testing: keywords targeting group photos
+- Testing: keywords targeting group photos; pages 3-4 add the show name so namesakes' photos don't crowd out the cast
 - Automatic folder organization
 - Never reuses StarMapr's own video headshots (`*_match_*_position_*`) as training images
 
@@ -320,6 +323,7 @@ StarMapr/
 - Perceptual hashing for duplicate detection
 - Face detection validation
 - Sets aside training faces close to a blank image's embedding (blurry, tiny, drawn, or detector false positives) in `low_information/`
+- Anchors identity on the page 1 "{actor} {show}" search, setting aside namesakes and co-stars in `off_anchor/`
 - Face consistency validation using embedding similarity
 - Resolution and quality filtering
 

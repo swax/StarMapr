@@ -16,8 +16,8 @@ import numpy as np
 
 from celebrity_verifier import CelebrityVerifier, evaluate_response, configured_verifier, jpeg_bytes
 from validation import (QualityPolicy, assess_reference, best_test_detection, classify_candidate,
-                        corroborated_candidates, embedding_spec, file_hash, metadata_path,
-                        validate_model_metadata, write_json)
+                        corroborated_candidates, embedding_spec, file_hash, find_anchor, metadata_path,
+                        similarity, validate_model_metadata, write_json)
 from utils_deepface import cache_spec, get_face_embeddings
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -104,6 +104,36 @@ class TrainingImageTests(unittest.TestCase):
         self.assertEqual([path.name for path in self.folder.glob('*.jpg')], ['clear.jpg'])
         self.assertEqual(sorted(path.name for path in (self.folder / 'low_information').iterdir()),
                          ['blurry.jpg', 'blurry.pkl'])
+
+    def test_largest_show_group_anchors_identity_over_namesakes(self):
+        namesakes = [[0, 1, 0, 0], [0, 1, .1, 0]]
+        actor = [[1, .1, 0, 0], [1, 0, .1, 0], [1, .1, .1, 0]]
+        anchor, members = find_anchor(namesakes + actor, {})
+        self.assertEqual(members, [2, 3, 4])
+        self.assertGreater(similarity(anchor, ACTOR), .9)
+
+    def test_co_star_group_claimed_by_their_model_is_skipped(self):
+        co_star = [[0, 1, 0, 0], [0, 1, .1, 0], [0, 1, 0, .1], [.1, 1, 0, 0]]
+        actor = [[1, .1, 0, 0], [1, 0, .1, 0], [1, .1, .1, 0]]
+        self.assertEqual(find_anchor(co_star + actor, {'co_star': RIVAL})[1], [4, 5, 6])
+        self.assertEqual(find_anchor(co_star, {'co_star': RIVAL}), (None, []))
+
+    def test_too_few_consistent_show_faces_gives_no_anchor(self):
+        self.assertEqual(find_anchor([[1, 0, 0, 0], [1, .1, 0, 0], [0, 1, 0, 0]], {}), (None, []))
+
+    def test_faces_off_the_show_anchor_are_set_aside(self):
+        training = script('03_run_training_pipeline.py')
+        for n, vector in enumerate(([1, .1, 0, 0], [1, 0, .1, 0], [1, .1, .1, 0], [0, 1, 0, 0])):
+            write_photo(self.folder, f'show{n}', vector)
+        with contextlib.redirect_stdout(io.StringIO()):
+            anchor = training.establish_anchor('Example', self.folder, .4)
+            write_photo(self.folder, 'namesake', [0, 0, 1, 0])
+            write_photo(self.folder, 'later_match', [1, 0, 0, .2])
+            self.assertEqual(training.set_aside_off_anchor(self.folder, anchor, .4), 2)
+        self.assertEqual(sorted(path.name for path in (self.folder / 'off_anchor').glob('*.jpg')),
+                         ['namesake.jpg', 'show3.jpg'])
+        report = json.loads((self.folder / 'anchor' / 'anchor.json').read_text())
+        self.assertEqual(sorted(report['members']), ['show0.jpg', 'show1.jpg', 'show2.jpg'])
 
     def test_starmapr_headshots_are_not_reused_for_training(self):
         downloader = script('10_download_actor_images.py')

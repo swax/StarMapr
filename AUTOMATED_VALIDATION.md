@@ -52,6 +52,16 @@ error tails are bounded. Waiting heartbeats indicate a live wait, not useful wor
   embedding are not counted.
 - Candidates need similar appearances in at least two separated video frames.
   This is corroboration, not full tracking or independent identity evidence.
+- Video headshots first try the normal padded crop. If only that padding extends
+  beyond the frame, they use a tighter crop around the same complete detected
+  face. Faces below `MIN_FACE_SIZE`, faces extending outside the frame and
+  whole-image detector false positives remain ineligible. The same identity,
+  competitor, temporal and configured AWS checks apply to both crop modes.
+  Each accepted headshot records `crop.mode` (`padded` or `tight_fallback`), its
+  exact bounds and the fallback reason. API artifacts expose the same `crop`
+  provenance. Cached strict `isHeadshotable` flags are not identity evidence;
+  video extraction derives crop eligibility from current frame dimensions.
+  Training, testing and the strict manual crop helper keep their existing rules.
 - An optional AWS gate checks single-face training images and each final headshot.
   It requires the exact catalog name (case/space normalized), or an explicit
   celebrity ID override, and sufficient confidence. It

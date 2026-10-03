@@ -38,11 +38,14 @@ class ApiValidationTests(unittest.TestCase):
 
     def test_only_current_accepted_manifest_files_are_exposed(self):
         outcomes = {'Example': {'status': 'accepted', 'headshots': [
-            {'file': 'accepted.jpg', 'verification': {'status': 'verified'}},
+            {'file': 'accepted.jpg', 'verification': {'status': 'verified'},
+             'crop': {'mode': 'tight_fallback', 'fallback_reason': 'padded_crop_outside_frame'}},
             {'file': '../escape.jpg'}, {'file': 'missing.jpg'}, {'file': 'accepted.jpg'}]}}
         entries = self.api.collect_headshot_artifacts('job', 'synthetic', ['Example'], outcomes)['Example']
         self.assertEqual([entry['filename'] for entry in entries], ['accepted.jpg'])
         self.assertEqual(entries[0]['validation']['status'], 'verified')
+        self.assertEqual(entries[0]['crop']['mode'], 'tight_fallback')
+        self.assertEqual(entries[0]['crop']['fallback_reason'], 'padded_crop_outside_frame')
 
     def test_missing_or_abstained_results_never_expose_old_photos(self):
         for outcomes in (None, {}, {'Example': {'status': 'model_unvalidated', 'headshots': [{'file': 'stale.jpg'}]}}):

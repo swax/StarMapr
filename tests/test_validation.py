@@ -345,6 +345,64 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(len(list(self.output.glob('*.jpg'))), 2)
         self.assertEqual(result['verification'], 'local_only')
 
+    def set_edge_faces(self, vector=(1, 0), bbox=None):
+        for path in (self.video / 'frames').glob('*.pkl'):
+            data = pickle.loads(path.read_bytes())
+            data['faces'][0].update(isHeadshotable=False, embedding=list(vector),
+                bounding_box=bbox or dict(x=0, y=120, w=80, h=80))
+            path.write_bytes(pickle.dumps(data))
+
+    def test_tight_fallback_recovers_valid_cached_edge_faces_and_records_bounds(self):
+        self.set_edge_faces()
+        result = self.run_extraction()
+        self.assertEqual(result['status'], 'accepted')
+        self.assertEqual(len(result['headshots']), 2)
+        for headshot in result['headshots']:
+            self.assertEqual(headshot['crop'], dict(mode='tight_fallback',
+                fallback_reason='padded_crop_outside_frame', x_start=0, y_start=100,
+                x_end=100, y_end=240))
+            self.assertEqual(headshot['decision']['status'], 'accepted')
+            self.assertEqual(cv2.imread(str(self.output / headshot['file'])).shape[:2], (140, 100))
+
+    def test_tight_fallback_cannot_rescue_partial_or_undersized_faces(self):
+        for box in (dict(x=-1, y=120, w=80, h=80), dict(x=0, y=120, w=49, h=80)):
+            with self.subTest(box=box):
+                self.set_edge_faces(bbox=box)
+                result = self.run_extraction()
+                self.assertEqual(result['status'], 'no_reliable_headshot')
+                self.assertEqual(result['rejections']['not_headshotable'], 2)
+
+    def test_tight_fallback_still_rejects_low_identity_scores_and_competitor_ties(self):
+        self.set_edge_faces(vector=(0, 1))
+        result = self.run_extraction()
+        self.assertEqual(result['rejections']['below_threshold'], 2)
+        self.assertFalse(result['headshots'])
+        self.set_edge_faces()
+        Path('04_models/rival_average_embedding.pkl').write_bytes(self.model.read_bytes())
+        result = self.run_extraction()
+        self.assertEqual(result['rejections']['ambiguous'], 2)
+        self.assertFalse(result['headshots'])
+
+    def test_tight_fallback_still_requires_separated_confirming_frames(self):
+        self.set_edge_faces()
+        (self.video / 'frames/00000100.pkl').unlink()
+        result = self.run_extraction()
+        self.assertEqual(result['rejections']['insufficient_corroboration'], 1)
+        self.assertFalse(result['headshots'])
+
+    def test_tight_fallback_cannot_bypass_cloud_mismatch_or_model_validation(self):
+        self.set_edge_faces()
+        fake = Mock()
+        fake.verify.return_value = {'status': 'identity_mismatch'}
+        with patch.object(self.headshots, 'configured_verifier', return_value=(fake, {'example': 'expected'})):
+            result = self.run_extraction()
+        self.assertFalse(result['headshots'])
+        self.assertEqual(result['rejections']['identity_mismatch'], 2)
+        metadata_path(self.model).unlink()
+        result = self.run_extraction()
+        self.assertEqual(result['status'], 'model_unvalidated')
+        self.assertFalse(result['headshots'])
+
     def test_unvalidated_model_abstains_and_removes_stale_headshots(self):
         self.run_extraction()
         metadata_path(self.model).unlink()

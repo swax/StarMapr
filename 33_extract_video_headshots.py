@@ -14,8 +14,9 @@ import cv2
 from dotenv import load_dotenv
 
 from celebrity_verifier import configured_verifier, jpeg_bytes
+from headshot_geometry import select_headshot_crop
 from utils import (get_actor_folder_name, get_average_embedding_path, get_env_float,
-                   get_headshot_crop_coordinates, load_pickle, print_error)
+                   get_env_int, load_pickle, print_error)
 from utils_deepface import cache_spec
 from validation import (classify_candidate, corroborated_candidates, load_competitors, unit,
                         validate_model_metadata, write_json)
@@ -38,8 +39,19 @@ def scan_candidates(frames_dir, reference, competitors, threshold, margin):
         frame = frames_dir / frame_file
         if data.get('cache_spec') != cache_spec(frame):
             raise ValueError(f'Stale cache for {frame_file}; run 32_extract_frame_faces.py')
-        for face in data.get('faces', []):
-            if not face.get('isHeadshotable', False):
+        faces = data.get('faces', [])
+        if not faces:
+            continue
+        image = cv2.imread(str(frame))
+        if image is None:
+            raise ValueError(f'Cannot read frame {frame_file}')
+        height, width = image.shape[:2]
+        for face in faces:
+            # Cached isHeadshotable describes the old, strict padding rule. Derive
+            # video geometry from the actual frame so valid caches also get fallback.
+            crop = select_headshot_crop(face['bounding_box'], width, height,
+                                       get_env_int('MIN_FACE_SIZE', 50))
+            if crop is None:
                 rejected['not_headshotable'] += 1
                 continue
             decision = classify_candidate(face['embedding'], reference, competitors, threshold, margin)
@@ -47,7 +59,7 @@ def scan_candidates(frames_dir, reference, competitors, threshold, margin):
                 rejected[decision['status']] += 1
                 continue
             candidates.append(dict(frame_file=frame_file, frame_position=int(Path(frame_file).stem),
-                                   face=face, decision=decision))
+                                   face=face, decision=decision, crop=crop))
     return candidates, rejected
 
 
@@ -55,9 +67,11 @@ def crop_candidate(frames_dir, candidate):
     image = cv2.imread(str(frames_dir / candidate['frame_file']))
     if image is None:
         raise ValueError(f"Cannot read frame {candidate['frame_file']}")
-    coords = get_headshot_crop_coordinates(candidate['face']['bounding_box'], image.shape[1], image.shape[0])
-    if coords['clipped']:
+    coords = select_headshot_crop(candidate['face']['bounding_box'], image.shape[1], image.shape[0],
+                                 get_env_int('MIN_FACE_SIZE', 50))
+    if coords is None:
         return None
+    candidate['crop'] = coords
     crop = image[coords['y_start']:coords['y_end'], coords['x_start']:coords['x_end']]
     success, encoded = cv2.imencode('.jpg', crop)
     if not success:
@@ -124,7 +138,7 @@ def extract_top_headshots(actor_name, video_folder_path, threshold=0.4, dry_run=
             attempted += 1
             data = crop_candidate(frames, candidate)
             if data is None:
-                rejected['clipped_crop'] += 1
+                rejected['invalid_crop'] += 1
                 continue
             if verifier:
                 # A dry run must not call AWS or create a cache/budget database.
@@ -146,7 +160,8 @@ def extract_top_headshots(actor_name, video_folder_path, threshold=0.4, dry_run=
             selected_positions.append(candidate['frame_position'])
             report['headshots'].append(dict(file=name, frame=candidate['frame_file'],
                                             face_id=candidate['face'].get('face_id'),
-                                            decision=candidate['decision'], verification=verdict))
+                                            decision=candidate['decision'], verification=verdict,
+                                            crop=candidate['crop']))
         report['rejections'] = dict(rejected)
         if images:
             report.update(status='accepted', retryable=False)

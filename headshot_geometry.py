@@ -1,5 +1,7 @@
 """Shared headshot crop geometry; no detection or identification dependencies."""
 
+import math
+
 def get_headshot_crop_coordinates(bbox, img_width, img_height):
     """
     Calculate headshot crop coordinates with custom padding and edge detection.
@@ -48,3 +50,34 @@ def get_headshot_crop_coordinates(bbox, img_width, img_height):
         'y_end': y_end,
         'clipped': clipped
     }
+
+
+def select_headshot_crop(bbox, img_width, img_height, min_face_size=50):
+    """Prefer normal padding, then reduce only padding around a complete face.
+
+    This selects geometry, never identity. The strict crop helper remains unchanged
+    for training and manual extraction. Video operations still apply every model,
+    competitor, corroboration and configured cloud gate to either crop mode.
+    """
+    x, y, w, h = (bbox[key] for key in ('x', 'y', 'w', 'h'))
+    values = (x, y, w, h, img_width, img_height, min_face_size)
+    if (not all(math.isfinite(value) for value in values)
+            or not all(value == int(value) for value in values)
+            or min_face_size <= 0 or w < min_face_size or h < min_face_size
+            or x < 0 or y < 0 or x + w > img_width or y + h > img_height):
+        return None
+    x, y, w, h, img_width, img_height, min_face_size = map(int, values)
+    bbox = dict(x=x, y=y, w=w, h=h)
+    # Match the detector's whole-image false-positive exclusion.
+    if abs(w - img_width) <= 3 and abs(h - img_height) <= 3:
+        return None
+    padded = get_headshot_crop_coordinates(bbox, img_width, img_height)
+    bounds = ('x_start', 'y_start', 'x_end', 'y_end')
+    if not padded['clipped']:
+        return dict(mode='padded', **{key: padded[key] for key in bounds})
+    # Clamp padding, never the detected face; no shifting or invented pixels.
+    return dict(mode='tight_fallback', fallback_reason='padded_crop_outside_frame',
+                x_start=max(0, x - int(w * .25)),
+                y_start=max(0, y - int(h * .25)),
+                x_end=min(img_width, x + w + int(w * .25)),
+                y_end=min(img_height, y + h + int(h * .5)))

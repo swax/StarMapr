@@ -260,6 +260,7 @@ def collect_headshot_artifacts(job_id: str, video_folder: str, actor_names: list
                         and file_path.suffix.lower() in HEADSHOT_EXTENSIONS):
                     entry = build_artifact_entry(job_id, file_path)
                     entry['validation'] = headshot.get('verification', {})
+                    entry['crop'] = headshot.get('crop', {})
                     entries.append(entry)
                     seen_names.add(filename)
 

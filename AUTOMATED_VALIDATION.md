@@ -53,8 +53,9 @@ error tails are bounded. Waiting heartbeats indicate a live wait, not useful wor
 - Candidates need similar appearances in at least two separated video frames.
   This is corroboration, not full tracking or independent identity evidence.
 - Video headshots first try the normal padded crop. If only that padding extends
-  beyond the frame, they use a tighter crop around the same complete detected
-  face. Faces below `MIN_FACE_SIZE`, faces extending outside the frame and
+  beyond the frame, they retain all padding that fits, constraining only the
+  affected edges around the same complete detected face. Faces below
+  `MIN_FACE_SIZE`, faces extending outside the frame and
   whole-image detector false positives remain ineligible. The same identity,
   competitor, temporal and configured AWS checks apply to both crop modes.
   Each accepted headshot records `crop.mode` (`padded` or `tight_fallback`), its
@@ -62,14 +63,28 @@ error tails are bounded. Waiting heartbeats indicate a live wait, not useful wor
   provenance. Cached strict `isHeadshotable` flags are not identity evidence;
   video extraction derives crop eligibility from current frame dimensions.
   Training, testing and the strict manual crop helper keep their existing rules.
+  After local and temporal validation, normally padded candidates are verified
+  first, in score order. Any accepted normal crop excludes tight crops from that
+  pass's output; fallback candidates are tried only if no normal crop passes the
+  final gates. Recognition score does not override this framing preference.
 - An optional AWS gate checks single-face training images and each final headshot.
   It requires the exact catalog name (case/space normalized), or an explicit
   celebrity ID override, and sufficient confidence. It
   rejects unknown identities, multiple faces, mismatches and unavailable service.
-- Only successful actors are removed from the retry queue. Actors with no match
-  get at most five frame-sampling passes. Configuration, unavailable-model and
+- Actors with accepted normal framing leave the retry queue. Actors with no match
+  or only accepted fallback framing get at most five frame-sampling passes
+  (50, 100, 150, 200 and 250 frames by default). Accepted fallback reports keep
+  `status=accepted`, but set `retryable=true` and
+  `retry_reason=normal_framing_search` until normal framing is found or the bound
+  is reached. The final fallback remains usable with `retryable=false` and
+  `stop_reason=frame_attempt_limit` if no normal framing passes.
+  Configuration, unavailable-model and
   cloud-budget outcomes stop immediately. Crops are limited to five per actor;
   at most ten candidate verifications are considered in each extraction pass.
+  A later budget/service stop can retain an already verified fallback only while
+  its source-frame hash, model and gate policy are unchanged and the face still
+  passes that pass's local and temporal gates. This never authorizes a new crop
+  without its configured cloud check, or resets a budget.
 - `headshots/<actor>/result.json` is authoritative. Consumers must use its listed
   `headshots`, not count files or infer success from exit code alone. Old image
   files are removed on a completed abstention. The video-level summary is

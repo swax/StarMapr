@@ -14,9 +14,13 @@ class HeadshotGeometryTests(unittest.TestCase):
         self.assertFalse(get_headshot_crop_coordinates(box, 1000, 800)['clipped'])
 
     def test_fallback_preserves_complete_face_at_every_edge(self):
-        boxes = [(0, 200, 100, 80), (900, 200, 100, 80), (400, 0, 100, 80),
-                 (400, 720, 100, 80), (0, 0, 100, 80), (900, 720, 100, 80)]
-        for x, y, w, h in boxes:
+        boxes = [((0, 200, 100, 80), (0, 160, 250, 400)),
+                 ((900, 200, 100, 80), (750, 160, 1000, 400)),
+                 ((400, 0, 100, 80), (250, 0, 650, 200)),
+                 ((400, 720, 100, 80), (250, 680, 650, 800)),
+                 ((0, 0, 100, 80), (0, 0, 250, 200)),
+                 ((900, 720, 100, 80), (750, 680, 1000, 800))]
+        for (x, y, w, h), expected in boxes:
             with self.subTest(box=(x, y, w, h)):
                 box = dict(x=x, y=y, w=w, h=h)
                 self.assertTrue(get_headshot_crop_coordinates(box, 1000, 800)['clipped'])
@@ -31,7 +35,8 @@ class HeadshotGeometryTests(unittest.TestCase):
                 self.assertGreaterEqual(crop['y_end'], y + h)
                 self.assertLessEqual(crop['x_end'], 1000)
                 self.assertLessEqual(crop['y_end'], 800)
-                self.assertLess(crop['x_end'] - crop['x_start'], 4 * w)
+                self.assertEqual(tuple(crop[key] for key in
+                    ('x_start', 'y_start', 'x_end', 'y_end')), expected)
 
     def test_partial_small_and_false_positive_faces_remain_ineligible(self):
         boxes = [(-1, 200, 100, 80), (901, 200, 100, 80), (400, -1, 100, 80),

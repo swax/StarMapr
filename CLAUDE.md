@@ -107,7 +107,9 @@ The system consists of 19 components organized in three execution tiers:
     - Creates .pkl files with face data alongside each frame
 
 14. **33_extract_video_headshots.py** - Extracts actor headshots
-    - Matches against reference embeddings, saves top 5 matches
+    - Matches against reference embeddings; prefers up to 5 normally padded headshots
+    - Tries fallback framing only if no normal crop passes all identity gates
+    - Fallback crops retain available padding; tight-only results continue a bounded search for normal framing
 
 15. **34_extract_video_thumbnail.py** - Creates video thumbnails
     - Selects frames with most identifiable actors using weighted scoring
@@ -232,4 +234,4 @@ Core dependencies are listed in `pyproject.toml`, with exact versions locked in 
 - **Similarity**: Cosine similarity
 - **Training Face Count**: Exactly 1 (solo portraits)
 - **Testing Face Count**: 3-10 (group photos for embedding validation)
-- **Headshot Extraction**: Top 5 matches
+- **Headshot Extraction**: Up to 5 gated matches, normal framing first; at most 5 sampling passes for missing or fallback-only portraits

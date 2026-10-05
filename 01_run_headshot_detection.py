@@ -16,6 +16,7 @@ import sys
 import subprocess
 import argparse
 import json
+import hashlib
 import re
 import time
 from pathlib import Path
@@ -255,6 +256,46 @@ def extract_actor_headshots(actor_name, video_folder):
         return False, dict(status='invalid_result', retryable=False, headshots=[])
 
 
+def snapshot_fallback(video_folder, report):
+    """Keep verified fallback bytes while a later pass searches for normal framing."""
+    if not report or report.get('framing') != 'tight_fallback' or not report.get('retryable'):
+        return {}
+    folder = Path(video_folder) / 'headshots' / get_actor_folder_name(report['actor'])
+    return {shot['file']: dict(shot=shot, image=(folder / shot['file']).read_bytes(),
+        frame_hash=hashlib.sha256((Path(video_folder) / 'frames' / shot['frame']).read_bytes()).hexdigest())
+        for shot in report['headshots']}
+
+
+def retain_verified_fallback(video_folder, previous, current, snapshot):
+    """Budget/service stops cannot erase a prior, still locally eligible portrait."""
+    if not snapshot or current['headshots'] or current['status'] not in (
+            'budget_exhausted', 'actor_budget_exhausted', 'verifier_unavailable'):
+        return current
+    policy = ('model_sha256', 'verification', 'cloud_policy', 'threshold', 'min_margin',
+              'min_confirming_frames', 'min_frame_gap', 'corroboration_threshold')
+    if not previous.get('model_sha256') or any(
+            key not in previous or previous[key] != current.get(key) for key in policy):
+        return current
+    eligible = {(shot['frame'], shot.get('face_id')): shot['decision']
+                for shot in current.get('supported_fallbacks', [])}
+    retained = []
+    folder = Path(video_folder) / 'headshots' / get_actor_folder_name(previous['actor'])
+    for name, saved in snapshot.items():
+        shot = saved['shot']
+        key = (shot['frame'], shot.get('face_id'))
+        frame_hash = hashlib.sha256((Path(video_folder) / 'frames' / shot['frame']).read_bytes()).hexdigest()
+        if key in eligible and frame_hash == saved['frame_hash']:
+            folder.mkdir(parents=True, exist_ok=True)
+            (folder / name).write_bytes(saved['image'])
+            retained.append(dict(shot, decision=eligible[key]))
+    if not retained:
+        return current
+    report = dict(current, status='accepted', retryable=False, framing='tight_fallback',
+                  headshots=retained, stop_reason=current['status'], retained_from_previous_pass=True)
+    write_json(folder / 'result.json', report)
+    return report
+
+
 def run_operations_pipeline_with_adaptive_frames(video_folder, trained_actors):
     """
     Run the operations pipeline with adaptive frame extraction.
@@ -297,8 +338,11 @@ def run_operations_pipeline_with_adaptive_frames(video_folder, trained_actors):
         for actor_name in pending:
             os.environ['STARMAPR_ACTOR'] = actor_name
             emit_progress('headshots', processed=len(outcomes), total=len(trained_actors), attempt=multiplier)
+            previous = outcomes.get(actor_name)
+            fallback = snapshot_fallback(video_folder, previous)
             success, report = extract_actor_headshots(actor_name, video_folder)
             if success:
+                report = retain_verified_fallback(video_folder, previous, report, fallback)
                 outcomes[actor_name] = report
                 headshot_count = len(report['headshots'])
                 results[actor_name] = headshot_count
@@ -318,14 +362,11 @@ def run_operations_pipeline_with_adaptive_frames(video_folder, trained_actors):
         actors_with_headshots = sum(1 for count in results.values() if count > 0)
         total_trained_actors = len(trained_actors)
         
-        if actors_with_headshots == total_trained_actors or multiplier >= max_multiplier:
-            if actors_with_headshots == total_trained_actors:
-                print(f"✓ Found headshots for all {total_trained_actors} actors with {current_frame_count} frames")
-            else:
-                print(f"Found headshots for {actors_with_headshots}/{total_trained_actors} actors even with {current_frame_count} frames")
+        if multiplier >= max_multiplier:
+            print(f"Found headshots for {actors_with_headshots}/{total_trained_actors} actors with {current_frame_count} frames; frame search limit reached")
             break
         else:
-            print(f"Found headshots for {actors_with_headshots}/{total_trained_actors} actors with {current_frame_count} frames, trying {default_frame_count * (multiplier + 1)} frames...")
+            print(f"Found headshots for {actors_with_headshots}/{total_trained_actors} actors with {current_frame_count} frames; searching {len(pending)} actors for a portrait or normal framing with {default_frame_count * (multiplier + 1)} frames...")
     
     for report in outcomes.values():
         if report['retryable']:

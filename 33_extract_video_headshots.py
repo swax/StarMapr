@@ -123,9 +123,17 @@ def extract_top_headshots(actor_name, video_folder_path, threshold=0.4, dry_run=
         candidates, rejected = scan_candidates(frames, reference, competitors, threshold, margin)
         supported = corroborated_candidates(candidates, min_frames, gap, support_threshold)
         rejected['insufficient_corroboration'] += len(candidates) - len(supported)
+        # Stable ordering preserves score rank within each framing tier. Tight
+        # crops are a last resort, not competitors for usable normal portraits.
+        supported.sort(key=lambda candidate: candidate['crop']['mode'] != 'padded')
+        report['supported_fallbacks'] = [dict(frame=c['frame_file'],
+            face_id=c['face'].get('face_id'), decision=c['decision'])
+            for c in supported if c['crop']['mode'] == 'tight_fallback']
         verifier, identity_map = configured_verifier(video / 'celebrity-cache.sqlite',
             json.loads(os.getenv('STARMAPR_VIDEO_ACTORS', json.dumps([actor_name]))))
         report['verification'] = 'aws_required' if verifier else 'local_only'
+        report['cloud_policy'] = dict(expected_name=actor_name, expected_id=identity_map.get(actor),
+            min_confidence=float(os.getenv('AWS_CELEBRITY_MIN_CONFIDENCE', '99'))) if verifier else None
         report['status'] = 'no_reliable_headshot'
         report['retryable'] = True
         selected_positions = []
@@ -133,6 +141,9 @@ def extract_top_headshots(actor_name, video_folder_path, threshold=0.4, dry_run=
         for candidate in supported:
             if len(images) >= 5 or attempted >= 10:
                 break
+            if images and candidate['crop']['mode'] == 'tight_fallback':
+                if report['headshots'][0]['crop']['mode'] == 'padded':
+                    break
             if any(abs(candidate['frame_position'] - p) < gap for p in selected_positions):
                 continue
             attempted += 1
@@ -164,7 +175,13 @@ def extract_top_headshots(actor_name, video_folder_path, threshold=0.4, dry_run=
                                             crop=candidate['crop']))
         report['rejections'] = dict(rejected)
         if images:
-            report.update(status='accepted', retryable=False)
+            framing = report['headshots'][0]['crop']['mode']
+            search_normal = framing == 'tight_fallback' and report['retryable']
+            if not report['retryable']:
+                report['stop_reason'] = report['status']
+            report.update(status='accepted', retryable=search_normal, framing=framing)
+            if search_normal:
+                report['retry_reason'] = 'normal_framing_search'
     if not dry_run:
         publish_result(output, images, report)
     print(json.dumps(report, allow_nan=False))

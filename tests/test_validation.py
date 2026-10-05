@@ -359,10 +359,48 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(len(result['headshots']), 2)
         for headshot in result['headshots']:
             self.assertEqual(headshot['crop'], dict(mode='tight_fallback',
-                fallback_reason='padded_crop_outside_frame', x_start=0, y_start=100,
-                x_end=100, y_end=240))
+                fallback_reason='padded_crop_outside_frame', x_start=0, y_start=80,
+                x_end=200, y_end=320))
             self.assertEqual(headshot['decision']['status'], 'accepted')
-            self.assertEqual(cv2.imread(str(self.output / headshot['file'])).shape[:2], (140, 100))
+            self.assertEqual(cv2.imread(str(self.output / headshot['file'])).shape[:2], (240, 200))
+        self.assertTrue(result['retryable'])
+        self.assertEqual(result['retry_reason'], 'normal_framing_search')
+
+    def mixed_framing(self):
+        self.set_edge_faces()
+        self.make_frame(200, (.8, .6))
+        self.make_frame(300, (.8, .6))
+
+    def test_lower_scoring_normal_portraits_win_over_tight_candidates(self):
+        self.mixed_framing()
+        result = self.run_extraction()
+        self.assertEqual(result['framing'], 'padded')
+        self.assertFalse(result['retryable'])
+        self.assertEqual([shot['frame'] for shot in result['headshots']],
+                         ['00000200.jpg', '00000300.jpg'])
+        self.assertTrue(all(shot['decision']['score'] < 1 for shot in result['headshots']))
+        self.assertEqual(len(list(self.output.glob('*.jpg'))), 2)
+
+    def test_normal_cloud_acceptance_prevents_tight_verification_calls(self):
+        self.mixed_framing()
+        verifier = Mock()
+        verifier.verify.return_value = {'status': 'verified'}
+        with patch.object(self.headshots, 'configured_verifier', return_value=(verifier, {'example': 'expected'})):
+            result = self.run_extraction()
+        self.assertEqual(result['framing'], 'padded')
+        self.assertEqual(verifier.verify.call_count, 2)
+
+    def test_tight_candidates_are_last_resort_after_normal_cloud_rejections(self):
+        self.mixed_framing()
+        verifier = Mock()
+        verifier.verify.side_effect = [{'status': 'identity_mismatch'}] * 2 + [{'status': 'verified'}] * 2
+        with patch.object(self.headshots, 'configured_verifier', return_value=(verifier, {'example': 'expected'})):
+            result = self.run_extraction()
+        self.assertEqual(result['framing'], 'tight_fallback')
+        self.assertTrue(result['retryable'])
+        self.assertEqual([shot['frame'] for shot in result['headshots']],
+                         ['00000001.jpg', '00000100.jpg'])
+        self.assertTrue(all(shot['verification']['status'] == 'verified' for shot in result['headshots']))
 
     def test_tight_fallback_cannot_rescue_partial_or_undersized_faces(self):
         for box in (dict(x=-1, y=120, w=80, h=80), dict(x=0, y=120, w=49, h=80)):
@@ -560,6 +598,75 @@ class PipelineTests(unittest.TestCase):
         with patch.object(pipeline, 'extract_frames_from_video', return_value=False), contextlib.redirect_stdout(io.StringIO()):
             with self.assertRaises(RuntimeError):
                 pipeline.run_operations_pipeline_with_adaptive_frames(self.video, ['Example'])
+
+    def run_adaptive(self, extraction):
+        pipeline = script('01_run_headshot_detection.py')
+        with patch.object(pipeline, 'extract_frames_from_video', return_value=True) as frames, \
+                patch.object(pipeline, 'extract_faces_from_frames', return_value=True), \
+                patch.object(pipeline, 'extract_actor_headshots', side_effect=extraction) as extract, \
+                contextlib.redirect_stdout(io.StringIO()):
+            result = pipeline.run_operations_pipeline_with_adaptive_frames(self.video, ['Example'])
+        report = json.loads((self.output / 'result.json').read_text())
+        return result, report, frames, extract
+
+    def test_tight_only_actor_continues_until_normal_framing_is_found(self):
+        calls = []
+        def extraction(actor, video):
+            calls.append(actor)
+            self.set_edge_faces(bbox=dict(x=0 if len(calls) == 1 else 170, y=120, w=50, h=50))
+            return True, self.run_extraction()
+        result, report, frames, extract = self.run_adaptive(extraction)
+        self.assertEqual(result, {'Example': 2})
+        self.assertEqual(report['framing'], 'padded')
+        self.assertFalse(report['retryable'])
+        self.assertEqual([call.args[1] for call in frames.call_args_list], [50, 100])
+        self.assertEqual(extract.call_count, 2)
+
+    def test_tight_only_search_stops_at_five_passes_and_keeps_portraits(self):
+        self.set_edge_faces()
+        result, report, frames, extract = self.run_adaptive(lambda *_: (True, self.run_extraction()))
+        self.assertEqual(result, {'Example': 2})
+        self.assertEqual(extract.call_count, 5)
+        self.assertEqual([call.args[1] for call in frames.call_args_list], [50, 100, 150, 200, 250])
+        self.assertEqual(report['status'], 'accepted')
+        self.assertEqual(report['stop_reason'], 'frame_attempt_limit')
+        self.assertFalse(report['retryable'])
+        self.assertTrue(all((self.output / shot['file']).exists() for shot in report['headshots']))
+
+    def test_normal_search_budget_stop_retains_prior_verified_fallback(self):
+        self.set_edge_faces()
+        verifier = Mock()
+        verifier.verify.side_effect = [{'status': 'verified'}] * 2 + [{'status': 'actor_budget_exhausted'}]
+        calls = []
+        def extraction(*_):
+            calls.append(None)
+            if len(calls) == 2:
+                self.make_frame(200, (.8, .6))
+                self.make_frame(300, (.8, .6))
+            return True, self.run_extraction()
+        with patch.object(self.headshots, 'configured_verifier', return_value=(verifier, {'example': 'expected'})):
+            result, report, _, extract = self.run_adaptive(extraction)
+        self.assertEqual(result, {'Example': 2})
+        self.assertEqual(extract.call_count, 2)
+        self.assertTrue(report['retained_from_previous_pass'])
+        self.assertEqual(report['stop_reason'], 'actor_budget_exhausted')
+        self.assertFalse(report['retryable'])
+        self.assertTrue(all(shot['verification']['status'] == 'verified' for shot in report['headshots']))
+        self.assertTrue(all((self.output / shot['file']).exists() for shot in report['headshots']))
+
+    def test_previous_fallback_cannot_bypass_current_local_gates_or_changed_frames(self):
+        self.set_edge_faces()
+        previous = self.run_extraction()
+        pipeline = script('01_run_headshot_detection.py')
+        snapshot = pipeline.snapshot_fallback(self.video, previous)
+        current = dict(previous, status='budget_exhausted', retryable=False, headshots=[])
+        for change in ({'model_sha256': 'changed'}, {'supported_fallbacks': []}, {'min_margin': .9},
+                       {'cloud_policy': {'expected_id': 'different', 'min_confidence': 100}}):
+            rejected = dict(current, **change)
+            self.assertIs(pipeline.retain_verified_fallback(self.video, previous, rejected, snapshot), rejected)
+        for frame in (self.video / 'frames').glob('*.jpg'):
+            frame.write_bytes(b'changed source frame')
+        self.assertIs(pipeline.retain_verified_fallback(self.video, previous, current, snapshot), current)
 
 
 if __name__ == '__main__':

@@ -75,9 +75,7 @@ def select_headshot_crop(bbox, img_width, img_height, min_face_size=50):
     bounds = ('x_start', 'y_start', 'x_end', 'y_end')
     if not padded['clipped']:
         return dict(mode='padded', **{key: padded[key] for key in bounds})
-    # Clamp padding, never the detected face; no shifting or invented pixels.
+    # Retain all available normal padding; constrain only edges that exceed the
+    # frame. A single clipped edge must not tighten the other three sides.
     return dict(mode='tight_fallback', fallback_reason='padded_crop_outside_frame',
-                x_start=max(0, x - int(w * .25)),
-                y_start=max(0, y - int(h * .25)),
-                x_end=min(img_width, x + w + int(w * .25)),
-                y_end=min(img_height, y + h + int(h * .5)))
+                **{key: padded[key] for key in bounds})

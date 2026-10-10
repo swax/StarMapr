@@ -38,7 +38,9 @@ class ReadinessTests(unittest.TestCase):
 
     def test_legacy_model_automatically_attempts_migration_and_preserves_model(self):
         module = script('02_run_actor_training.py')
-        with patch('sys.argv', ['train', 'Example', 'Fixture']), \
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch.object(module, 'TrainingHistory', return_value=module.TrainingHistory(Path(tmp) / 'history.sqlite')), \
+             patch('sys.argv', ['train', 'Example', 'Fixture']), \
              patch.object(module, 'reusable_model', return_value=False), \
              patch.object(module, 'check_existing_model', return_value=True), \
              patch.object(module, 'delete_existing_folders') as archive, \

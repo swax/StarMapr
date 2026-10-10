@@ -18,6 +18,7 @@ import argparse
 import shutil
 import time
 import tempfile
+import json
 from pathlib import Path
 from dotenv import load_dotenv
 from utils import (
@@ -26,6 +27,7 @@ from utils import (
 )
 from validation import metadata_path, validate_model_metadata, write_json
 from progress import run_logged, emit_progress
+from training_history import TrainingHistory
 
 # Load environment variables
 load_dotenv()
@@ -143,12 +145,12 @@ def reusable_model(actor_name):
 
 def main():
     """Main function to orchestrate the training and testing pipelines."""
-    start_time = time.time()
-
     parser = argparse.ArgumentParser(description='Run comprehensive actor training pipeline')
     parser.add_argument('actor_name', help='Name of the actor (e.g., "Bill Murray")')
     parser.add_argument('show_name', help='Name of the show/movie (e.g., "SNL")')
-    parser.add_argument('--retrain', action='store_true', help='Delete existing actor folders before starting')
+    parser.add_argument('--retrain', action='store_true', help='Retrain an existing model (respects failure cooldown)')
+    parser.add_argument('--ignore-cooldown', action='store_true',
+                        help='Explicitly retry before the seven-day failure cooldown expires')
     parser.add_argument('--verbose', '-v', action='store_true',
                        help='Show all output from subprocess commands')
 
@@ -164,6 +166,33 @@ def main():
         print(f"✓ Model already exists: {model_path}")
         print(f"Skipping training for '{args.actor_name}' (use --retrain to retrain)")
         sys.exit(0)
+
+    history = TrainingHistory()
+    if not args.ignore_cooldown:
+        cooldown = history.skip_if_cooling_down(args.actor_name)
+        if cooldown:
+            emit_progress('training_cooldown', 'skipped', **cooldown)
+            print(f"Skipping training for '{args.actor_name}' after a failed {cooldown['failure_phase']} run; "
+                  f"retry after {cooldown['retry_after']} ({cooldown['cooldown_skips']} cooldown skips)")
+            # As with quality abstention, allow optional headshots to continue.
+            sys.exit(0)
+
+    try:
+        run_training(args, history)
+    except Exception as exc:
+        # Includes process-launch/filesystem errors; never retry paid searches in a loop.
+        retry_after = history.record_failure(args.actor_name, 'orchestration')
+        emit_progress('training_cooldown', 'started', retry_after=retry_after)
+        fatal_error(f"Training could not complete: {exc}")
+
+
+def run_training(args, history):
+    start_time = time.time()
+
+    def failed(phase):
+        retry_after = history.record_failure(args.actor_name, phase)
+        emit_progress('training_cooldown', 'started', retry_after=retry_after, failure_phase=phase)
+        print(f"Seven-day training cooldown started for '{args.actor_name}'; retry after {retry_after}")
 
     if check_existing_model(args.actor_name):
         emit_progress('model_migration', 'started')
@@ -187,6 +216,7 @@ def main():
         result = run_logged(training_cmd, check=True)
         print(result.stdout)
     except subprocess.CalledProcessError as e:
+        failed('training')
         print_error(f"Training pipeline failed: {e}")
         print_error((e.stdout or '') + (e.stderr or ''))
         if e.returncode == 2:
@@ -209,6 +239,7 @@ def main():
         print(result.stdout)
         testing_success = True
     except subprocess.CalledProcessError as e:
+        failed('testing')
         print_error(f"Testing pipeline failed: {e}")
         print_error((e.stdout or '') + (e.stderr or ''))
 
@@ -227,8 +258,12 @@ def main():
         if copy_model_to_models_dir(args.actor_name):
             print("✓ Model successfully copied to models directory")
         else:
+            failed('promotion')
             fatal_error('Model promotion failed')
 
+        report = json.loads(metadata_path(get_average_embedding_path(args.actor_name, 'models')).read_text(encoding='utf-8'))
+        history.record_success(args.actor_name, args.show_name, report)
+        print('✓ Recorded accepted training-image domains and cleared any previous cooldown')
         sys.exit(0)
     else:
         fatal_error(f"Testing pipeline did not meet minimum requirements")

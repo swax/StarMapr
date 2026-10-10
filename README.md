@@ -152,6 +152,43 @@ uv run python 02_run_actor_training.py "Actor Name" "Show Name"
 ```
 **MID-LEVEL ORCHESTRATION**: Called automatically by `01_run_headshot_detection.py`, but can be run standalone. Orchestrates both training and testing pipelines.
 
+### Failed training cooldown and source domains
+
+An unsuccessful training, testing, or model-promotion run starts a **seven-day
+cooldown for that actor**, across shows. Subsequent calls skip the entire training
+and testing workflow before archiving folders or issuing searches. Skips do not
+extend the deadline. Valid models are still reused immediately. Quality abstention
+also starts a cooldown, and optional headshot processing can continue when a call
+is skipped. Both `--retrain` and automatic stale-model retraining respect cooldowns;
+use `--ignore-cooldown` explicitly to retry early after fixing the cause.
+
+StarMapr records failed runs that start cooldowns and attempts skipped during them,
+both in total and per actor. The durable local database is
+`07_training_stats/training.sqlite`, separate from archived training folders. Counts
+start when this feature is installed; historical logs are not imported. A skipped
+attempt is not an API-query or dollar-savings estimate, because some retries would
+have reused cached images. Back up this folder with your local models and caches.
+
+For newly downloaded images, `image-sources.json` preserves the image URL, source
+page URL, query, and file hash in both the cache and working folder, including when
+copies get new filenames. After a model passes training, testing, and promotion,
+its contributing images are recorded in model metadata and the statistics database.
+The domain report ranks **source-page domains** by unique accepted image hashes,
+with actor and successful-run counts; repeated retraining does not inflate the
+unique image count. Image-host domains (often CDNs) are tracked separately in JSON.
+This is an evidence-based starting list for future domain-restricted search.
+
+Old cached or manual images without provenance remain usable and are counted as
+unknown sources. Rejected images and unsuccessful models do not add domains.
+No searches are made to reconstruct missing provenance. Statistics are local to
+this checkout and ignored by Git; they are not shared between computers.
+
+```bash
+uv run python 93_training_stats.py
+uv run python 93_training_stats.py --json
+uv run python 93_training_stats.py --domains-csv 07_training_stats/source-domains.csv
+```
+
 ### Individual Pipeline Scripts
 For running only the training or testing phase independently:
 ```bash
@@ -162,6 +199,8 @@ uv run python 03_run_training_pipeline.py "Actor Name" "Show Name"
 uv run python 04_run_testing_pipeline.py "Actor Name" "Show Name"
 ```
 **PIPELINE SCRIPTS**: Run specific phases independently. Training must complete before testing can run.
+These low-level manual scripts bypass the automatic cooldown; use
+`02_run_actor_training.py` for cooldown enforcement and successful-run statistics.
 
 ### Manual Pipeline Control
 For debugging, testing, or manual step-by-step control:

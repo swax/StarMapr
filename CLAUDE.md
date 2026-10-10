@@ -52,6 +52,9 @@ The system consists of 19 components organized in three execution tiers:
    - Runs complete testing pipeline (steps 6-10)
    - Iteratively downloads until thresholds met (15+ training, 4+ detected headshots)
    - Copies final model to models directory
+   - Failed training (including quality abstention), testing, or promotion starts a seven-day actor cooldown before any future searches or folder archival
+   - `--retrain` respects cooldowns; `--ignore-cooldown` explicitly retries early
+   - Records cooldown starts/skips and successful-model source domains in `07_training_stats/training.sqlite`; inspect/export with `93_training_stats.py`
 
 3. **05_run_pipeline_steps.py** - Manual pipeline runner
    - Interactive numbered menu of all 15 pipeline steps
@@ -65,6 +68,7 @@ The system consists of 19 components organized in three execution tiers:
    - Training: different keywords for more face variety; large, face-dominant results
    - Testing: keywords targeting group photos; pages 3-4 add the show name so namesakes' photos don't crowd out the cast
    - GUID-based naming prevents collisions
+   - `image-sources.json` carries downloaded source-page/image URLs and hashes through GUID copies and cached reuse; old images without provenance stay unknown
    - Never copies StarMapr's own video headshots (`*_match_*_position_*`) into training
    - Drops URL parameters from extensions (`x.jpg;w=960` → `.jpg`) and names other files by their image signature, so valid images aren't set aside as unsupported
 
@@ -132,6 +136,7 @@ The system consists of 19 components organized in three execution tiers:
 - `04_models/[actor]/` - Final accepted models
 - `05_videos/[site]_[id]/` - Video file + `frames/` + `headshots/` subfolders
 - `05_videos/temp/` - Temporary download directory
+- `07_training_stats/` - Durable local cooldown and accepted-source statistics (ignored by Git; preserve across retries)
 
 ## Usage
 

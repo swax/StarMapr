@@ -12,9 +12,12 @@ import re
 import sys
 import uuid
 import shutil
+from pathlib import Path
 from google_images_search import GoogleImagesSearch
 from dotenv import load_dotenv
 from utils import get_actor_folder_name, get_actor_folder_path, get_env_int, ensure_folder_exists, get_supported_image_extensions, print_error, print_summary, log
+from image_sources import MANIFEST, copied_source, read_sources, save_search_sources
+from validation import write_json
 
 # Load environment variables from .env file
 load_dotenv()
@@ -80,13 +83,15 @@ def copy_images_from_cache_to_destination(cache_folder, destination_folder):
     
     # Get all image files from cache
     cached_files = os.listdir(cache_folder)
+    cache_sources = read_sources(cache_folder)
+    destination_sources = read_sources(destination_folder)
     
     copied_count = 0
     for filename in cached_files:
         source_path = os.path.join(cache_folder, filename)
         
         # Skip directories
-        if os.path.isdir(source_path):
+        if os.path.isdir(source_path) or filename == MANIFEST:
             continue
 
         if STARMAPR_HEADSHOT.search(filename):
@@ -100,11 +105,14 @@ def copy_images_from_cache_to_destination(cache_folder, destination_folder):
         
         try:
             shutil.copy2(source_path, dest_path)
+            destination_sources[new_filename] = copied_source(source_path, cache_sources)
             copied_count += 1
             log(f"  Copied: {filename} → {new_filename}")
         except Exception as e:
             print_error(f"Warning: Could not copy {filename}: {e}")
     
+    if copied_count:
+        write_json(Path(destination_folder) / MANIFEST, destination_sources)
     return copied_count
 
 
@@ -198,7 +206,8 @@ def download_actor_images(actor_name, mode='training', show=None, page=1, api_ke
 
     # Check if cache folder exists and has images
     if os.path.exists(cache_folder):
-        cached_files = os.listdir(cache_folder)
+        cached_files = [name for name in os.listdir(cache_folder)
+                        if name != MANIFEST and os.path.isfile(os.path.join(cache_folder, name))]
         
         if cached_files:
             log(f"Found {len(cached_files)} cached images for query: '{query}'")
@@ -259,11 +268,15 @@ def download_actor_images(actor_name, mode='training', show=None, page=1, api_ke
             # Face-dominant results give larger, sharper faces; testing needs group photos
             search_params['imgType'] = 'face'
             
-        gis.search(search_params=search_params, path_to_dir=cache_folder)
+        try:
+            gis.search(search_params=search_params, path_to_dir=cache_folder)
+        finally:
+            # Keep provenance for partial downloads even if a later request fails.
+            save_search_sources(cache_folder, gis.results(), query)
     
         # Get all files after download and identify newly downloaded ones in cache
         all_cache_files = set(os.listdir(cache_folder))
-        newly_downloaded_files = list(all_cache_files - initial_cache_files)
+        newly_downloaded_files = list(all_cache_files - initial_cache_files - {MANIFEST})
         log(f"Actually downloaded {len(newly_downloaded_files)} new files")
         
         # Keep original filenames in cache (no GUID renaming here)

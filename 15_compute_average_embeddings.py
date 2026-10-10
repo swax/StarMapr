@@ -8,6 +8,7 @@ from pathlib import Path
 from utils import get_actor_folder_path, get_image_files, get_average_embedding_path, save_pickle, print_error, print_summary, log
 from utils_deepface import get_face_embeddings
 from validation import QualityPolicy, assess_reference, embedding_spec, file_hash, metadata_path, write_json
+from image_sources import accepted_sources
 
 def compute_average_embeddings(folder_path, policy=None):
     """
@@ -34,6 +35,7 @@ def compute_average_embeddings(folder_path, policy=None):
     
     embeddings = []
     successful_embeddings = 0
+    contributing_images = []
     
     for img_file in image_files:
         log(f"Processing: {img_file.name}")
@@ -41,6 +43,7 @@ def compute_average_embeddings(folder_path, policy=None):
         if face_embeddings and len(face_embeddings) == 1:
             embeddings.append(face_embeddings[0]['embedding'])
             successful_embeddings += 1
+            contributing_images.append(img_file)
     
     if not embeddings:
         raise ValueError("No embeddings could be generated from the images")
@@ -48,6 +51,7 @@ def compute_average_embeddings(folder_path, policy=None):
     log(f"Successfully processed {successful_embeddings}/{len(image_files)} images")
     
     average_embedding, report = assess_reference(embeddings, policy)
+    report['training_sources'] = accepted_sources(contributing_images)
     write_json(folder_path / 'training-quality.json', report)
     if not report['accepted']:
         raise ValueError(f"Reference quality rejected: {report['reason']}")
@@ -89,9 +93,11 @@ def main():
         save_embedding(avg_embedding, args.output)
         import json
         report = json.loads((folder_path / 'training-quality.json').read_text(encoding='utf-8'))
+        sources = report.pop('training_sources')
         write_json(metadata_path(args.output), dict(
             quality=report, embedding_spec=embedding_spec(), model_sha256=file_hash(args.output),
-            training_images={image.name: file_hash(image) for image in get_image_files(folder_path)},
+            training_images={source['filename']: source['sha256'] for source in sources},
+            training_sources=sources,
             identity_validation='cohesion_only'))
         
         log(f"Average embedding shape: {avg_embedding.shape}")

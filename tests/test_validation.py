@@ -162,7 +162,8 @@ class TrainingImageTests(unittest.TestCase):
                      'sketchtv_api001_example_match_0_430_position_1676_a6e8bd81.jpeg'):
             (cache / name).write_bytes(b'synthetic')
         self.assertEqual(downloader.copy_images_from_cache_to_destination(cache, self.folder), 1)
-        self.assertEqual(len(list(self.folder.iterdir())), 1)
+        self.assertEqual(len(list(self.folder.glob('*.jpg'))), 1)
+        self.assertTrue((self.folder / 'image-sources.json').exists())
 
     def test_downloaded_images_drop_url_parameters_from_their_extension(self):
         downloader = script('10_download_actor_images.py')
@@ -175,7 +176,7 @@ class TrainingImageTests(unittest.TestCase):
                            ('error_page', b'<html>not an image</html>')):
             (cache / name).write_bytes(data)
         self.assertEqual(downloader.copy_images_from_cache_to_destination(cache, self.folder), 6)
-        self.assertEqual(sorted(path.suffix for path in self.folder.iterdir()),
+        self.assertEqual(sorted(path.suffix for path in self.folder.iterdir() if path.name != 'image-sources.json'),
                          ['', '.jpeg', '.jpg', '.jpg', '.png', '.png'])
 
     def test_pipeline_reports_are_not_moved_as_unsupported_files(self):

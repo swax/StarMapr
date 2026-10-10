@@ -13,7 +13,7 @@ import sys
 import uuid
 import shutil
 from pathlib import Path
-from google_images_search import GoogleImagesSearch
+from image_search import SourceRecordingGoogleImagesSearch as GoogleImagesSearch
 from dotenv import load_dotenv
 from utils import get_actor_folder_name, get_actor_folder_path, get_env_int, ensure_folder_exists, get_supported_image_extensions, print_error, print_summary, log
 from image_sources import MANIFEST, copied_source, read_sources, save_search_sources
@@ -94,7 +94,8 @@ def copy_images_from_cache_to_destination(cache_folder, destination_folder):
         if os.path.isdir(source_path) or filename == MANIFEST:
             continue
 
-        if STARMAPR_HEADSHOT.search(filename):
+        if (STARMAPR_HEADSHOT.search(filename)
+                or STARMAPR_HEADSHOT.search(cache_sources.get(filename, {}).get('image_url') or '')):
             log(f"  Skipped StarMapr headshot: {filename}")
             continue
 
@@ -272,7 +273,7 @@ def download_actor_images(actor_name, mode='training', show=None, page=1, api_ke
             gis.search(search_params=search_params, path_to_dir=cache_folder)
         finally:
             # Keep provenance for partial downloads even if a later request fails.
-            save_search_sources(cache_folder, gis.results(), query)
+            save_search_sources(cache_folder, gis.downloaded_results(), query)
     
         # Get all files after download and identify newly downloaded ones in cache
         all_cache_files = set(os.listdir(cache_folder))

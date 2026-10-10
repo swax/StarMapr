@@ -183,7 +183,7 @@ class SourceTests(unittest.TestCase):
         def search(*, search_params, path_to_dir):
             image = Path(path_to_dir) / 'photo.jpg'
             image.write_bytes(b'\xff\xd8\xffoffline fixture')
-            gis.results.return_value = [SimpleNamespace(path=str(image), url='https://cdn.example.org/photo.jpg',
+            gis.downloaded_results.return_value = [SimpleNamespace(path=str(image), url='https://cdn.example.org/photo.jpg',
                                                         referrer_url='https://example.org/actor')]
         gis.search.side_effect = search
         with patch.object(self.downloader, 'GoogleImagesSearch', return_value=gis) as factory:

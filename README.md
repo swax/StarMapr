@@ -178,6 +178,11 @@ with actor and successful-run counts; repeated retraining does not inflate the
 unique image count. Image-host domains (often CDNs) are tracked separately in JSON.
 This is an evidence-based starting list for future domain-restricted search.
 
+The downloader records every completed download, including extra images omitted
+from the Google library's capped results list. New cache filenames include a hash
+of the full image URL so same-named images from different URLs cannot overwrite
+each other or lose their source attribution. Existing caches remain usable.
+
 Old cached or manual images without provenance remain usable and are counted as
 unknown sources. Rejected images and unsuccessful models do not add domains.
 No searches are made to reconstruct missing provenance. Statistics are local to

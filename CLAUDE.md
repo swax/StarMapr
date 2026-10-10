@@ -69,6 +69,7 @@ The system consists of 19 components organized in three execution tiers:
    - Testing: keywords targeting group photos; pages 3-4 add the show name so namesakes' photos don't crowd out the cast
    - GUID-based naming prevents collisions
    - `image-sources.json` carries downloaded source-page/image URLs and hashes through GUID copies and cached reuse; old images without provenance stay unknown
+   - `image_search.py` captures every completed download before the Google SDK caps its returned list, and uses URL-specific cache filenames to prevent overwrites
    - Never copies StarMapr's own video headshots (`*_match_*_position_*`) into training
    - Drops URL parameters from extensions (`x.jpg;w=960` → `.jpg`) and names other files by their image signature, so valid images aren't set aside as unsupported
 

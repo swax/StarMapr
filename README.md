@@ -154,13 +154,17 @@ uv run python 02_run_actor_training.py "Actor Name" "Show Name"
 
 ### Failed training cooldown and source domains
 
-An unsuccessful training, testing, or model-promotion run starts a **seven-day
+An unsuccessful training, testing, or model-promotion run starts an **indefinite
 cooldown for that actor**, across shows. Subsequent calls skip the entire training
-and testing workflow before archiving folders or issuing searches. Skips do not
-extend the deadline. Valid models are still reused immediately. Quality abstention
-also starts a cooldown, and optional headshot processing can continue when a call
-is skipped. Both `--retrain` and automatic stale-model retraining respect cooldowns;
-use `--ignore-cooldown` explicitly to retry early after fixing the cause.
+and testing workflow before archiving folders or issuing searches. Existing failures
+with seven-day deadlines also remain blocked indefinitely, even after their old
+deadlines pass; their history and skip counts are preserved. Valid models are still
+reused immediately. Quality abstention also starts a cooldown, and optional headshot
+processing can continue when a call is skipped. Both `--retrain` and automatic
+stale-model retraining respect cooldowns; use `--ignore-cooldown` explicitly to
+retry after fixing the cause. A successful model promotion clears the block.
+JSON reports and progress events use `indefinite: true` and `retry_after: null`
+for blocked actors; no date makes them automatically eligible again.
 
 StarMapr records failed runs that start cooldowns and attempts skipped during them,
 both in total and per actor. The durable local database is

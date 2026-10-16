@@ -150,7 +150,7 @@ def main():
     parser.add_argument('show_name', help='Name of the show/movie (e.g., "SNL")')
     parser.add_argument('--retrain', action='store_true', help='Retrain an existing model (respects failure cooldown)')
     parser.add_argument('--ignore-cooldown', action='store_true',
-                        help='Explicitly retry before the seven-day failure cooldown expires')
+                        help='Explicitly retry an actor blocked indefinitely after a failed run')
     parser.add_argument('--verbose', '-v', action='store_true',
                        help='Show all output from subprocess commands')
 
@@ -173,7 +173,8 @@ def main():
         if cooldown:
             emit_progress('training_cooldown', 'skipped', **cooldown)
             print(f"Skipping training for '{args.actor_name}' after a failed {cooldown['failure_phase']} run; "
-                  f"retry after {cooldown['retry_after']} ({cooldown['cooldown_skips']} cooldown skips)")
+                  f"blocked indefinitely ({cooldown['cooldown_skips']} cooldown skips). "
+                  "Use --ignore-cooldown to explicitly retry.")
             # As with quality abstention, allow optional headshots to continue.
             sys.exit(0)
 
@@ -182,7 +183,7 @@ def main():
     except Exception as exc:
         # Includes process-launch/filesystem errors; never retry paid searches in a loop.
         retry_after = history.record_failure(args.actor_name, 'orchestration')
-        emit_progress('training_cooldown', 'started', retry_after=retry_after)
+        emit_progress('training_cooldown', 'started', retry_after=retry_after, indefinite=True)
         fatal_error(f"Training could not complete: {exc}")
 
 
@@ -191,8 +192,10 @@ def run_training(args, history):
 
     def failed(phase):
         retry_after = history.record_failure(args.actor_name, phase)
-        emit_progress('training_cooldown', 'started', retry_after=retry_after, failure_phase=phase)
-        print(f"Seven-day training cooldown started for '{args.actor_name}'; retry after {retry_after}")
+        emit_progress('training_cooldown', 'started', retry_after=retry_after,
+                      indefinite=True, failure_phase=phase)
+        print(f"Training blocked indefinitely for '{args.actor_name}'; "
+              "use --ignore-cooldown to explicitly retry after fixing the cause")
 
     if check_existing_model(args.actor_name):
         emit_progress('model_migration', 'started')

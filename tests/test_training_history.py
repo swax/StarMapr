@@ -14,7 +14,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from image_sources import MANIFEST, accepted_sources, domain, save_search_sources
-from training_history import COOLDOWN_SECONDS, TrainingHistory
+from training_history import TrainingHistory
 from validation import QualityPolicy, file_hash, metadata_path, write_json
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,15 +36,36 @@ class TemporaryHistory(unittest.TestCase):
 
 
 class HistoryTests(TemporaryHistory):
-    def test_seven_days_survive_restart_and_skips_do_not_extend_deadline(self):
-        until = self.history.record_failure('Example', 'testing', now=100)
+    def test_indefinite_failure_survives_restart_and_years_of_elapsed_time(self):
+        self.assertIsNone(self.history.record_failure('Example', 'testing', now=100))
         restarted = TrainingHistory(self.history.path)
-        self.assertEqual(restarted.skip_if_cooling_down('Example', now=101)['retry_after'], until)
+        for count, now in enumerate((101, 100 + 7 * 86400, 100 + 20 * 365 * 86400), 1):
+            skipped = restarted.skip_if_cooling_down('Example', now=now)
+            self.assertTrue(skipped['indefinite'])
+            self.assertIsNone(skipped['retry_after'])
+            self.assertEqual(skipped['cooldown_skips'], count)
         self.assertIsNone(restarted.skip_if_cooling_down('Other', now=101))
-        self.assertEqual(restarted.skip_if_cooling_down('Example', now=99 + COOLDOWN_SECONDS)['cooldown_skips'], 2)
-        self.assertIsNone(restarted.skip_if_cooling_down('Example', now=100 + COOLDOWN_SECONDS))
-        report = restarted.summary(now=100 + COOLDOWN_SECONDS)
-        self.assertEqual((report['failed_runs'], report['cooldown_skips'], report['active_cooldowns']), (1, 2, 0))
+        report = restarted.summary(now=100 + 20 * 365 * 86400)
+        self.assertEqual((report['failed_runs'], report['cooldown_skips'], report['active_cooldowns']), (1, 3, 1))
+        self.assertTrue(report['actors'][0]['indefinite'])
+        self.assertIsNone(report['actors'][0]['retry_after'])
+
+    def test_legacy_deadlines_become_indefinite_without_rewriting_history(self):
+        with self.history.connection() as db:
+            for name, until in (('Expired', 101), ('Future', 2000000000)):
+                actor_key = self.history.actor(db, name)
+                db.execute('UPDATE actors SET cooldown_until=?, failure_phase=? WHERE actor_key=?',
+                           (until, 'training', actor_key))
+                self.history.event(db, actor_key, 'failed', 100, phase='training', cooldown_until=until)
+            self.history.actor(db, 'Never failed')
+            original = [tuple(row) for row in db.execute("SELECT * FROM events WHERE kind='failed'")]
+        restarted = TrainingHistory(self.history.path)
+        for name in ('Expired', 'Future'):
+            self.assertTrue(restarted.skip_if_cooling_down(name, now=3000000000)['indefinite'])
+        self.assertIsNone(restarted.skip_if_cooling_down('Never failed', now=3000000000))
+        self.assertEqual(restarted.summary(now=3000000000)['active_cooldowns'], 2)
+        with restarted.connection() as db:
+            self.assertEqual(original, [tuple(row) for row in db.execute("SELECT * FROM events WHERE kind='failed'")])
 
     def test_concurrent_skips_are_all_counted(self):
         self.history.record_failure('Example', 'training', now=100)
@@ -111,8 +132,10 @@ class OrchestrationTests(TemporaryHistory):
             self.training.main()
         return exited.exception.code
 
-    def test_cooldown_prevents_search_and_archiving_even_with_retrain(self):
-        self.history.record_failure('Example', 'training')
+    def test_expired_legacy_cooldown_prevents_search_and_archiving_even_with_retrain(self):
+        self.history.record_failure('Example', 'training', now=100)
+        with self.history.connection() as db:
+            db.execute('UPDATE actors SET cooldown_until=101 WHERE actor_key=?', ('example',))
         with patch.object(self.training, 'run_logged') as run:
             self.assertEqual(self.run_main('--retrain'), 0)
         run.assert_not_called()

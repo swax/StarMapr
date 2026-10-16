@@ -4,17 +4,11 @@ import json
 import sqlite3
 import time
 from contextlib import contextmanager
-from datetime import datetime, timezone
 from pathlib import Path
 
 from utils import get_actor_folder_name
 
 DATABASE = Path(__file__).resolve().parent / '07_training_stats' / 'training.sqlite'
-COOLDOWN_SECONDS = 7 * 24 * 60 * 60
-
-
-def utc_text(timestamp):
-    return datetime.fromtimestamp(timestamp, timezone.utc).isoformat()
 
 
 class TrainingHistory:
@@ -70,23 +64,24 @@ class TrainingHistory:
             db.execute('BEGIN IMMEDIATE')
             key = get_actor_folder_name(actor_name)
             row = db.execute('SELECT * FROM actors WHERE actor_key=?', (key,)).fetchone()
-            if row is None or row['cooldown_until'] is None or now >= row['cooldown_until']:
+            # A recorded failure has no automatic expiry. Legacy non-null deadlines
+            # also remain blocked, including deadlines that have already passed.
+            if row is None or (row['failure_phase'] is None and row['cooldown_until'] is None):
                 return None
-            self.event(db, key, 'cooldown_skipped', now, cooldown_until=row['cooldown_until'])
+            self.event(db, key, 'cooldown_skipped', now, cooldown_until=None, indefinite=True)
             count = db.execute("SELECT COUNT(*) FROM events WHERE actor_key=? AND kind='cooldown_skipped'",
                                (key,)).fetchone()[0]
-            return dict(retry_after=utc_text(row['cooldown_until']),
+            return dict(retry_after=None, indefinite=True,
                         failure_phase=row['failure_phase'], cooldown_skips=count)
 
     def record_failure(self, actor_name, phase, *, now=None):
         now = time.time() if now is None else now
-        until = now + COOLDOWN_SECONDS
         with self.connection() as db:
             key = self.actor(db, actor_name)
-            db.execute('UPDATE actors SET cooldown_until=?, failure_phase=? WHERE actor_key=?',
-                       (until, phase, key))
-            self.event(db, key, 'failed', now, phase=phase, cooldown_until=until)
-        return utc_text(until)
+            # failure_phase is the durable block; a successful promotion clears it.
+            db.execute('UPDATE actors SET cooldown_until=NULL, failure_phase=? WHERE actor_key=?',
+                       (phase, key))
+            self.event(db, key, 'failed', now, phase=phase, cooldown_until=None, indefinite=True)
 
     def record_success(self, actor_name, show_name, report, *, now=None):
         now = time.time() if now is None else now
@@ -106,7 +101,7 @@ class TrainingHistory:
             db.execute('UPDATE actors SET cooldown_until=NULL, failure_phase=NULL WHERE actor_key=?', (key,))
 
     def summary(self, *, now=None):
-        now = time.time() if now is None else now
+        # Keep the optional clock argument for report callers; failure blocks never expire.
         with self.connection() as db:
             db.execute('BEGIN')
             counts = dict(db.execute('SELECT kind, COUNT(*) FROM events GROUP BY kind').fetchall())
@@ -119,9 +114,10 @@ class TrainingHistory:
                 GROUP BY a.actor_key ORDER BY cooldown_skips DESC, a.actor_name
             ''')]
             for actor in actors:
-                until = actor['cooldown_until']
-                actor['cooling_down'] = until is not None and until > now
-                actor['retry_after'] = utc_text(until) if until is not None else None
+                actor['cooling_down'] = (actor['failure_phase'] is not None
+                                         or actor['cooldown_until'] is not None)
+                actor['indefinite'] = actor['cooling_down']
+                actor['retry_after'] = None
                 del actor['cooldown_until']
             domains = {}
             for column in ('page_domain', 'image_domain'):

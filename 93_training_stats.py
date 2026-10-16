@@ -26,7 +26,7 @@ def main():
         return
     print(f"Failed runs starting cooldowns: {report['failed_runs']}")
     print(f"Training attempts skipped during cooldown: {report['cooldown_skips']}")
-    print(f"Actors currently cooling down: {report['active_cooldowns']}")
+    print(f"Actors blocked indefinitely: {report['active_cooldowns']}")
     print(f"Successful training runs recorded: {report['successful_runs']}")
     print('\nSource-page domains (unique accepted images / actors / successful runs):')
     for row in report['page_domain']:
@@ -36,8 +36,8 @@ def main():
     print(f"Accepted image uses without a known source page: {report['accepted_image_uses_without_page_domain']}")
     for actor in report['actors']:
         if actor['cooling_down'] or actor['cooldown_skips']:
-            print(f"  {actor['actor_name']}: {actor['cooldown_skips']} cooldown skips; "
-                  f"retry after {actor['retry_after'] if actor['cooling_down'] else 'now'}")
+            retry = "blocked indefinitely; retry only with --ignore-cooldown" if actor['cooling_down'] else "retry allowed"
+            print(f"  {actor['actor_name']}: {actor['cooldown_skips']} cooldown skips; {retry}")
 
 
 if __name__ == '__main__':

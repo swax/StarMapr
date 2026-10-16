@@ -52,8 +52,8 @@ The system consists of 19 components organized in three execution tiers:
    - Runs complete testing pipeline (steps 6-10)
    - Iteratively downloads until thresholds met (15+ training, 4+ detected headshots)
    - Copies final model to models directory
-   - Failed training (including quality abstention), testing, or promotion starts a seven-day actor cooldown before any future searches or folder archival
-   - `--retrain` respects cooldowns; `--ignore-cooldown` explicitly retries early
+   - Failed training (including quality abstention), testing, or promotion blocks the actor indefinitely before any future searches or folder archival; existing seven-day failures also stop expiring
+   - `--retrain` respects indefinite failure blocks; `--ignore-cooldown` explicitly retries, and a successful promotion clears the block
    - Records cooldown starts/skips and successful-model source domains in `07_training_stats/training.sqlite`; inspect/export with `93_training_stats.py`
 
 3. **05_run_pipeline_steps.py** - Manual pipeline runner
